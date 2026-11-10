@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <meta name="theme-color" content="#0b1b4d">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Domótica ERP</title>
@@ -289,12 +291,14 @@ const ICONES = {
   dispositivos: '<path d="M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/>',
   agenda: '<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v3M16 3v3"/>',
   codigos: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/>',
+  plantas: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h8M11 3v8M11 15v6M15 13h6"/>',
   mais: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
 };
 function icone(nome) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICONES[nome] || '') + '</svg>'; }
 
 const NAV = [
   { id: 'inicio', label: 'Início' },
+  { id: 'plantas', label: 'Plantas' },
   { id: 'orcamentos', label: 'Orçamentos' },
   { id: 'clientes', label: 'Clientes' },
   { id: 'catalogo', label: 'Catálogo' },
@@ -303,7 +307,7 @@ const NAV = [
   { id: 'agenda', label: 'Agenda' },
   { id: 'codigos', label: 'Códigos' },
 ];
-const NAV_TAB = ['inicio', 'orcamentos', 'clientes', 'agenda'];
+const NAV_TAB = ['inicio', 'plantas', 'clientes', 'catalogo'];
 
 // ── Sessão local ─────────────────────────────────────────────
 const DOM_SESS = {
@@ -1288,6 +1292,323 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
 })();
 </script>
 
+<script>
+// Plantas e projetos: subir a planta, marcar pontos/fios/anotações e marcar cada execução como feita.
+(function() {
+  const CATEGORIAS = [
+    { id: 'interruptor_1', nome: 'Interruptor 1 tecla', sigla: '1' }, { id: 'interruptor_2', nome: 'Interruptor 2 teclas', sigla: '2' },
+    { id: 'interruptor_3', nome: 'Interruptor 3 teclas', sigla: '3' }, { id: 'interruptor_4', nome: 'Interruptor 4 teclas', sigla: '4' },
+    { id: 'tomada', nome: 'Tomada', sigla: 'T' }, { id: 'iluminacao', nome: 'Ponto de luz', sigla: 'L' }, { id: 'sensor', nome: 'Sensor', sigla: 'S' },
+    { id: 'camera', nome: 'Câmera', sigla: 'C' }, { id: 'fechadura', nome: 'Fechadura', sigla: 'F' }, { id: 'alexa', nome: 'Alexa / Echo', sigla: 'A' },
+    { id: 'cortina', nome: 'Cortina / persiana', sigla: 'P' }, { id: 'hub', nome: 'Central / hub', sigla: 'H' },
+    { id: 'infra', nome: 'Infraestrutura (caixa / eletroduto)', sigla: 'I' }, { id: 'outro', nome: 'Outro', sigla: '•' },
+  ];
+  const cat = function(id) { return CATEGORIAS.filter(function(c) { return c.id === id; })[0] || CATEGORIAS[CATEGORIAS.length - 1]; };
+  const COR_PEND = '#FE792C', COR_FEITO = '#16a34a', COR_SEL = '#0D44DE';
+  const PL = { lista: [], clientes: [], busca: '' };
+  let ED = null;
+
+  function injetarCss() {
+    if (document.getElementById('pl-css')) return;
+    const s = document.createElement('style'); s.id = 'pl-css';
+    s.textContent =
+      '.pl-corpo{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:12px}' +
+      '.pl-palco{height:calc(100vh - 270px);min-height:380px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.18);background:#fff;position:relative}' +
+      '.pl-tools,.pl-paleta{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;flex-wrap:nowrap}' +
+      '.pl-btn,.pl-chip{flex:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:inherit;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}' +
+      '.pl-btn.ativo,.pl-chip.ativo{background:#FE792C;border-color:#FE792C;color:#fff;font-weight:600}' +
+      '.pl-chip b{display:inline-block;min-width:18px;text-align:center;margin-right:4px}' +
+      '.pl-barra{height:8px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}.pl-barra>i{display:block;height:100%;background:#16a34a;border-radius:99px}' +
+      '.pl-item{display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.1);cursor:pointer}' +
+      '.pl-item input{width:24px;height:24px;flex:none}.pl-sigla{flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff}' +
+      '.pl-grupo{margin:12px 0 2px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.65}' +
+      '.pl-abas{display:none;gap:8px;margin-bottom:10px}.pl-abas .pl-btn{flex:1;text-align:center}' +
+      '.pl-corpo>*{min-width:0}.pl-tools,.pl-paleta{max-width:100%;-webkit-overflow-scrolling:touch}' +
+      '@media(max-width:900px){.pl-corpo{grid-template-columns:minmax(0,1fr)}.pl-corpo[data-aba=planta] .pl-lado{display:none}.pl-corpo[data-aba=lista] .pl-col-planta{display:none}.pl-abas{display:flex}.pl-palco{height:calc(100vh - 360px);min-height:320px}}';
+    document.head.appendChild(s);
+  }
+
+  VIEWS.plantas = {
+    titulo: 'Plantas e projetos',
+    render: function(c, params) { injetarCss(); if (params && params.id) abrirEditor(c, params.id); else renderLista(c); },
+  };
+
+  // ───────────────────────── lista de plantas ─────────────────────────
+  function renderLista(c) {
+    $id('topbar-actions').innerHTML = '<button class="btn btn-primary" data-acao="nova">+ Nova planta</button>';
+    c.innerHTML = '<div class="toolbar"><input id="pl-busca" class="form-input grow" placeholder="Buscar planta ou cliente..." value="' + escHtml(PL.busca) + '"></div><div id="pl-lista"><div class="glass card empty">Carregando...</div></div>';
+    $id('pl-busca').addEventListener('input', debounce(function(e) { PL.busca = e.target.value; pintaLista(); }, 150));
+    const acao = function(e) {
+      const el = e.target.closest('[data-acao]'); if (!el) return;
+      if (el.getAttribute('data-acao') === 'nova') abrirNova();
+      else if (el.getAttribute('data-acao') === 'abrir') navegar('plantas', { id: el.getAttribute('data-id') });
+    };
+    c.addEventListener('click', acao); $id('topbar-actions').addEventListener('click', acao);
+    chamarBackend('listarPlantas', [APP.token], function(r) { PL.lista = r.plantas; PL.clientes = r.clientes; pintaLista(); });
+  }
+
+  function pintaLista() {
+    const box = $id('pl-lista'); if (!box) return;
+    const q = norm(PL.busca), l = PL.lista.filter(function(p) { return !q || norm(p.NOME + ' ' + p.CLIENTE).indexOf(q) > -1; });
+    if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (PL.lista.length ? 'Nenhuma planta com essa busca.' : 'Nenhuma planta ainda. Use “+ Nova planta” para subir a planta de um cliente.') + '</div>'; return; }
+    box.innerHTML = l.map(function(p) {
+      const pct = p.TOTAL ? Math.round(100 * p.FEITOS / p.TOTAL) : 0;
+      return '<div class="glass item-card" data-acao="abrir" data-id="' + escHtml(p.ID_PLANTA) + '" style="margin-bottom:10px;cursor:pointer">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="row-title">' + escHtml(p.NOME) + '</div><div class="small">' + escHtml(p.CLIENTE || 'Sem cliente') + '</div></div>' +
+        '<div class="small" style="text-align:right"><b>' + p.FEITOS + ' de ' + p.TOTAL + '</b> executados<br>' + pct + '%</div></div>' +
+        '<div class="pl-barra" style="margin-top:10px"><i style="width:' + pct + '%"></i></div></div>';
+    }).join('');
+  }
+
+  function abrirNova() {
+    abrirModal('Nova planta',
+      '<div class="form-group"><label class="form-label required">Nome do projeto</label><input id="np-nome" class="form-input" placeholder="Ex.: Casa da Ana — térreo"></div>' +
+      '<div class="form-group"><label class="form-label">Cliente</label><select id="np-cli" class="form-input"><option value="">— sem cliente —</option>' +
+        PL.clientes.map(function(c) { return '<option value="' + escHtml(c.ID_CLIENTE) + '">' + escHtml(c.NOME) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Imagem da planta (foto, print ou imagem exportada)</label><input id="np-arq" type="file" accept="image/*" class="form-input"><div class="small" style="margin-top:6px">JPG, PNG ou WEBP. Sem imagem, o sistema cria uma folha em branco quadriculada para você desenhar. PDF: exporte como imagem antes.</div></div>',
+      '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="np-salvar">Criar planta</button>');
+    $id('np-salvar').addEventListener('click', function() {
+      const nome = inputVal('np-nome'); if (!nome) { toast('Dê um nome ao projeto.', 'warn'); return; }
+      const arq = $id('np-arq').files[0] || null, btn = $id('np-salvar'); btn.disabled = true; btn.textContent = 'Criando...';
+      chamarBackend('criarPlanta', [APP.token, { nome: nome, clienteId: $id('np-cli').value, arquivo: arq }], function(r) { fecharModal(); navegar('plantas', { id: r.ID_PLANTA }); },
+        function(err) { btn.disabled = false; btn.textContent = 'Criar planta'; toast(err, 'error', 8000); });
+    });
+  }
+
+  // ───────────────────────── editor ─────────────────────────
+  function abrirEditor(c, id) {
+    ED = { id: id, plano: null, marcas: [], produtos: [], url: '', W: 1600, H: 1200, view: { s: 1, tx: 0, ty: 0 }, ferramenta: 'mover', cat: 'interruptor_1', rascunho: [], sel: null, movendo: null, filtro: 'pendentes', aba: 'planta' };
+    $id('topbar-actions').innerHTML = '<button class="btn btn-secondary" data-acao="voltar">← Plantas</button> <button class="btn btn-ghost" data-acao="excluir-planta">Excluir</button>';
+    c.innerHTML = '<div class="glass card" style="padding:12px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><div class="row-title" id="pl-titulo">Carregando...</div><div class="small" id="pl-prog"></div></div><div class="pl-barra" style="margin-top:8px"><i id="pl-barra" style="width:0%"></i></div></div>' +
+      '<div class="pl-abas"><button class="pl-btn ativo" data-aba="planta">Planta</button><button class="pl-btn" data-aba="lista" id="pl-aba-lista">Execução</button></div>' +
+      '<div class="pl-corpo" id="pl-corpo" data-aba="planta">' +
+        '<div class="pl-col-planta"><div class="pl-tools" id="pl-tools"></div><div class="pl-paleta" id="pl-paleta"></div><div class="pl-palco" id="pl-palco"></div>' +
+        '<div class="small" id="pl-dica" style="margin-top:6px"></div></div>' +
+        '<div class="pl-lado glass card" style="padding:12px 14px" id="pl-lado"></div></div>';
+    const acao = function(e) {
+      const el = e.target.closest('[data-acao],[data-aba],[data-cat],[data-ferr],[data-toggle],[data-ir]'); if (!el) return;
+      if (el.hasAttribute('data-aba')) { ED.aba = el.getAttribute('data-aba'); $id('pl-corpo').setAttribute('data-aba', ED.aba); document.querySelectorAll('.pl-abas .pl-btn').forEach(function(b) { b.classList.toggle('ativo', b.getAttribute('data-aba') === ED.aba); }); if (ED.aba === 'planta') setTimeout(ajustar, 30); return; }
+      if (el.hasAttribute('data-cat')) { ED.cat = el.getAttribute('data-cat'); ED.ferramenta = 'ponto'; ED.rascunho = []; pintaBarra(); desenhar(); return; }
+      if (el.hasAttribute('data-ferr')) { trocarFerramenta(el.getAttribute('data-ferr')); return; }
+      if (el.hasAttribute('data-toggle')) { e.stopPropagation(); alternar(el.getAttribute('data-toggle')); return; }
+      if (el.hasAttribute('data-ir')) { irPara(el.getAttribute('data-ir')); return; }
+      const a = el.getAttribute('data-acao');
+      if (a === 'voltar') { ED = null; navegar('plantas'); }
+      else if (a === 'excluir-planta') confirmarAcao('Excluir esta planta e todas as marcações? Não dá para desfazer.', excluirPlanta, { textoConfirmar: 'Excluir', perigo: true });
+      else if (a === 'zoom-mais') zoomCentro(1.3); else if (a === 'zoom-menos') zoomCentro(1 / 1.3); else if (a === 'ajustar') ajustar();
+      else if (a === 'concluir-linha') concluirLinha(); else if (a === 'cancelar-linha') { ED.rascunho = []; pintaBarra(); desenhar(); }
+      else if (a === 'filtro') { ED.filtro = el.getAttribute('data-valor'); pintaLado(); }
+    };
+    c.addEventListener('click', acao); $id('topbar-actions').addEventListener('click', acao);
+    chamarBackend('obterPlanta', [APP.token, id], function(r) {
+      ED.plano = r.plano; ED.marcas = r.marcas; ED.produtos = r.produtos; ED.url = r.url; ED.W = r.plano.largura; ED.H = r.plano.altura; ED.cliente = r.cliente;
+      $id('pl-titulo').textContent = r.plano.nome + (r.cliente ? ' · ' + r.cliente : '');
+      pintaBarra(); montarPalco(); pintaLado();
+    }, function(err) { toast(err, 'error', 8000); navegar('plantas'); });
+  }
+
+  function trocarFerramenta(f) { ED.ferramenta = f; ED.rascunho = []; ED.movendo = null; pintaBarra(); desenhar(); }
+
+  function pintaBarra() {
+    const t = $id('pl-tools'), p = $id('pl-paleta'); if (!t) return;
+    const fb = function(id, txt) { return '<button class="pl-btn' + (ED.ferramenta === id ? ' ativo' : '') + '" data-ferr="' + id + '">' + txt + '</button>'; };
+    t.innerHTML = fb('mover', '✋ Mover') + fb('linha', '✎ Fio / linha') + fb('texto', 'T Anotação') +
+      '<button class="pl-btn" data-acao="zoom-menos">−</button><button class="pl-btn" data-acao="zoom-mais">+</button><button class="pl-btn" data-acao="ajustar">Ajustar</button>' +
+      (ED.ferramenta === 'linha' && ED.rascunho.length ? '<button class="pl-btn ativo" data-acao="concluir-linha">✔ Concluir linha (' + ED.rascunho.length + ' pts)</button><button class="pl-btn" data-acao="cancelar-linha">Cancelar</button>' : '');
+    p.innerHTML = CATEGORIAS.map(function(c) { return '<button class="pl-chip' + (ED.ferramenta === 'ponto' && ED.cat === c.id ? ' ativo' : '') + '" data-cat="' + c.id + '"><b>' + c.sigla + '</b>' + escHtml(c.nome.replace(/ \(.*\)/, '')) + '</button>'; }).join('');
+    const d = $id('pl-dica'); if (!d) return;
+    d.textContent = ED.movendo ? 'Toque no novo lugar da marcação.' : ED.ferramenta === 'ponto' ? 'Toque na planta para colocar: ' + cat(ED.cat).nome + '. Toque numa marcação existente para editar ou marcar como executada.' :
+      ED.ferramenta === 'linha' ? 'Toque nos pontos do caminho do fio/eletroduto e depois em “Concluir linha”.' : ED.ferramenta === 'texto' ? 'Toque onde quer a anotação.' : 'Arraste para mover a planta, use dois dedos (ou a roda do mouse) para ampliar. Escolha um tipo acima para marcar pontos.';
+  }
+
+  // ── palco (SVG com zoom e arraste) ──
+  function montarPalco() {
+    const palco = $id('pl-palco'); if (!palco) return;
+    const NS = 'http://www.w3.org/2000/svg';
+    palco.innerHTML = '<svg id="pl-svg" width="100%" height="100%" style="display:block;touch-action:none;user-select:none"><defs><pattern id="pl-grade" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#dbe3f0" stroke-width="1"/></pattern></defs>' +
+      '<g id="pl-g"><rect width="' + ED.W + '" height="' + ED.H + '" fill="#fff"/>' + (ED.url ? '<image id="pl-img" href="' + escHtml(ED.url) + '" width="' + ED.W + '" height="' + ED.H + '" preserveAspectRatio="none"/>' : '<rect width="' + ED.W + '" height="' + ED.H + '" fill="url(#pl-grade)"/>') +
+      '<g id="pl-linhas"></g><g id="pl-pontos"></g><g id="pl-rasc"></g></g></svg>';
+    const svg = $id('pl-svg'), ptrs = {};
+    let gesto = null;
+    const dist = function(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
+    svg.addEventListener('pointerdown', function(e) {
+      try { svg.setPointerCapture(e.pointerId); } catch (x) { /* toque sintético */ }
+      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: Date.now(), alvo: e.target.closest('[data-m]'), moveu: false, multi: false };
+      const ids = Object.keys(ptrs);
+      if (ids.length === 2) { ids.forEach(function(k) { ptrs[k].multi = true; }); gesto = { d0: dist(ptrs[ids[0]], ptrs[ids[1]]), s0: ED.view.s }; }
+    });
+    svg.addEventListener('pointermove', function(e) {
+      const p = ptrs[e.pointerId]; if (!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      const ids = Object.keys(ptrs);
+      if (ids.length === 1) {
+        if (Math.hypot(p.x - p.x0, p.y - p.y0) > 7) p.moveu = true;
+        if (p.moveu) { ED.autoFit = false; ED.view.tx += dx; ED.view.ty += dy; aplicar(); }
+      } else if (ids.length === 2 && gesto) {
+        const a = ptrs[ids[0]], b = ptrs[ids[1]], r = svg.getBoundingClientRect(), mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+        const alvo = Math.min(14, Math.max(0.05, gesto.s0 * dist(a, b) / (gesto.d0 || 1)));
+        zoomEm(mx, my, alvo / ED.view.s); ED.view.tx += dx / 2; ED.view.ty += dy / 2; aplicar();
+      }
+    });
+    const fim = function(e) {
+      const p = ptrs[e.pointerId]; delete ptrs[e.pointerId];
+      if (Object.keys(ptrs).length < 2) gesto = null;
+      if (p && !p.moveu && !p.multi && Date.now() - p.t < 600) toque(e, p);
+    };
+    svg.addEventListener('pointerup', fim); svg.addEventListener('pointercancel', function(e) { delete ptrs[e.pointerId]; gesto = null; });
+    svg.addEventListener('wheel', function(e) { e.preventDefault(); const r = svg.getBoundingClientRect(); zoomEm(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.18 : 1 / 1.18); aplicar(); }, { passive: false });
+    ED.autoFit = true;
+    if (window.ResizeObserver) new ResizeObserver(function() { if (ED && ED.autoFit && $id('pl-svg')) ajustar(); }).observe(palco);
+    ajustar();
+  }
+
+  function ajustar() {
+    const svg = $id('pl-svg'); if (!svg) return;
+    const r = svg.getBoundingClientRect(); if (!r.width) return;
+    const s = Math.min(r.width / ED.W, r.height / ED.H);
+    ED.view = { s: s, tx: (r.width - ED.W * s) / 2, ty: (r.height - ED.H * s) / 2 };
+    ED.sMin = s * 0.5; ED.autoFit = true; aplicar();
+  }
+  function zoomEm(cx, cy, f) {
+    ED.autoFit = false;
+    const v = ED.view, ns = Math.min(14, Math.max(ED.sMin || 0.05, v.s * f)); f = ns / v.s;
+    v.tx = cx - (cx - v.tx) * f; v.ty = cy - (cy - v.ty) * f; v.s = ns;
+  }
+  function zoomCentro(f) { const r = $id('pl-svg').getBoundingClientRect(); zoomEm(r.width / 2, r.height / 2, f); aplicar(); }
+  let agendado = false;
+  function aplicar() {
+    const g = $id('pl-g'); if (!g) return;
+    g.setAttribute('transform', 'translate(' + ED.view.tx + ',' + ED.view.ty + ') scale(' + ED.view.s + ')');
+    if (!agendado) { agendado = true; requestAnimationFrame(function() { agendado = false; desenhar(); }); }
+  }
+  function coord(e) { const r = $id('pl-svg').getBoundingClientRect(); return { x: (e.clientX - r.left - ED.view.tx) / ED.view.s, y: (e.clientY - r.top - ED.view.ty) / ED.view.s }; }
+  function dentro(p) { return p.x >= 0 && p.y >= 0 && p.x <= ED.W && p.y <= ED.H; }
+
+  function toque(e, p) {
+    if (ED.movendo) {
+      const q = coord(e); if (!dentro(q)) return; const id = ED.movendo; ED.movendo = null;
+      gravar({ id: id, x: q.x / ED.W, y: q.y / ED.H }, function() { toast('Marcação movida.', 'success', 1500); }); pintaBarra(); return;
+    }
+    if (p.alvo && ED.ferramenta !== 'linha') { editarMarca(p.alvo.getAttribute('data-m')); return; }
+    const q = coord(e); if (!dentro(q)) return;
+    if (ED.ferramenta === 'ponto') {
+      gravar({ tipo: 'ponto', categoria: ED.cat, x: q.x / ED.W, y: q.y / ED.H, status: 'pendente' }, function() { toast(cat(ED.cat).nome + ' adicionado.', 'success', 1200); });
+    } else if (ED.ferramenta === 'linha') { ED.rascunho.push([q.x / ED.W, q.y / ED.H]); pintaBarra(); desenhar(); }
+    else if (ED.ferramenta === 'texto') {
+      const t = window.prompt('Texto da anotação:'); if (!t || !t.trim()) return;
+      gravar({ tipo: 'texto', categoria: 'outro', rotulo: t.trim().slice(0, 120), x: q.x / ED.W, y: q.y / ED.H, status: 'pendente' });
+    }
+  }
+
+  function concluirLinha() {
+    if (ED.rascunho.length < 2) { toast('Marque pelo menos 2 pontos.', 'warn'); return; }
+    const pts = ED.rascunho.slice(); ED.rascunho = [];
+    gravar({ tipo: 'linha', categoria: 'infra', x: pts[0][0], y: pts[0][1], pontos: pts, status: 'pendente' }, function() { toast('Linha adicionada.', 'success', 1200); });
+    pintaBarra();
+  }
+
+  // ── gravar / alternar ──
+  function gravar(m, depois) {
+    chamarBackend('salvarMarca', [APP.token, Object.assign({ plan_id: ED.id }, m)], function(r) {
+      const i = ED.marcas.findIndex(function(x) { return x.id === r.id; });
+      if (i > -1) ED.marcas[i] = r; else ED.marcas.push(r);
+      desenhar(); pintaLado(); pintaBarra(); if (depois) depois(r);
+    });
+  }
+  function alternar(id) {
+    const m = ED.marcas.filter(function(x) { return x.id === id; })[0]; if (!m) return;
+    gravar({ id: id, status: m.status === 'executado' ? 'pendente' : 'executado' });
+  }
+  function irPara(id) {
+    const m = ED.marcas.filter(function(x) { return x.id === id; })[0]; if (!m) return;
+    ED.aba = 'planta'; $id('pl-corpo').setAttribute('data-aba', 'planta'); document.querySelectorAll('.pl-abas .pl-btn').forEach(function(b) { b.classList.toggle('ativo', b.getAttribute('data-aba') === 'planta'); });
+    setTimeout(function() {
+      const r = $id('pl-svg').getBoundingClientRect(); ED.view.s = Math.max(ED.view.s, Math.min(r.width / ED.W, r.height / ED.H) * 2.2);
+      ED.view.tx = r.width / 2 - m.x * ED.W * ED.view.s; ED.view.ty = r.height / 2 - m.y * ED.H * ED.view.s; ED.sel = id; aplicar();
+    }, 40);
+  }
+
+  function editarMarca(id) {
+    const m = ED.marcas.filter(function(x) { return x.id === id; })[0]; if (!m) return;
+    ED.sel = id; desenhar();
+    const feito = m.status === 'executado', ambientes = Array.from(new Set(ED.marcas.map(function(x) { return x.ambiente; }).filter(Boolean)));
+    abrirModal((m.tipo === 'linha' ? 'Fio / linha' : m.tipo === 'texto' ? 'Anotação' : cat(m.categoria).nome),
+      '<button class="btn ' + (feito ? 'btn-secondary' : 'btn-primary') + ' btn-full" id="pm-exec" style="font-size:16px;padding:14px;margin-bottom:12px">' + (feito ? '↩ Voltar para pendente' : '✔ Marcar como executado') + '</button>' +
+      (feito && m.executado_em ? '<div class="small" style="margin:-4px 0 10px">Executado em ' + escHtml(new Date(m.executado_em).toLocaleString('pt-BR')) + '</div>' : '') +
+      '<div class="form-grid">' +
+        (m.tipo === 'ponto' ? '<div class="form-group"><label class="form-label">Tipo</label><select id="pm-cat" class="form-input">' + CATEGORIAS.map(function(c) { return '<option value="' + c.id + '"' + (c.id === m.categoria ? ' selected' : '') + '>' + escHtml(c.nome) + '</option>'; }).join('') + '</select></div>' : '') +
+        '<div class="form-group"><label class="form-label">' + (m.tipo === 'texto' ? 'Texto' : 'Nome / identificação') + '</label><input id="pm-rotulo" class="form-input" placeholder="Ex.: Luz da sala" value="' + escHtml(m.rotulo || '') + '"></div>' +
+        '<div class="form-group"><label class="form-label">Ambiente</label><input id="pm-amb" class="form-input" list="pm-amb-lista" placeholder="Ex.: Sala" value="' + escHtml(m.ambiente || '') + '"><datalist id="pm-amb-lista">' + ambientes.map(function(a) { return '<option value="' + escHtml(a) + '">'; }).join('') + '</datalist></div>' +
+        (m.tipo === 'ponto' ? '<div class="form-group"><label class="form-label">Produto do catálogo</label><select id="pm-prod" class="form-input"><option value="">— nenhum —</option>' + ED.produtos.map(function(p) { return '<option value="' + escHtml(p.id) + '"' + (p.id === m.product_id ? ' selected' : '') + '>' + escHtml(p.nome.slice(0, 70)) + '</option>'; }).join('') + '</select></div>' : '') +
+        '<div class="form-group full"><label class="form-label">Observações</label><textarea id="pm-obs" class="form-input" rows="2">' + escHtml(m.observacoes || '') + '</textarea></div>' +
+      '</div>',
+      '<button class="btn btn-ghost" id="pm-del">Excluir</button>' + (m.tipo !== 'linha' ? '<button class="btn btn-secondary" id="pm-mover">Mover</button>' : '') + '<button class="btn btn-primary" id="pm-salvar">Salvar</button>');
+    const fechar = function() { ED.sel = null; fecharModal(); desenhar(); };
+    $id('pm-exec').addEventListener('click', function() { fecharModal(); ED.sel = null; alternar(id); });
+    $id('pm-salvar').addEventListener('click', function() {
+      const d = { id: id, rotulo: inputVal('pm-rotulo'), ambiente: inputVal('pm-amb'), observacoes: inputVal('pm-obs') };
+      if ($id('pm-cat')) d.categoria = $id('pm-cat').value; if ($id('pm-prod')) d.product_id = $id('pm-prod').value || null;
+      gravar(d, function() { fechar(); toast('Salvo.', 'success', 1200); });
+    });
+    $id('pm-del').addEventListener('click', function() {
+      chamarBackend('excluirMarca', [APP.token, id], function() { ED.marcas = ED.marcas.filter(function(x) { return x.id !== id; }); fechar(); pintaLado(); toast('Excluído.', 'success', 1200); });
+    });
+    if ($id('pm-mover')) $id('pm-mover').addEventListener('click', function() { fechar(); ED.movendo = id; pintaBarra(); });
+  }
+
+  function excluirPlanta() {
+    chamarBackend('excluirPlanta', [APP.token, ED.id], function() { ED = null; toast('Planta excluída.'); navegar('plantas'); });
+  }
+
+  // ── desenho das marcações ──
+  function desenhar() {
+    const gl = $id('pl-linhas'), gp = $id('pl-pontos'), gr = $id('pl-rasc'); if (!gl || !ED) return;
+    const s = ED.view.s, W = ED.W, H = ED.H, R = 15 / s;
+    let L = '', P = '';
+    ED.marcas.forEach(function(m) {
+      const feito = m.status === 'executado', cor = feito ? COR_FEITO : COR_PEND, sel = ED.sel === m.id || ED.movendo === m.id;
+      if (m.tipo === 'linha' && Array.isArray(m.pontos)) {
+        const pts = m.pontos.map(function(p) { return (p[0] * W) + ',' + (p[1] * H); }).join(' ');
+        L += '<g data-m="' + m.id + '" style="cursor:pointer"><polyline points="' + pts + '" fill="none" stroke="transparent" stroke-width="' + (22 / s) + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '<polyline points="' + pts + '" fill="none" stroke="' + (sel ? COR_SEL : cor) + '" stroke-width="' + ((sel ? 6 : 4) / s) + '" stroke-linecap="round" stroke-linejoin="round"' + (feito ? '' : ' stroke-dasharray="' + (10 / s) + ' ' + (7 / s) + '"') + '/></g>';
+      } else if (m.tipo === 'texto') {
+        const fs = 14 / s, w = Math.max(30 / s, (m.rotulo || '').length * fs * 0.58 + 12 / s);
+        P += '<g data-m="' + m.id + '" transform="translate(' + (m.x * W) + ',' + (m.y * H) + ')" style="cursor:pointer"><rect x="' + (-w / 2) + '" y="' + (-fs) + '" width="' + w + '" height="' + (fs * 1.7) + '" rx="' + (4 / s) + '" fill="#fff" fill-opacity=".92" stroke="' + (sel ? COR_SEL : '#64748b') + '" stroke-width="' + (1.5 / s) + '"/><text text-anchor="middle" y="' + (fs * 0.2) + '" font-size="' + fs + '" fill="#0f172a" font-family="Inter,sans-serif">' + escHtml(m.rotulo || '') + '</text></g>';
+      } else {
+        const c = cat(m.categoria), rotulo = s > 0.5 && m.rotulo ? '<text y="' + (R + 14 / s) + '" text-anchor="middle" font-size="' + (12 / s) + '" fill="#0f172a" stroke="#fff" stroke-width="' + (3 / s) + '" paint-order="stroke" font-family="Inter,sans-serif">' + escHtml(m.rotulo.slice(0, 22)) + '</text>' : '';
+        P += '<g data-m="' + m.id + '" transform="translate(' + (m.x * W) + ',' + (m.y * H) + ')" style="cursor:pointer">' + (sel ? '<circle r="' + (R + 6 / s) + '" fill="none" stroke="' + COR_SEL + '" stroke-width="' + (3 / s) + '"/>' : '') +
+          '<circle r="' + R + '" fill="' + cor + '" stroke="#fff" stroke-width="' + (2.5 / s) + '"/><text y="' + (5 / s) + '" text-anchor="middle" font-size="' + (15 / s) + '" font-weight="700" fill="#fff" font-family="Inter,sans-serif">' + (feito ? '✓' : c.sigla) + '</text>' + rotulo + '</g>';
+      }
+    });
+    gl.innerHTML = L; gp.innerHTML = P;
+    gr.innerHTML = ED.rascunho.length ? '<polyline points="' + ED.rascunho.map(function(p) { return (p[0] * W) + ',' + (p[1] * H); }).join(' ') + '" fill="none" stroke="' + COR_SEL + '" stroke-width="' + (4 / s) + '" stroke-linecap="round" stroke-linejoin="round"/>' +
+      ED.rascunho.map(function(p) { return '<circle cx="' + (p[0] * W) + '" cy="' + (p[1] * H) + '" r="' + (6 / s) + '" fill="' + COR_SEL + '"/>'; }).join('') : '';
+  }
+
+  // ── painel de execução (lista) ──
+  function pintaLado() {
+    const box = $id('pl-lado'); if (!box || !ED) return;
+    const pontos = ED.marcas.filter(function(m) { return m.tipo !== 'texto'; });
+    const feitos = pontos.filter(function(m) { return m.status === 'executado'; }).length, total = pontos.length, pct = total ? Math.round(100 * feitos / total) : 0;
+    const pr = $id('pl-prog'); if (pr) pr.textContent = feitos + ' de ' + total + ' executados (' + pct + '%)';
+    const br = $id('pl-barra'); if (br) br.style.width = pct + '%';
+    const al = $id('pl-aba-lista'); if (al) al.textContent = 'Execução (' + (total - feitos) + ' faltam)';
+    const lista = pontos.filter(function(m) { return ED.filtro === 'todos' || (ED.filtro === 'pendentes' ? m.status !== 'executado' : m.status === 'executado'); });
+    const grupos = {};
+    lista.forEach(function(m) { const a = m.ambiente || 'Sem ambiente'; (grupos[a] = grupos[a] || []).push(m); });
+    const fb = function(v, t) { return '<button class="pl-btn' + (ED.filtro === v ? ' ativo' : '') + '" data-acao="filtro" data-valor="' + v + '">' + t + '</button>'; };
+    box.innerHTML = '<div class="row-title" style="margin-bottom:8px">Execução</div><div class="pl-tools" style="padding-bottom:4px">' + fb('pendentes', 'Faltam (' + (total - feitos) + ')') + fb('executados', 'Feitos (' + feitos + ')') + fb('todos', 'Todos') + '</div>' +
+      (lista.length ? Object.keys(grupos).sort().map(function(a) {
+        return '<div class="pl-grupo">' + escHtml(a) + '</div>' + grupos[a].map(function(m) {
+          const feito = m.status === 'executado', c = m.tipo === 'linha' ? { sigla: '━', nome: 'Fio / linha' } : cat(m.categoria);
+          return '<div class="pl-item" data-ir="' + m.id + '"><input type="checkbox" data-toggle="' + m.id + '"' + (feito ? ' checked' : '') + '><span class="pl-sigla" style="background:' + (feito ? COR_FEITO : COR_PEND) + '">' + c.sigla + '</span>' +
+            '<div style="min-width:0"><div class="row-title" style="' + (feito ? 'text-decoration:line-through;opacity:.6' : '') + '">' + escHtml(m.rotulo || c.nome) + '</div><div class="small">' + escHtml(m.rotulo ? c.nome : '') + '</div></div></div>';
+        }).join('');
+      }).join('') : '<div class="small" style="padding:14px 0">' + (total ? (ED.filtro === 'pendentes' ? 'Tudo executado. 🎉' : 'Nada por aqui.') : 'Nenhuma marcação ainda. Escolha um tipo e toque na planta.') + '</div>');
+  }
+})();
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>// Chaves PÚBLICAS do projeto Supabase "domotica-erp" (a chave publishable foi feita para ficar no navegador;
 // quem protege os dados é o RLS no banco). Nunca coloque aqui a chave service_role.
@@ -1359,6 +1680,17 @@ window.DOMOTICA_CFG = {
     if (r.error) throw new Error('Não consegui falar com o servidor de preços: ' + r.error.message);
     if (!r.data || r.data.ok === false) throw new Error((r.data && r.data.erro) || 'Erro no servidor de preços.');
     return r.data;
+  }
+
+  async function prepararImagem(file) {
+    let bmp;
+    try { bmp = await createImageBitmap(file); } catch (e) { throw new Error('Não consegui ler essa imagem. Use JPG, PNG ou WEBP.'); }
+    const esc = Math.min(1, 2400 / Math.max(bmp.width, bmp.height)), w = Math.round(bmp.width * esc), h = Math.round(bmp.height * esc);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise(function(r) { cv.toBlob(r, 'image/jpeg', 0.88); });
+    if (!blob) throw new Error('Não consegui preparar a imagem.');
+    return { blob: blob, w: w, h: h };
   }
 
   // ---- garantia (mesma regra do Apps Script, com os prazos da empresa) ----
@@ -1496,6 +1828,64 @@ window.DOMOTICA_CFG = {
         return { url: url, arquivo: 'Links de Produtos - Domotica.xlsx', produtos: prods.length, vinculos: vincs.length };
       });
     },
+    listarPlantas: function() {
+      return api(async function() {
+        const c = await ctx();
+        const plans = must(await sb.from('plans').select('id, nome, created_at, clients(nome)').eq('org_id', c.orgId).order('created_at', { ascending: false }));
+        const marks = must(await sb.from('plan_marks').select('plan_id, status').eq('org_id', c.orgId).neq('tipo', 'texto').range(0, 9999));
+        const tot = {}, feitos = {};
+        marks.forEach(function(m) { tot[m.plan_id] = (tot[m.plan_id] || 0) + 1; if (m.status === 'executado') feitos[m.plan_id] = (feitos[m.plan_id] || 0) + 1; });
+        const clientes = (await listaClientes()).filter(function(x) { return x.status === 'ativo'; }).map(function(r) { return { ID_CLIENTE: r.id, NOME: r.nome }; });
+        return { clientes: clientes, plantas: plans.map(function(p) { return { ID_PLANTA: p.id, NOME: p.nome, CLIENTE: p.clients ? p.clients.nome : '', TOTAL: tot[p.id] || 0, FEITOS: feitos[p.id] || 0 }; }) };
+      });
+    },
+    criarPlanta: function(t, d) {
+      return api(async function() {
+        const c = await ctx(); d = d || {};
+        if (!String(d.nome || '').trim()) throw new Error('Dê um nome ao projeto.');
+        let img = null;
+        if (d.arquivo) img = await prepararImagem(d.arquivo);
+        const row = must(await sb.from('plans').insert({ org_id: c.orgId, client_id: d.clienteId || null, nome: String(d.nome).trim(), largura: img ? img.w : 1600, altura: img ? img.h : 1200 }).select().single());
+        if (img) {
+          const caminho = c.orgId + '/' + row.id + '/planta.jpg';
+          const up = await sb.storage.from('plantas').upload(caminho, img.blob, { contentType: 'image/jpeg', upsert: true });
+          if (up.error) { await sb.from('plans').delete().eq('id', row.id); throw new Error('Não consegui enviar a imagem: ' + up.error.message); }
+          must(await sb.from('plans').update({ imagem_path: caminho }).eq('id', row.id));
+        }
+        return { ID_PLANTA: row.id };
+      });
+    },
+    obterPlanta: function(t, id) {
+      return api(async function() {
+        const c = await ctx();
+        const plano = must(await sb.from('plans').select('*, clients(nome)').eq('id', id).single());
+        const marcas = must(await sb.from('plan_marks').select('*').eq('plan_id', id).order('created_at').range(0, 4999));
+        const prods = must(await sb.from('catalog_products').select('id, nome').eq('org_id', c.orgId).eq('ativo', true).order('nome'));
+        let url = '';
+        if (plano.imagem_path) { const sg = await sb.storage.from('plantas').createSignedUrl(plano.imagem_path, 7200); if (sg.error) throw new Error('Não consegui abrir a imagem da planta: ' + sg.error.message); url = sg.data.signedUrl; }
+        return { plano: plano, cliente: plano.clients ? plano.clients.nome : '', marcas: marcas, produtos: prods, url: url };
+      });
+    },
+    salvarMarca: function(t, m) {
+      return api(async function() {
+        const c = await ctx(), row = {};
+        ['tipo', 'categoria', 'rotulo', 'ambiente', 'x', 'y', 'pontos', 'product_id', 'observacoes', 'status'].forEach(function(k) { if (m[k] !== undefined) row[k] = m[k]; });
+        ['rotulo', 'ambiente', 'observacoes'].forEach(function(k) { if (row[k] === '') row[k] = null; });
+        if (row.status === 'executado') { row.executado_em = new Date().toISOString(); row.executado_por = c.user.id; }
+        else if (row.status === 'pendente') { row.executado_em = null; row.executado_por = null; }
+        const q = m.id ? sb.from('plan_marks').update(row).eq('id', m.id) : sb.from('plan_marks').insert(Object.assign({ org_id: c.orgId, plan_id: m.plan_id }, row));
+        return must(await q.select().single());
+      });
+    },
+    excluirMarca: function(t, id) { return api(async function() { must(await sb.from('plan_marks').delete().eq('id', id)); return { ok: true }; }); },
+    excluirPlanta: function(t, id) {
+      return api(async function() {
+        const p = must(await sb.from('plans').select('imagem_path').eq('id', id).single());
+        if (p.imagem_path) await sb.storage.from('plantas').remove([p.imagem_path]);
+        must(await sb.from('plans').delete().eq('id', id));
+        return { ok: true };
+      });
+    },
     listarCodigos: function() {
       return api(async function() {
         const c = await ctx();
@@ -1542,18 +1932,36 @@ window.DOMOTICA_CFG = {
     if (/provider is not enabled|Unsupported provider/i.test(m)) return 'O login com Google ainda não foi ativado neste projeto.';
     return m;
   }
+  const OLHO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const OLHO_CORTADO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0112 19C5.6 19 2 12 2 12a18 18 0 015.1-5.9M9.9 5.1A9.7 9.7 0 0112 5c6.4 0 10 7 10 7a18 18 0 01-2.2 3.2M1 1l22 22"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/></svg>';
+  function olho(el) {
+    if (!el || el.getAttribute('data-olho')) return;
+    el.setAttribute('data-olho', '1');
+    const w = document.createElement('div'); w.style.position = 'relative'; el.parentNode.insertBefore(w, el); w.appendChild(el); el.style.paddingRight = '46px';
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', 'Mostrar senha');
+    b.style.cssText = 'position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:inherit;opacity:.8;cursor:pointer;padding:6px;line-height:0';
+    b.innerHTML = OLHO;
+    b.addEventListener('click', function() { const ver = el.type === 'password'; el.type = ver ? 'text' : 'password'; b.innerHTML = ver ? OLHO_CORTADO : OLHO; b.setAttribute('aria-label', ver ? 'Ocultar senha' : 'Mostrar senha'); });
+    w.appendChild(b);
+  }
+  window.olhoSenha = olho;
   function prepararTelas() {
-    if ($id('login-google')) return;
+    if ($id('ir-criar')) return;
     $id('login-usuario').previousElementSibling.textContent = 'E-mail'; $id('login-usuario').type = 'email';
     const manter = $id('login-manter'); if (manter) manter.closest('.form-group').style.display = 'none';
     $id('btn-login').insertAdjacentHTML('afterend',
-      '<button id="login-google" class="btn btn-secondary btn-full" style="margin-top:10px" type="button">Entrar com Google</button>' +
-      '<p class="small" style="margin-top:12px;text-align:center">Primeira vez? <a href="#" id="ir-criar">Criar conta</a></p>');
-    $id('login-google').addEventListener('click', async function() {
-      const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
-      if (r.error) mostrarAlerta('login-error', msgErro(r.error.message));
-    });
+      '<p class="small" style="margin-top:14px;text-align:center"><a href="#" id="ir-esqueci">Esqueci minha senha</a></p>' +
+      '<p class="small" style="margin-top:8px;text-align:center">Primeira vez? <a href="#" id="ir-criar">Criar conta</a></p>');
     $id('ir-criar').addEventListener('click', function(e) { e.preventDefault(); mostrarTela('setup'); });
+    $id('ir-esqueci').addEventListener('click', async function(e) {
+      e.preventDefault();
+      const email = inputVal('login-usuario'); if (!email) { mostrarAlerta('login-error', 'Digite seu e-mail no campo acima e toque de novo em “Esqueci minha senha”.'); return; }
+      mostrarAlerta('login-error', '');
+      const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      if (r.error) { mostrarAlerta('login-error', msgErro(r.error.message)); return; }
+      toast('Se o e-mail tiver conta, enviamos um link para criar a nova senha.', 'success', 9000);
+    });
+    olho($id('login-senha')); olho($id('setup-senha')); olho($id('setup-senha2'));
     const card = $id('setup-nome').closest('.card-auth');
     card.querySelector('h2').textContent = 'Criar conta';
     card.querySelector('p.muted').textContent = 'Use o e-mail que o administrador convidou.';
@@ -1562,6 +1970,26 @@ window.DOMOTICA_CFG = {
     const p = card.querySelector('p.small'); if (p) p.innerHTML = 'Já tem conta? <a href="#" id="ir-entrar">Entrar</a>';
     $id('ir-entrar').addEventListener('click', function(e) { e.preventDefault(); mostrarTela('login'); });
   }
+
+  // Link de "esqueci a senha": abre uma janela para definir a nova senha
+  sb.auth.onAuthStateChange(function(ev) {
+    if (ev !== 'PASSWORD_RECOVERY') return;
+    setTimeout(function() {
+      abrirModal('Criar nova senha',
+        '<div class="form-group"><label class="form-label">Nova senha (mínimo 8 caracteres)</label><input id="ns-1" type="password" class="form-input" autocomplete="new-password"></div>' +
+        '<div class="form-group"><label class="form-label">Repita a senha</label><input id="ns-2" type="password" class="form-input" autocomplete="new-password"></div>',
+        '<button class="btn btn-primary" id="ns-salvar">Salvar nova senha</button>');
+      olho($id('ns-1')); olho($id('ns-2'));
+      $id('ns-salvar').addEventListener('click', async function() {
+        const a = $id('ns-1').value, b = $id('ns-2').value;
+        if (a.length < 8) { toast('A senha precisa ter ao menos 8 caracteres.', 'warn'); return; }
+        if (a !== b) { toast('As senhas não conferem.', 'warn'); return; }
+        const r = await sb.auth.updateUser({ password: a });
+        if (r.error) { toast(msgErro(r.error.message), 'error', 8000); return; }
+        fecharModal(); toast('Senha alterada.', 'success');
+      });
+    }, 600);
+  });
 
   window.iniciarApp = async function() {
     document.addEventListener('keydown', function(ev) {
