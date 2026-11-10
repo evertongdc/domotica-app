@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Planta · Domótica</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#000000">
+<style>
+:root{--or:#ff7a00;--bl:#1e88ff;--bg1:#0b1220;--bg2:#13213f;--gl:rgba(255,255,255,.07);--gl2:rgba(255,255,255,.12);--tx:#e8eefb;--mu:#9fb0cf;--er:#e5484d;--wa:#f2b705;--ok:#2ea44f}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:var(--tx);font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:var(--gl2);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 11px;cursor:pointer;backdrop-filter:blur(8px)}
+button:active{transform:scale(.97)}
+button.pri{background:linear-gradient(135deg,var(--or),#ff9a3d);border-color:transparent;color:#1a1000;font-weight:700}
+button.on{outline:2px solid var(--bl);background:rgba(30,136,255,.25)}
+button.danger{border-color:rgba(229,72,77,.6);color:#ffb4b6}
+input,select,textarea{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:6px 8px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:54px}
+label{display:block;font-size:12px;color:var(--mu);margin:8px 0 3px}
+header#top{display:flex;gap:8px;align-items:center;padding:8px 10px;background:var(--gl);border-bottom:1px solid var(--gl2);backdrop-filter:blur(14px);flex-wrap:wrap}
+header#top input{width:auto;flex:1 1 130px;max-width:230px}
+.brand{font-weight:800;letter-spacing:.3px}.brand span{color:var(--or)}
+.sp{flex:1}
+nav#tabs{display:flex;gap:6px;padding:6px 10px;overflow-x:auto}
+nav#tabs button.on{background:linear-gradient(135deg,var(--or),#ff9a3d);color:#1a1000;font-weight:700;outline:none}
+.badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--er);color:#fff;font-size:11px;text-align:center}
+.badge.ok{background:var(--ok)}
+main{flex:1;min-height:0;position:relative}
+section.view{position:absolute;inset:0;display:none}
+section.view.on{display:flex}
+#v2d{gap:8px;padding:0 8px 8px}
+#tools,#panel{width:230px;flex:none;background:var(--gl);border:1px solid var(--gl2);border-radius:14px;padding:8px;overflow:auto;backdrop-filter:blur(14px)}
+#panel{width:290px}
+#cwrap{flex:1;min-width:0;position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--gl2);background:#f4f6fa}
+#svg{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+#hint{position:absolute;left:10px;top:10px;right:10px;pointer-events:none;display:flex;gap:6px;flex-wrap:wrap}
+#hint span{background:rgba(11,18,32,.82);color:#fff;border-radius:9px;padding:5px 9px;font-size:12px}
+#hint .chips{pointer-events:auto;display:flex;gap:4px}
+#hint .chips button{padding:3px 9px;border-radius:8px}
+#zoombtns{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}
+#zoombtns button{width:38px;height:38px;padding:0;font-size:18px;background:rgba(11,18,32,.85);color:#fff}
+.sec{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin:12px 2px 5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.tool{text-align:left;padding:7px 8px;font-size:13px}
+.pal{display:flex;align-items:center;gap:6px;text-align:left;padding:5px 6px;font-size:12px}
+.pal i{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;border-radius:6px;font-style:normal;font-weight:700;font-size:11px;color:#111;background:#fff;border:2px solid}
+.row{display:flex;gap:6px;align-items:center}
+.row>*{flex:1}
+.pill{display:inline-block;padding:2px 8px;border-radius:9px;font-size:11px;background:var(--gl2)}
+.note{font-size:12px;color:var(--mu)}
+.card{background:var(--gl);border:1px solid var(--gl2);border-radius:12px;padding:10px;margin-bottom:10px}
+.scroll{overflow:auto;padding:10px;width:100%}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--gl2);text-align:left;vertical-align:top}
+th{color:var(--mu);font-weight:600;position:sticky;top:0;background:#101a33}
+tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.lv{display:inline-block;padding:1px 7px;border-radius:7px;font-size:11px;font-weight:700;margin-right:6px}
+.lv.erro{background:var(--er)}.lv.aviso{background:var(--wa);color:#1a1000}.lv.info{background:#475569}
+#v3d{flex-direction:column}
+#bar3d{display:flex;gap:6px;padding:0 8px 6px;flex-wrap:wrap;align-items:center}
+#bar3d select,#bar3d input{width:auto}
+#c3d{flex:1;min-height:0;position:relative;margin:0 8px 8px;border-radius:14px;overflow:hidden;border:1px solid var(--gl2);background:#e9eef5}
+#c3d canvas{display:block;width:100%;height:100%}
+#leg3d{position:absolute;left:10px;bottom:10px;background:rgba(11,18,32,.8);border-radius:10px;padding:6px 9px;font-size:12px;color:#fff}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#0b1220;color:#fff;border:1px solid var(--gl2);padding:9px 14px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;max-width:90vw}
+#toast.on{opacity:1}
+#modal{position:fixed;inset:0;background:rgba(3,8,18,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:12px}
+#modal.on{display:flex}
+#mbox{width:min(440px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#16264a,#0f1a33);border:1px solid var(--gl2);border-radius:16px;padding:14px}
+#mbox h3{margin:0 0 6px}
+@media (max-width:900px){
+  #v2d{flex-direction:column;overflow:auto}
+  #tools,#panel{width:auto;max-height:34vh;flex:none}
+  #cwrap{flex:none;height:62vh}
+  header#top input{max-width:none}
+}
+#roombar{position:absolute;left:10px;right:60px;bottom:10px;display:flex;gap:5px;overflow-x:auto;align-items:center;padding:5px 7px;background:rgba(11,18,32,.88);border-radius:12px;backdrop-filter:blur(8px)}
+#roombar button{padding:4px 10px;border-radius:8px;white-space:nowrap;font-size:12.5px;color:#fff}
+#roombar button.rb.feito{background:rgba(46,164,79,.3);border-color:#2ea44f}
+#roombar button.on{outline:2px solid var(--or);background:rgba(255,122,0,.25)}
+#roombar .rbt{font-size:12px;color:#cbd5e1;white-space:nowrap;margin-right:2px}
+#fPal{margin-bottom:6px}
+#palVazio{font-size:12px;color:var(--mu);margin:6px 2px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>// Chaves PÚBLICAS do projeto Supabase "domotica-erp" (a chave publishable foi feita para ficar no navegador;
+// quem protege os dados é o RLS no banco). Nunca coloque aqui a chave service_role.
+window.DOMOTICA_CFG = {
+  url: 'https://uscdtmynbksepdtwdvvq.supabase.co',
+  key: 'sb_publishable_KO5FHrsYVt6iKo8VuXMLkw_Cc0ledzr',
+};
+</script>
+<script>// Faz o editor de planta (Planta_v2.html, feito para o Apps Script) salvar e abrir no Supabase.
+// Implementa o mesmo "contrato" do servidor: Planta_salvar, Planta_abrir, Planta_listar, Planta_salvarImagem3D, Planta_lerFoto.
+(function() {
+  var CFG = window.DOMOTICA_CFG;
+  var sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } });
+  var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  var CTXP = null;
+  function must(r) { if (r.error) throw new Error(r.error.message); return r.data; }
+  async function ctx() {
+    if (CTXP) return CTXP;
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) { location.href = 'index.html'; throw new Error('Entre no sistema primeiro.'); }
+    var m = must(await sb.from('memberships').select('org_id').eq('user_id', s.user.id).limit(1));
+    if (!m.length) throw new Error('Sua conta ainda não está vinculada a uma empresa.');
+    CTXP = { orgId: m[0].org_id, user: s.user };
+    return CTXP;
+  }
+  function paraBlob(d) {
+    var p = String(d).split(','), mime = (/data:([^;]+)/.exec(p[0]) || [])[1] || 'image/jpeg', b = atob(p[1]), u = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    return new Blob([u], { type: mime });
+  }
+  function paraDataUrl(blob) { return new Promise(function(res, rej) { var r = new FileReader(); r.onload = function() { res(r.result); }; r.onerror = rej; r.readAsDataURL(blob); }); }
+  var EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+  var API = {
+    Planta_salvar: async function(obj) {
+      var c = await ctx();
+      var linha = { nome: String(obj.nome || 'Planta').slice(0, 120), imovel: obj.imovel ? String(obj.imovel).slice(0, 160) : null, client_id: UUID.test(obj.clienteId || '') ? obj.clienteId : null, dados: obj.planta };
+      var id = UUID.test(obj.id || '') ? obj.id : null;
+      if (id) must(await sb.from('plans').update(linha).eq('id', id));
+      else id = must(await sb.from('plans').insert(Object.assign({ org_id: c.orgId }, linha)).select('id').single()).id;
+      if (obj.fotoDataUrl) {
+        var blob = paraBlob(obj.fotoDataUrl), ext = EXT[blob.type];
+        if (!ext) throw new Error('Formato de imagem não suportado (use JPG, PNG ou WEBP).');
+        var caminho = c.orgId + '/' + id + '/foto.' + ext;
+        var antigo = must(await sb.from('plans').select('imagem_path').eq('id', id).single()).imagem_path;
+        var up = await sb.storage.from('plantas').upload(caminho, blob, { contentType: blob.type, upsert: true });
+        if (up.error) throw new Error('Não consegui guardar a imagem da planta: ' + up.error.message);
+        if (antigo && antigo !== caminho) await sb.storage.from('plantas').remove([antigo]);
+        must(await sb.from('plans').update({ imagem_path: caminho }).eq('id', id));
+      } else if (obj.fotoDataUrl === '') {
+        var a = must(await sb.from('plans').select('imagem_path').eq('id', id).single()).imagem_path;
+        if (a) await sb.storage.from('plantas').remove([a]);
+        must(await sb.from('plans').update({ imagem_path: null }).eq('id', id));
+      }
+      return { id: id };
+    },
+    Planta_abrir: async function(id) {
+      await ctx();
+      var row = must(await sb.from('plans').select('dados, imagem_path, nome').eq('id', id).single());
+      var p = row.dados || { v: 2, nome: row.nome };
+      if (row.imagem_path) {
+        var d = await sb.storage.from('plantas').download(row.imagem_path);
+        if (d.error) throw new Error('Não consegui abrir a imagem da planta: ' + d.error.message);
+        p.fotoDataUrl = await paraDataUrl(d.data);
+      }
+      return p;
+    },
+    Planta_listar: async function(clienteId) {
+      var c = await ctx();
+      var q = sb.from('plans').select('id, nome, imovel, dados, created_at').eq('org_id', c.orgId).not('dados', 'is', null).order('updated_at', { ascending: false });
+      if (UUID.test(clienteId || '')) q = q.eq('client_id', clienteId);
+      return must(await q).map(function(r) { var d = r.dados || {}; return { id: r.id, nome: r.nome, imovel: r.imovel || '', comodos: (d.comodos || []).length, pontos: (d.pontos || []).length }; });
+    },
+    Planta_salvarImagem3D: async function(plantaId, comodoId, dataUrl) {
+      var c = await ctx(), blob = paraBlob(dataUrl);
+      var caminho = c.orgId + '/' + plantaId + '/3d_' + String(comodoId).replace(/[^\w-]/g, '') + '.jpg';
+      var up = await sb.storage.from('plantas').upload(caminho, blob, { contentType: 'image/jpeg', upsert: true });
+      if (up.error) throw new Error('Não consegui guardar a imagem 3D: ' + up.error.message);
+      return { fileId: caminho };
+    },
+    Planta_lerFoto: async function() { throw new Error('A leitura por IA ainda não está ligada neste servidor. Marque a planta manualmente por cima da imagem.'); },
+  };
+
+  function mk(okF, failF) {
+    return new Proxy({}, { get: function(_, fn) {
+      if (fn === 'withSuccessHandler') return function(f) { return mk(f, failF); };
+      if (fn === 'withFailureHandler') return function(g) { return mk(okF, g); };
+      return function() { var a = [].slice.call(arguments); Promise.resolve().then(function() { if (!API[fn]) throw new Error('Função não existe: ' + fn); return API[fn].apply(null, a); }).then(okF).catch(function(e) { if (failF) failF(e); }); };
+    } });
+  }
+  window.google = { script: { run: mk(function() {}, function() {}) } };
+  window.addEventListener('load', function() { ctx().catch(function() {}); });
+})();
+</script>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <a href="index.html#plantas" style="color:inherit;text-decoration:none;padding:7px 10px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1)">← Sistema</a>
+    <div class="brand">Planta <span>Domótica</span></div>
+    <input id="fNome" placeholder="Nome da planta">
+    <input id="fCliente" placeholder="Cliente (ID)">
+    <input id="fImovel" placeholder="Imóvel / obra">
+    <div class="sp"></div>
+    <button id="bUndo" title="Desfazer">↶</button><button id="bRedo" title="Refazer">↷</button>
+    <button id="bImp">Planta do cliente</button>
+    <button id="bAbrir">Abrir</button>
+    <button id="bSalvar" class="pri">Salvar</button>
+  </header>
+  <nav id="tabs">
+    <button data-tab="v2d" class="on">Planta 2D<span id="badgeCom" class="badge" style="background:#475569">0/0</span></button>
+    <button data-tab="v3d">3D</button>
+    <button data-tab="vpontos">Pontos</button>
+    <button data-tab="vapps">Apps<span id="badgeApps" class="badge ok">0</span></button>
+    <button data-tab="vcenas">Cenas</button>
+    <button data-tab="vchecks">Checagem<span id="badge" class="badge ok">0</span></button>
+  </nav>
+  <main>
+    <section id="v2d" class="view on">
+      <div id="tools"></div>
+      <div id="cwrap">
+        <svg id="svg" xmlns="http://www.w3.org/2000/svg"><g id="gGrid"></g><g id="gFundo"><image id="imgF" preserveAspectRatio="none" style="display:none"/></g><g id="gMain"></g></svg>
+        <div id="hint"></div>
+        <div id="roombar"></div>
+        <div id="zoombtns"><button id="zIn">+</button><button id="zOut">−</button><button id="zFit" title="Enquadrar">⤢</button></div>
+      </div>
+      <div id="panel"></div>
+    </section>
+    <section id="v3d" class="view">
+      <div id="bar3d">
+        <label style="margin:0">Pé-direito</label><input id="pe3" type="number" style="width:84px"> <span class="note">cm</span>
+        <select id="modo3"><option value="solida">Paredes sólidas</option><option value="vidro">Paredes translúcidas</option><option value="corte">Corte (110 cm)</option></select>
+        <label style="margin:0"><input type="checkbox" id="lig3" checked style="width:auto"> ligações</label>
+        <select id="com3"></select>
+        <button id="bFoco">Focar cômodo</button>
+        <button id="bIso">Visão geral</button>
+        <button id="bPng">Baixar PNG</button>
+        <button id="bImgs" class="pri">Gerar imagens p/ orçamento</button>
+      </div>
+      <div id="c3d"><div id="leg3d"></div></div>
+    </section>
+    <section id="vpontos" class="view"><div class="scroll" id="pontosBox"></div></section>
+    <section id="vapps" class="view"><div class="scroll" id="appsBox"></div></section>
+    <section id="vcenas" class="view"><div class="scroll" id="cenasBox"></div></section>
+    <section id="vchecks" class="view"><div class="scroll" id="checksBox"></div></section>
+  </main>
+</div>
+<div id="toast"></div>
+<div id="modal"><div id="mbox"></div></div>
+<input type="file" id="fileIn" accept="image/*,application/pdf" style="display:none">
+
+<script>
+try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { clienteId: q.get("cliente") || "", imovel: q.get("imovel") || "", plantaId: q.get("planta") || "" }; } catch (e) { window.PLANTA_CTX = {}; }
+</script>
+<script>
+/* Planta_geo.js — núcleo de geometria (roda no navegador e no Node).
+ * Coordenadas em unidades livres; depois da calibração, 1 unidade = 1 cm. */
+(function (root) {
+  'use strict';
+  const G = {};
+  const D2R = Math.PI / 180;
+  const len = s => Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+
+  /* ---------- projeção ponto → segmento ---------- */
+  function projT(s, px, py) {
+    const dx = s.x2 - s.x1, dy = s.y2 - s.y1, L2 = dx * dx + dy * dy || 1e-9;
+    const raw = ((px - s.x1) * dx + (py - s.y1) * dy) / L2;
+    const tc = Math.max(0, Math.min(1, raw));
+    const x = s.x1 + dx * tc, y = s.y1 + dy * tc;
+    return { t: raw, tc, x, y, d: Math.hypot(px - x, py - y) };
+  }
+  G.projT = projT;
+
+  /* ---------- Ramer–Douglas–Peucker (rabisco → poucos pontos) ---------- */
+  G.simplificar = function (pts, eps) {
+    if (pts.length < 3) return pts.slice();
+    const a = pts[0], b = pts[pts.length - 1];
+    let mx = -1, mi = -1;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const d = projT({ x1: a.x, y1: a.y, x2: b.x, y2: b.y }, pts[i].x, pts[i].y).d;
+      if (d > mx) { mx = d; mi = i; }
+    }
+    if (mx <= eps) return [a, b];
+    const l = G.simplificar(pts.slice(0, mi + 1), eps);
+    const r = G.simplificar(pts.slice(mi), eps);
+    return l.slice(0, -1).concat(r);
+  };
+
+  G.tracoParaSegs = function (pts, eps) {
+    const p = G.simplificar(pts, eps), out = [];
+    for (let i = 0; i < p.length - 1; i++) out.push({ x1: p[i].x, y1: p[i].y, x2: p[i + 1].x, y2: p[i + 1].y });
+    return out;
+  };
+
+  /* ---------- ângulo dominante (corrige foto/esboço torto) ---------- */
+  G.anguloDominante = function (S) {
+    let c = 0, s = 0;
+    S.forEach(g => { const L = len(g), a = Math.atan2(g.y2 - g.y1, g.x2 - g.x1); c += L * Math.cos(4 * a); s += L * Math.sin(4 * a); });
+    return Math.atan2(s, c) / 4 / D2R;
+  };
+
+  function agrupar(arr, key, tol) {
+    const a = arr.slice().sort((p, q) => key(p) - key(q)), out = []; let cur = [];
+    a.forEach(it => {
+      if (cur.length && key(it) - key(cur[cur.length - 1]) > tol) { out.push(cur); cur = []; }
+      cur.push(it);
+    });
+    if (cur.length) out.push(cur);
+    return out;
+  }
+
+  /* ---------- ENDIREITAR: traços tortos → paredes retas e conectadas ---------- */
+  G.endireitar = function (segs, opt) {
+    opt = Object.assign({ tolAngulo: 20, tolCluster: null, gap: null, minLen: null, corrigirRotacao: true }, opt || {});
+    let S = segs.map(s => ({ x1: +s.x1, y1: +s.y1, x2: +s.x2, y2: +s.y2 })).filter(s => len(s) > 0);
+    if (!S.length) return { segs: [], rotacao: 0 };
+    let rot = 0, centro = { x: 0, y: 0 };
+    if (opt.corrigirRotacao) {
+      rot = G.anguloDominante(S);
+      if (Math.abs(rot) > 0.4) {
+        let cx = 0, cy = 0; S.forEach(s => { cx += s.x1 + s.x2; cy += s.y1 + s.y2; }); cx /= 2 * S.length; cy /= 2 * S.length;
+        centro = { x: cx, y: cy };
+        const c = Math.cos(-rot * D2R), sn = Math.sin(-rot * D2R);
+        const R = (x, y) => [cx + (x - cx) * c - (y - cy) * sn, cy + (x - cx) * sn + (y - cy) * c];
+        S = S.map(s => { const a = R(s.x1, s.y1), b = R(s.x2, s.y2); return { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }; });
+      } else rot = 0;
+    }
+    let minx = 1e18, maxx = -1e18, miny = 1e18, maxy = -1e18;
+    S.forEach(s => { minx = Math.min(minx, s.x1, s.x2); maxx = Math.max(maxx, s.x1, s.x2); miny = Math.min(miny, s.y1, s.y2); maxy = Math.max(maxy, s.y1, s.y2); });
+    const D = Math.max(maxx - minx, maxy - miny) || 1;
+    const tol = opt.tolCluster != null ? opt.tolCluster : D * 0.025;
+    const gap = opt.gap != null ? opt.gap : D * 0.04;
+    const minLen = opt.minLen != null ? opt.minLen : D * 0.03;
+
+    // 1) classificar H / V / diagonal
+    let H = [], V = [], Dg = [];
+    S.forEach(s => {
+      const dx = Math.abs(s.x2 - s.x1), dy = Math.abs(s.y2 - s.y1), ang = Math.atan2(dy, dx) / D2R, L = len(s);
+      if (ang <= opt.tolAngulo) H.push({ c: (s.y1 + s.y2) / 2, a: Math.min(s.x1, s.x2), b: Math.max(s.x1, s.x2), L });
+      else if (ang >= 90 - opt.tolAngulo) V.push({ c: (s.x1 + s.x2) / 2, a: Math.min(s.y1, s.y2), b: Math.max(s.y1, s.y2), L });
+      else Dg.push(s);
+    });
+
+    // 2) agrupar linhas paralelas próximas e fundir trechos alinhados
+    const fundir = arr => {
+      const out = [];
+      agrupar(arr, o => o.c, tol).forEach(g => {
+        let sw = 0, sc = 0; g.forEach(o => { sw += o.L; sc += o.c * o.L; });
+        const c = sc / sw;
+        g.sort((p, q) => p.a - q.a);
+        let cur = null;
+        g.forEach(o => {
+          if (cur && o.a <= cur.b + gap) cur.b = Math.max(cur.b, o.b);
+          else { if (cur) out.push(cur); cur = { c, a: o.a, b: o.b }; }
+        });
+        if (cur) out.push(cur);
+      });
+      return out;
+    };
+    H = fundir(H); V = fundir(V);
+
+    // 3) estender/encurtar pontas até a parede perpendicular (cantos e T)
+    const ajustar = (A, B) => {
+      A.forEach(w => {
+        ['a', 'b'].forEach(k => {
+          let best = null;
+          B.forEach(o => {
+            if (w.c < o.a - gap || w.c > o.b + gap) return;
+            const d = Math.abs(o.c - w[k]);
+            if (d <= gap && (!best || d < best.d)) best = { d, c: o.c };
+          });
+          if (best) w[k] = best.c;
+        });
+      });
+    };
+    const H0 = H.map(o => ({ c: o.c, a: o.a, b: o.b })), V0 = V.map(o => ({ c: o.c, a: o.a, b: o.b }));
+    ajustar(H, V0); ajustar(V, H0);
+
+    let out = [];
+    H.forEach(o => { if (o.b - o.a >= minLen) out.push({ x1: o.a, y1: o.c, x2: o.b, y2: o.c }); });
+    V.forEach(o => { if (o.b - o.a >= minLen) out.push({ x1: o.c, y1: o.a, x2: o.c, y2: o.b }); });
+
+    // 4) diagonais: soldar pontas em vértices próximos
+    const pts = []; out.forEach(s => { pts.push([s.x1, s.y1], [s.x2, s.y2]); });
+    Dg.forEach(s => {
+      if (len(s) < minLen) return;
+      const w = (x, y) => { let b = null; pts.forEach(p => { const d = Math.hypot(p[0] - x, p[1] - y); if (d <= gap && (!b || d < b.d)) b = { d, p }; }); return b ? b.p : [x, y]; };
+      const a = w(s.x1, s.y1), b = w(s.x2, s.y2);
+      out.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }); pts.push(a, b);
+    });
+    return { segs: out, rotacao: rot, centro: centro };
+  };
+
+  /* gira ponto pelo mesmo giro aplicado por endireitar (rot em graus, sentido -rot) */
+  G.girar = function (x, y, rot, c) {
+    if (!rot) return [x, y];
+    const co = Math.cos(-rot * D2R), sn = Math.sin(-rot * D2R);
+    return [c.x + (x - c.x) * co - (y - c.y) * sn, c.y + (x - c.x) * sn + (y - c.y) * co];
+  };
+
+  /* "3,50" / "3.5m" / "350" / "350cm" → cm (ou null) */
+  G.parseCota = function (t) {
+    if (t == null) return null;
+    const s = String(t).toLowerCase().replace(',', '.');
+    const m = s.match(/(\d+(?:\.\d+)?)/); if (!m) return null;
+    const n = parseFloat(m[1]);
+    if (/cm/.test(s)) return n;
+    if (/mm/.test(s)) return n / 10;
+    if (/m/.test(s)) return n * 100;
+    return n >= 20 ? n : n * 100; // "3,5" = metros; "350" = cm
+  };
+
+  /* ---------- homografia (retificar foto): retângulo de saída → 4 cantos na foto ---------- */
+  function resolver(A, b) {
+    const n = b.length; const M = A.map((r, i) => r.concat([b[i]]));
+    for (let i = 0; i < n; i++) {
+      let p = i; for (let r = i + 1; r < n; r++) if (Math.abs(M[r][i]) > Math.abs(M[p][i])) p = r;
+      [M[i], M[p]] = [M[p], M[i]];
+      for (let r = i + 1; r < n; r++) { const f = M[r][i] / M[i][i]; for (let c = i; c <= n; c++) M[r][c] -= f * M[i][c]; }
+    }
+    const x = new Array(n);
+    for (let i = n - 1; i >= 0; i--) { let s = M[i][n]; for (let c = i + 1; c < n; c++) s -= M[i][c] * x[c]; x[i] = s / M[i][i]; }
+    return x;
+  }
+  /* src = [[x,y] TL, TR, BR, BL] na foto; devolve H (9) que leva (u,v) de saída → foto */
+  G.homografia = function (src, w, h) {
+    const dst = [[0, 0], [w, 0], [w, h], [0, h]], A = [], b = [];
+    for (let i = 0; i < 4; i++) {
+      const u = dst[i][0], v = dst[i][1], x = src[i][0], y = src[i][1];
+      A.push([u, v, 1, 0, 0, 0, -u * x, -v * x]); b.push(x);
+      A.push([0, 0, 0, u, v, 1, -u * y, -v * y]); b.push(y);
+    }
+    const s = resolver(A, b); return s.concat([1]);
+  };
+  G.aplicarH = function (H, u, v) { const d = H[6] * u + H[7] * v + H[8]; return [(H[0] * u + H[1] * v + H[2]) / d, (H[3] * u + H[4] * v + H[5]) / d]; };
+
+  /* ---------- IMPORTAR leitura da foto (coords 0-1000) → planta em cm ---------- */
+  G.importar = function (raw, W, H, opt) {
+    opt = Object.assign({ grade: 5, esp: 15, colarMax: 60, larguraPadraoM: 12 }, opt || {});
+    const px = (x, y) => [x * W / 1000, y * H / 1000];
+    // 1) escala (cm por pixel) pelas cotas escritas; senão chute marcado como não calibrado
+    const fs = [];
+    (raw.cotas || []).forEach(c => {
+      const cm = G.parseCota(c.texto); if (!cm) return;
+      const a = px(c.x1, c.y1), b = px(c.x2, c.y2), L = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (L > 10) fs.push(cm / L);
+    });
+    let f, calibrada = false;
+    const ox = opt.ox || 0, oy = opt.oy || 0;
+    if (opt.f) { f = opt.f; calibrada = true; }
+    else if (fs.length) { fs.sort((a, b) => a - b); f = fs[Math.floor(fs.length / 2)]; calibrada = true; }
+    else {
+      let mx = 1e-9; (raw.paredes || []).forEach(p => { const a = px(p.x1, p.y1), b = px(p.x2, p.y2); mx = Math.max(mx, Math.abs(a[0]) , Math.abs(b[0]), Math.abs(a[1]), Math.abs(b[1])); });
+      let minx = 1e18, maxx = -1e18, miny = 1e18, maxy = -1e18;
+      (raw.paredes || []).forEach(p => [[p.x1, p.y1], [p.x2, p.y2]].forEach(q => { const a = px(q[0], q[1]); minx = Math.min(minx, a[0]); maxx = Math.max(maxx, a[0]); miny = Math.min(miny, a[1]); maxy = Math.max(maxy, a[1]); }));
+      f = (opt.larguraPadraoM * 100) / (Math.max(maxx - minx, maxy - miny) || 1);
+    }
+    const cm = (x, y) => { const a = px(x, y); return [a[0] * f + ox, a[1] * f + oy]; };
+    // 2) paredes
+    const brutas = (raw.paredes || []).map(p => { const a = cm(p.x1, p.y1), b = cm(p.x2, p.y2); return { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }; });
+    const e = G.endireitar(brutas, {});
+    const segs = G.arredondar(e.segs, opt.grade);
+    const paredes = segs.map((s, i) => Object.assign({ id: 'w' + (i + 1), esp: opt.esp }, s));
+    const rot = (x, y) => G.girar(x, y, e.rotacao, e.centro);
+    // 3) aberturas
+    const aberturas = [];
+    (raw.aberturas || []).forEach((a, i) => {
+      const c0 = cm(a.x, a.y), c = rot(c0[0], c0[1]);
+      let best = null; paredes.forEach(w => { const r = projT(w, c[0], c[1]); if (!best || r.d < best.d) best = { d: r.d, t: r.tc, w }; });
+      if (!best || best.d > 80) return;
+      const larg = Math.max(50, Math.min(400, (a.larg || 90) * (W + H) / 2000 * f));
+      const porta = a.tipo === 'porta';
+      aberturas.push({ id: 'a' + (i + 1), tipo: porta ? 'porta' : 'janela', parede: best.w.id, t: best.t, larg: Math.round(larg / 5) * 5,
+        alt: porta ? 210 : 120, peitoril: porta ? 0 : 100, lado: 1 });
+    });
+    // 4) pontos
+    const NAPAREDE = { interruptor: 1, tomada: 1, tv: 1, ar_condicionado: 1, camera: 0, caixa_som: 0, sensor: 0, echo: 1, ponto_luz: 0, outro: 0 };
+    const ALT = { interruptor: 110, tomada: 30, ponto_luz: 270, tv: 120, ar_condicionado: 220, camera: 250, caixa_som: 250, sensor: 250, echo: 100, outro: 100 };
+    const pontos = [];
+    (raw.pontos || []).forEach((p, i) => {
+      const c0 = cm(p.x, p.y), c = rot(c0[0], c0[1]);
+      const tipo = ALT[p.tipo] != null ? p.tipo : 'outro';
+      let x = c[0], y = c[1], parede = null;
+      if (NAPAREDE[tipo]) { const k = G.colar({ x, y }, paredes, opt.colarMax); if (k) { x = k.x; y = k.y; parede = k.parede; } }
+      const o = { id: 'p' + (i + 1), tipo, x: Math.round(x), y: Math.round(y), altura: ALT[tipo], parede, obs: p.obs || '' };
+      if (tipo === 'interruptor') { o.teclas = Math.max(1, Math.min(4, p.teclas || 1)); o.caixa = '4x2'; o.neutro = true; }
+      pontos.push(o);
+    });
+    const rotulos = (raw.rotulos || []).map(r => { const c0 = cm(r.x, r.y), c = rot(c0[0], c0[1]); return { texto: r.texto, x: c[0], y: c[1] }; });
+    return { escalaCmPorPx: f, calibrada, rotacao: e.rotacao, centro: e.centro,
+      planta: { v: 1, calibrada, peDireito: 270, paredes, aberturas, pontos, comodos: [], rotulos }, rotulos };
+  };
+
+  G.arredondar = function (segs, g) {
+    const r = v => Math.round(v / g) * g;
+    return segs.map(s => ({ x1: r(s.x1), y1: r(s.y1), x2: r(s.x2), y2: r(s.y2) })).filter(s => len(s) > 0);
+  };
+
+  /* ---------- cômodos: faces do grafo de paredes ---------- */
+  G.dividir = function (segs, eps) {
+    eps = eps || 1;
+    const n = segs.length, cuts = segs.map(() => [0, 1]);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const A = segs[i], B = segs[j];
+      [[A.x1, A.y1], [A.x2, A.y2]].forEach(p => {
+        const r = projT(B, p[0], p[1]);
+        if (r.d <= eps * 1.5 && r.t > 1e-6 && r.t < 1 - 1e-6) cuts[j].push(r.t);
+      });
+    }
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const A = segs[i], B = segs[j];
+      const rx = A.x2 - A.x1, ry = A.y2 - A.y1, sx = B.x2 - B.x1, sy = B.y2 - B.y1, den = rx * sy - ry * sx;
+      if (Math.abs(den) < 1e-9) continue;
+      const qx = B.x1 - A.x1, qy = B.y1 - A.y1, t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den;
+      if (t > 1e-6 && t < 1 - 1e-6 && u > 1e-6 && u < 1 - 1e-6) { cuts[i].push(t); cuts[j].push(u); }
+    }
+    const V = [], E = new Set();
+    const vid = (x, y) => {
+      for (let i = 0; i < V.length; i++) if (Math.hypot(V[i].x - x, V[i].y - y) <= eps * 1.5) return i;
+      V.push({ x, y }); return V.length - 1;
+    };
+    const edges = [];
+    segs.forEach((s, i) => {
+      const t = cuts[i].sort((a, b) => a - b).filter((v, k, a) => !k || v - a[k - 1] > 1e-6);
+      for (let k = 0; k < t.length - 1; k++) {
+        const u = vid(s.x1 + (s.x2 - s.x1) * t[k], s.y1 + (s.y2 - s.y1) * t[k]);
+        const v = vid(s.x1 + (s.x2 - s.x1) * t[k + 1], s.y1 + (s.y2 - s.y1) * t[k + 1]);
+        if (u === v) continue;
+        const key = Math.min(u, v) + '-' + Math.max(u, v);
+        if (E.has(key)) continue; E.add(key); edges.push([u, v]);
+      }
+    });
+    return { V, edges };
+  };
+
+  G.areaPoly = function (P) { let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; };
+  G.dentro = function (P, x, y) {
+    let c = false;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+      if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c;
+    }
+    return c;
+  };
+
+  function limparPoly(P) {
+    let ch = true;
+    while (ch && P.length > 3) {
+      ch = false;
+      for (let i = 0; i < P.length; i++) {
+        const a = P[(i - 1 + P.length) % P.length], b = P[i], c = P[(i + 1) % P.length];
+        const cr = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+        const same = Math.hypot(a[0] - c[0], a[1] - c[1]) < 1e-6 || Math.hypot(a[0] - b[0], a[1] - b[1]) < 1e-6;
+        if (same || Math.abs(cr) < 1e-6) { P.splice(i, 1); ch = true; break; }
+      }
+    }
+    return P;
+  }
+
+  G.detectarComodos = function (segs, opt) {
+    opt = Object.assign({ eps: 1, areaMin: 15000 }, opt || {}); // 1,5 m² em cm²
+    const g = G.dividir(segs, opt.eps), V = g.V;
+    let edges = g.edges.slice();
+    // poda de pontas soltas
+    let ch = true;
+    while (ch) {
+      ch = false; const deg = {};
+      edges.forEach(e => { deg[e[0]] = (deg[e[0]] || 0) + 1; deg[e[1]] = (deg[e[1]] || 0) + 1; });
+      const ne = edges.filter(e => deg[e[0]] > 1 && deg[e[1]] > 1);
+      if (ne.length !== edges.length) { edges = ne; ch = true; }
+    }
+    const adj = V.map(() => []);
+    edges.forEach(e => { adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); });
+    adj.forEach((l, i) => l.sort((a, b) => Math.atan2(V[a].y - V[i].y, V[a].x - V[i].x) - Math.atan2(V[b].y - V[i].y, V[b].x - V[i].x)));
+    const vis = new Set(), rooms = [];
+    edges.forEach(e => [[e[0], e[1]], [e[1], e[0]]].forEach(h => {
+      if (vis.has(h[0] + '>' + h[1])) return;
+      let a = h[0], b = h[1]; const f = [];
+      while (!vis.has(a + '>' + b)) {
+        vis.add(a + '>' + b); f.push(a);
+        const l = adj[b], idx = l.indexOf(a), w = l[(idx - 1 + l.length) % l.length];
+        a = b; b = w;
+      }
+      let P = limparPoly(f.map(i => [V[i].x, V[i].y]));
+      const ar = G.areaPoly(P);
+      if (ar > opt.areaMin) {
+        let cx = 0, cy = 0;
+        for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length], k = p[0] * q[1] - q[0] * p[1]; cx += (p[0] + q[0]) * k; cy += (p[1] + q[1]) * k; }
+        cx /= 6 * ar; cy /= 6 * ar;
+        if (!G.dentro(P, cx, cy)) { cx = P.reduce((s, p) => s + p[0], 0) / P.length; cy = P.reduce((s, p) => s + p[1], 0) / P.length; }
+        rooms.push({ pontos: P, area: ar / 10000, cx, cy });
+      }
+    }));
+    return rooms;
+  };
+
+  /* ---------- colar símbolo na parede ---------- */
+  G.colar = function (p, paredes, maxD) {
+    let best = null;
+    paredes.forEach(w => { const r = projT(w, p.x, p.y); if (!best || r.d < best.d) best = { d: r.d, t: r.tc, w, x: r.x, y: r.y }; });
+    if (!best || best.d > maxD) return null;
+    const dx = best.w.x2 - best.w.x1, dy = best.w.y2 - best.w.y1, L = Math.hypot(dx, dy) || 1;
+    let nx = -dy / L, ny = dx / L;
+    if ((p.x - best.x) * nx + (p.y - best.y) * ny < 0) { nx = -nx; ny = -ny; }
+    const off = (best.w.esp || 15) / 2;
+    return { x: best.x + nx * off, y: best.y + ny * off, parede: best.w.id, t: best.t, nx, ny, dist: best.d };
+  };
+
+  G.comodoDoPonto = function (comodos, x, y) {
+    for (const c of comodos) if (G.dentro(c.pontos, x, y)) return c.id;
+    let best = null;
+    comodos.forEach(c => { const d = Math.hypot(c.cx - x, c.cy - y); if (!best || d < best.d) best = { d, id: c.id }; });
+    return best ? best.id : null;
+  };
+
+  /* ---------- redimensionar tudo ao calibrar escala ---------- */
+  G.escalar = function (planta, f) {
+    planta.paredes.forEach(w => { w.x1 *= f; w.y1 *= f; w.x2 *= f; w.y2 *= f; });
+    planta.comodos.forEach(c => { c.pontos = c.pontos.map(p => [p[0] * f, p[1] * f]); c.cx *= f; c.cy *= f; c.area *= f * f; });
+    planta.pontos.forEach(p => { p.x *= f; p.y *= f; });
+    if (planta.fundo) { planta.fundo.x *= f; planta.fundo.y *= f; planta.fundo.w *= f; planta.fundo.h *= f; }
+    (planta.aberturas || []).forEach(a => { a.larg *= f; });
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = G; else root.PlantaGeo = G;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/* Planta_modelo.js — regras de negócio da planta (puro, sem DOM; roda no navegador e no Node).
+ * Depende de Planta_geo.js (PlantaGeo). */
+(function (root) {
+  'use strict';
+  const G = (typeof require !== 'undefined' && typeof module !== 'undefined') ? require('./Planta_geo.js') : root.PlantaGeo;
+  const M = {};
+
+  /* ---------- categorias (cor das linhas de ligação) ---------- */
+  M.CATS = {
+    comando:   { nome: 'Comando',        cor: '#ff7a00' },
+    luz:       { nome: 'Iluminação',     cor: '#f2b705' },
+    som:       { nome: 'Som',            cor: '#8e5bd8' },
+    alexa:     { nome: 'Alexa / Assist.', cor: '#1e88ff' },
+    energia:   { nome: 'Tomadas',        cor: '#e5484d' },
+    clima:     { nome: 'Clima / Motores', cor: '#12b5cb' },
+    midia:     { nome: 'TV / Mídia',     cor: '#e8559a' },
+    seguranca: { nome: 'Segurança',      cor: '#2ea44f' },
+    rede:      { nome: 'Rede',           cor: '#64748b' },
+    outro:     { nome: 'Outro',          cor: '#6b7280' }
+  };
+
+  /* ---------- tipos da paleta (grupo, categoria, altura padrão em cm, se cola na parede) ---------- */
+  M.TIPOS = {
+    interruptor:     { nome: 'Interruptor',      sigla: 'I',    cat: 'comando',   alt: 110, parede: 1, grupo: 'Comando' },
+    botao:           { nome: 'Botão / Keypad',   sigla: 'B',    cat: 'comando',   alt: 110, parede: 1, grupo: 'Comando' },
+    ponto_luz:       { nome: 'Ponto de luz',     sigla: 'L',    cat: 'luz',       alt: 270, parede: 0, grupo: 'Iluminação' },
+    spot:            { nome: 'Spot',             sigla: 'SP',   cat: 'luz',       alt: 270, parede: 0, grupo: 'Iluminação' },
+    fita_led:        { nome: 'Fita / Sanca LED', sigla: 'LED',  cat: 'luz',       alt: 250, parede: 0, grupo: 'Iluminação' },
+    arandela:        { nome: 'Arandela',         sigla: 'AR',   cat: 'luz',       alt: 180, parede: 1, grupo: 'Iluminação' },
+    caixa_som:       { nome: 'Caixa de som',     sigla: 'SOM',  cat: 'som',       alt: 250, parede: 0, grupo: 'Som' },
+    amplificador:    { nome: 'Amplificador',     sigla: 'AMP',  cat: 'som',       alt: 100, parede: 0, grupo: 'Som' },
+    echo:            { nome: 'Echo (Alexa)',     sigla: 'ECHO', cat: 'alexa',     alt: 100, parede: 1, grupo: 'Alexa' },
+    hub:             { nome: 'Hub / Gateway',    sigla: 'HUB',  cat: 'alexa',     alt: 100, parede: 0, grupo: 'Alexa' },
+    tomada:          { nome: 'Tomada',           sigla: 'T',    cat: 'energia',   alt: 30,  parede: 1, grupo: 'Tomadas' },
+    tomada_alta:     { nome: 'Tomada alta',      sigla: 'TA',   cat: 'energia',   alt: 110, parede: 1, grupo: 'Tomadas' },
+    ar_condicionado: { nome: 'Ar-condicionado',  sigla: 'AC',   cat: 'clima',     alt: 220, parede: 1, grupo: 'Clima / Motores' },
+    ventilador:      { nome: 'Ventilador',       sigla: 'VT',   cat: 'clima',     alt: 270, parede: 0, grupo: 'Clima / Motores' },
+    cortina:         { nome: 'Cortina motor.',   sigla: 'CT',   cat: 'clima',     alt: 250, parede: 1, grupo: 'Clima / Motores' },
+    portao:          { nome: 'Portão / Motor',   sigla: 'PT',   cat: 'clima',     alt: 100, parede: 0, grupo: 'Clima / Motores' },
+    tv:              { nome: 'TV',               sigla: 'TV',   cat: 'midia',     alt: 120, parede: 1, grupo: 'TV / Mídia' },
+    camera:          { nome: 'Câmera',           sigla: 'CAM',  cat: 'seguranca', alt: 250, parede: 0, grupo: 'Segurança' },
+    sensor:          { nome: 'Sensor',           sigla: 'SEN',  cat: 'seguranca', alt: 250, parede: 0, grupo: 'Segurança' },
+    fechadura:       { nome: 'Fechadura',        sigla: 'FE',   cat: 'seguranca', alt: 100, parede: 1, grupo: 'Segurança' },
+    roteador:        { nome: 'Roteador / AP',    sigla: 'AP',   cat: 'rede',      alt: 200, parede: 0, grupo: 'Rede' },
+    outro:           { nome: 'Outro (livre)',    sigla: '?',    cat: 'outro',     alt: 100, parede: 0, grupo: 'Outro' }
+  };
+
+  M.NEUTRO = {
+    a_confirmar:         'A confirmar',
+    tem:                 'Tem neutro na caixa',
+    jumper:              'Jumper/bypass na lâmpada',
+    puxar:               'Puxar neutro de outro ponto',
+    eletricista_cliente: 'Eletricista do cliente passa o fio'
+  };
+  M.FIO = { a_definir: 'A definir', nao_precisa: 'Não precisa', nos: 'Fornecemos o fio', cliente: 'Cliente compra o fio' };
+  M.ORIGEM = { a_definir: 'A definir', dele: 'Produto nosso', indicado: 'Indicado (link)', cliente: 'Do cliente / já tinha' };
+  M.STATUS_CENA = { solicitada: 'Solicitada', idealizada: 'Idealizada', futura: 'Futura' };
+
+  M.catDe = function (p) { return (M.CATS[p.cat] ? p.cat : (M.TIPOS[p.tipo] || M.TIPOS.outro).cat); };
+  M.corDe = function (p) { return M.CATS[M.catDe(p)].cor; };
+  M.nomeDe = function (p) { return p.nome || (M.TIPOS[p.tipo] || M.TIPOS.outro).nome; };
+  M.siglaDe = function (p) {
+    if (p.tipo === 'outro') { const s = (p.sigla || p.nome || '?').replace(/[^A-Za-zÀ-ÿ0-9]/g, '').slice(0, 3).toUpperCase(); return s || '?'; }
+    return (M.TIPOS[p.tipo] || M.TIPOS.outro).sigla;
+  };
+
+  M.novaPlanta = function (nome) {
+    return { v: 2, nome: nome || 'Planta', calibrada: false, peDireito: 270, paredes: [], aberturas: [], comodos: [], pontos: [],
+      ligacoes: [], cenas: [], fundo: null, notas: '', imagens3d: {}, seq: 1 };
+  };
+  M.migrar = function (p) {
+    p = p || M.novaPlanta();
+    ['paredes', 'aberturas', 'comodos', 'pontos', 'ligacoes', 'cenas'].forEach(k => { p[k] = p[k] || []; });
+    p.peDireito = p.peDireito || 270; p.imagens3d = p.imagens3d || {}; p.notas = p.notas || ''; p.v = 2;
+    p.pontos.forEach(pt => { if (pt.tipo === 'interruptor' || pt.tipo === 'botao') { pt.neutro = normNeutro(pt.neutro); } });
+    let mx = 0; [].concat(p.paredes, p.aberturas, p.comodos, p.pontos, p.ligacoes, p.cenas).forEach(o => { const n = parseInt(String(o.id).replace(/\D/g, ''), 10); if (n > mx) mx = n; });
+    p.seq = Math.max(p.seq || 1, mx + 1);
+    return p;
+  };
+  function normNeutro(n) {
+    if (n && typeof n === 'object') return { modo: n.modo || 'a_confirmar', origem: n.origem || '', fio: n.fio || 'a_definir' };
+    return { modo: n === true ? 'tem' : 'a_confirmar', origem: '', fio: 'a_definir' };
+  }
+  M.id = function (p, pre) { return pre + (p.seq++); };
+
+  M.novoPonto = function (p, tipo, x, y, extra) {
+    const T = M.TIPOS[tipo] || M.TIPOS.outro;
+    const o = Object.assign({ id: M.id(p, 'p'), tipo, cat: T.cat, nome: '', x: Math.round(x), y: Math.round(y), altura: T.alt,
+      comodo: null, parede: null, obs: '', produto: '', origem: 'a_definir' }, extra || {});
+    if (tipo === 'interruptor') { o.teclas = o.teclas || 1; o.caixa = o.caixa || '4x2'; o.neutro = normNeutro(o.neutro); }
+    if (tipo === 'botao') { o.neutro = normNeutro(o.neutro); o.teclas = o.teclas || 1; }
+    return o;
+  };
+
+  /* ---------- cômodos: recalcula preservando nomes/ids/obs ---------- */
+  M.recalc = function (p) {
+    const velhos = p.comodos || [];
+    const novos = G.detectarComodos(p.paredes, { areaMin: 15000 });
+    const usados = new Set(); let n = velhos.length;
+    novos.forEach(c => {
+      let m = null;
+      velhos.forEach(v => { if (usados.has(v.id)) return; if (G.dentro(c.pontos, v.cx, v.cy) || G.dentro(v.pontos, c.cx, c.cy)) { if (!m || Math.hypot(v.cx - c.cx, v.cy - c.cy) < Math.hypot(m.cx - c.cx, m.cy - c.cy)) m = v; } });
+      if (m) { usados.add(m.id); c.id = m.id; c.nome = m.nome; c.obs = m.obs || ''; c.pe = m.pe || 0; }
+      else { c.id = M.id(p, 'c'); c.nome = 'Cômodo ' + (++n); c.obs = ''; c.pe = 0; }
+      // área interna aproximada (descontando metade da espessura em todo o perímetro)
+      let per = 0; for (let i = 0; i < c.pontos.length; i++) { const a = c.pontos[i], b = c.pontos[(i + 1) % c.pontos.length]; per += Math.hypot(a[0] - b[0], a[1] - b[1]); }
+      const esp = (p.paredes[0] && p.paredes[0].esp) || 15;
+      c.areaCentro = c.area;
+      c.area = Math.max(0, c.area - per / 2 * esp / 10000 + esp * esp / 10000);
+    });
+    p.comodos = novos;
+    p.pontos.forEach(pt => { pt.comodo = G.comodoDoPonto(p.comodos, pt.x, pt.y); });
+    return p;
+  };
+
+  /* ---------- medida de parede: estica mantendo tudo ortogonal e consistente ---------- */
+  M.comprimento = function (w) { return Math.hypot(w.x2 - w.x1, w.y2 - w.y1); };
+  M.internaParaEixo = function (cmInterno, w) { return cmInterno + (w.esp || 15); };
+  M.eixoParaInterna = function (cmEixo, w) { return cmEixo - (w.esp || 15); };
+
+  /** novoEixoCm = comprimento eixo-a-eixo desejado. fixo = 'a' (ponta 1 fica parada) ou 'b'. */
+  M.esticar = function (p, paredeId, novoEixoCm, fixo) {
+    const w = p.paredes.find(x => x.id === paredeId); if (!w || !(novoEixoCm > 10)) return false;
+    fixo = fixo || 'a';
+    const dx = w.x2 - w.x1, dy = w.y2 - w.y1, atual = Math.hypot(dx, dy);
+    const ortogonal = Math.min(Math.abs(dx), Math.abs(dy)) < 1;
+    if (!ortogonal) { // diagonal: só move a ponta livre
+      const f = novoEixoCm / atual;
+      if (fixo === 'a') { w.x2 = w.x1 + dx * f; w.y2 = w.y1 + dy * f; } else { w.x1 = w.x2 - dx * f; w.y1 = w.y2 - dy * f; }
+      M.recalc(p); return true;
+    }
+    const eixo = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+    const A = fixo === 'a' ? w[eixo + '1'] : w[eixo + '2'], B = fixo === 'a' ? w[eixo + '2'] : w[eixo + '1'];
+    const sentido = Math.sign(B - A) || 1, delta = (novoEixoCm - atual) * sentido, k = novoEixoCm / atual, EPS = 0.5;
+    const mapa = v => {
+      if ((v - B) * sentido >= -EPS) return v + delta;                    // além da ponta móvel: desloca
+      if ((v - A) * sentido > EPS) return A + (v - A) * k;               // entre as pontas: escala proporcional
+      return v;                                                           // antes da ponta fixa: não mexe
+    };
+    p.paredes.forEach(s => { s[eixo + '1'] = mapa(s[eixo + '1']); s[eixo + '2'] = mapa(s[eixo + '2']); });
+    p.pontos.forEach(pt => { pt[eixo] = Math.round(mapa(pt[eixo])); });
+    M.recalc(p); return true;
+  };
+
+  /* ---------- trechos: cada parede quebrada nos cantos/encontros (é o que você mede por cômodo) ---------- */
+  M.trechos = function (p) {
+    const out = [];
+    p.paredes.forEach(w => {
+      const cuts = [0, 1], dx = w.x2 - w.x1, dy = w.y2 - w.y1, L2 = dx * dx + dy * dy || 1;
+      p.paredes.forEach(o => {
+        if (o === w) return;
+        [[o.x1, o.y1], [o.x2, o.y2]].forEach(q => { const r = G.projT(w, q[0], q[1]); if (r.d <= 2 && r.t > 0.001 && r.t < 0.999) cuts.push(r.t); });
+        const rx = dx, ry = dy, sx = o.x2 - o.x1, sy = o.y2 - o.y1, den = rx * sy - ry * sx;
+        if (Math.abs(den) > 1e-9) {
+          const qx = o.x1 - w.x1, qy = o.y1 - w.y1, t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den;
+          if (t > 0.001 && t < 0.999 && u > -0.001 && u < 1.001) cuts.push(t);
+        }
+      });
+      cuts.sort((a, b) => a - b);
+      const u = cuts.filter((v, i) => !i || v - cuts[i - 1] > 1e-4);
+      for (let i = 0; i < u.length - 1; i++) {
+        const a = u[i], b = u[i + 1], L = Math.sqrt(L2);
+        out.push({ parede: w.id, t0: a, t1: b, x1: w.x1 + dx * a, y1: w.y1 + dy * a, x2: w.x1 + dx * b, y2: w.y1 + dy * b, len: L * (b - a), esp: w.esp || 15 });
+      }
+    });
+    return out;
+  };
+
+  /** Ajusta UM trecho (entre cantos) para novoEixoCm. fixo='a' mantém a ponta t0; 'b' mantém t1.
+   *  Tudo que está além da ponta móvel desloca junto, sem escalar o que está no meio → vãos e paredes continuam retos. */
+  M.esticarTrecho = function (p, paredeId, t0, t1, novoEixoCm, fixo) {
+    const w = p.paredes.find(x => x.id === paredeId); if (!w || !(novoEixoCm > 10)) return false;
+    fixo = fixo || 'a';
+    const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+    const P0 = [w.x1 + dx * t0, w.y1 + dy * t0], P1 = [w.x1 + dx * t1, w.y1 + dy * t1];
+    const atual = Math.hypot(P1[0] - P0[0], P1[1] - P0[1]);
+    if (Math.min(Math.abs(dx), Math.abs(dy)) >= 1) { // diagonal: só desloca a ponta móvel do trecho
+      const f = novoEixoCm / atual; const A = fixo === 'a' ? P0 : P1, B = fixo === 'a' ? P1 : P0;
+      const nb = [A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f], dxx = nb[0] - B[0], dyy = nb[1] - B[1];
+      p.paredes.forEach(s => { [[1, 2]].forEach(() => { [['x1', 'y1'], ['x2', 'y2']].forEach(k => { if (Math.hypot(s[k[0]] - B[0], s[k[1]] - B[1]) < 1.5) { s[k[0]] += dxx; s[k[1]] += dyy; } }); }); });
+      M.recalc(p); return true;
+    }
+    const eixo = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+    const A = fixo === 'a' ? P0[eixo === 'x' ? 0 : 1] : P1[eixo === 'x' ? 0 : 1];
+    const B = fixo === 'a' ? P1[eixo === 'x' ? 0 : 1] : P0[eixo === 'x' ? 0 : 1];
+    const sentido = Math.sign(B - A) || 1, delta = (novoEixoCm - atual) * sentido, EPS = 0.5;
+    const mapa = v => ((v - B) * sentido >= -EPS ? v + delta : v);
+    p.paredes.forEach(s => { s[eixo + '1'] = mapa(s[eixo + '1']); s[eixo + '2'] = mapa(s[eixo + '2']); });
+    p.pontos.forEach(pt => { pt[eixo] = Math.round(mapa(pt[eixo])); });
+    M.recalc(p); return true;
+  };
+
+  /* ---------- ligações ---------- */
+  M.ligar = function (p, de, para, tecla) {
+    if (de === para) return null;
+    const a = p.pontos.find(x => x.id === de), b = p.pontos.find(x => x.id === para); if (!a || !b) return null;
+    const t = (a.tipo === 'interruptor' || a.tipo === 'botao') ? (tecla || 1) : 0;
+    if (p.ligacoes.some(l => l.de === de && l.para === para && (l.tecla || 0) === t)) return null;
+    const l = { id: M.id(p, 'l'), de, para, tecla: t, obs: '' };
+    p.ligacoes.push(l); return l;
+  };
+  M.removerPonto = function (p, id) {
+    p.pontos = p.pontos.filter(x => x.id !== id);
+    p.ligacoes = p.ligacoes.filter(l => l.de !== id && l.para !== id);
+    p.cenas.forEach(c => { c.itens = (c.itens || []).filter(i => i.ponto !== id); });
+  };
+  M.removerParede = function (p, id) {
+    p.paredes = p.paredes.filter(w => w.id !== id);
+    p.aberturas = p.aberturas.filter(a => a.parede !== id);
+    p.pontos.forEach(pt => { if (pt.parede === id) pt.parede = null; });
+    M.recalc(p);
+  };
+
+  /* ---------- checagens: "o projeto está bem desenhado?" ---------- */
+  M.validar = function (p) {
+    const out = [], add = (nivel, msg, tipo, id) => out.push({ nivel, msg, alvo: { tipo, id } });
+    const nomeC = id => { const c = p.comodos.find(x => x.id === id); return c ? c.nome : 'sem cômodo'; };
+    const rotulo = pt => M.nomeDe(pt) + ' (' + nomeC(pt.comodo) + ')';
+    if (!p.paredes.length) add('aviso', 'Planta sem paredes.', 'planta', null);
+    p.comodos.forEach(c => { if (/^Cômodo \d+$/.test(c.nome)) add('aviso', 'Cômodo sem nome: ' + c.nome, 'comodo', c.id); });
+    p.pontos.forEach(pt => {
+      const T = M.catDe(pt), cmd = pt.tipo === 'interruptor' || pt.tipo === 'botao';
+      if (!pt.comodo) add('aviso', rotulo(pt) + ' está fora de qualquer cômodo.', 'ponto', pt.id);
+      if (T === 'luz' && !p.ligacoes.some(l => l.para === pt.id)) add('erro', 'Luz sem comando: ' + rotulo(pt), 'ponto', pt.id);
+      if (cmd) {
+        const n = pt.teclas || 1;
+        for (let t = 1; t <= n; t++) if (!p.ligacoes.some(l => l.de === pt.id && (l.tecla || 1) === t)) add('erro', 'Tecla ' + t + ' sem destino: ' + rotulo(pt), 'ponto', pt.id);
+        p.ligacoes.forEach(l => { if (l.de === pt.id && (l.tecla || 1) > n) add('erro', 'Ligação usa tecla ' + l.tecla + ' mas o interruptor tem ' + n + ': ' + rotulo(pt), 'ponto', pt.id); });
+        const ne = pt.neutro || { modo: 'a_confirmar', fio: 'a_definir' };
+        if (ne.modo === 'a_confirmar') add('erro', 'Neutro a confirmar: ' + rotulo(pt), 'ponto', pt.id);
+        if ((ne.modo === 'puxar' || ne.modo === 'eletricista_cliente') && ne.fio === 'a_definir') add('erro', 'Definir quem fornece o fio do neutro: ' + rotulo(pt), 'ponto', pt.id);
+        if (ne.modo === 'puxar' && !(ne.origem || '').trim()) add('aviso', 'Neutro puxado de onde? ' + rotulo(pt), 'ponto', pt.id);
+        if (pt.tipo === 'interruptor' && !pt.caixa) add('aviso', 'Caixa (4x2/4x4) não definida: ' + rotulo(pt), 'ponto', pt.id);
+        if (!pt.parede && pt.tipo === 'interruptor') add('info', 'Interruptor fora da parede: ' + rotulo(pt), 'ponto', pt.id);
+      }
+      if (pt.origem === 'a_definir' && M.TIPOS[pt.tipo] && pt.tipo !== 'tomada') add('info', 'Origem do aparelho (nosso/indicado/cliente) a definir: ' + rotulo(pt), 'ponto', pt.id);
+    });
+    p.ligacoes.forEach(l => {
+      if (!p.pontos.find(x => x.id === l.de) || !p.pontos.find(x => x.id === l.para)) add('erro', 'Ligação com ponto inexistente.', 'ligacao', l.id);
+    });
+    if (!p.calibrada) add('info', 'Nenhuma medida de parede confirmada ainda.', 'planta', null);
+    return out;
+  };
+
+  /* ---------- levantamento (alimenta orçamento / prompt 3D) ---------- */
+  M.levantamento = function (p) {
+    const nomePt = id => { const x = p.pontos.find(q => q.id === id); return x ? M.nomeDe(x) : '?'; };
+    const porComodo = {};
+    const grupo = id => porComodo[id] || (porComodo[id] = { comodoId: id, comodo: (p.comodos.find(c => c.id === id) || { nome: 'Sem cômodo' }).nome, linhas: [] });
+    p.pontos.forEach(pt => {
+      const g = grupo(pt.comodo || 'sem');
+      const dest = p.ligacoes.filter(l => l.de === pt.id).map(l => (l.tecla ? 'T' + l.tecla + '→' : '') + nomePt(l.para));
+      const ne = pt.neutro;
+      g.linhas.push({ id: pt.id, tipo: pt.tipo, nome: M.nomeDe(pt), cat: M.catDe(pt), teclas: pt.teclas || 0, caixa: pt.caixa || '',
+        neutro: ne ? ne.modo : '', neutroOrigem: ne ? ne.origem : '', fio: ne ? ne.fio : '', origem: pt.origem, altura: pt.altura, produto: pt.produto, obs: pt.obs, destinos: dest });
+    });
+    return Object.keys(porComodo).map(k => porComodo[k]);
+  };
+
+  M.resumoComodo = function (p, comodoId) {
+    const cont = {};
+    p.pontos.filter(pt => (pt.comodo || 'sem') === comodoId).forEach(pt => {
+      const k = M.nomeDe(pt) + (pt.tipo === 'interruptor' ? ' ' + (pt.teclas || 1) + ' tecla(s)' : '');
+      cont[k] = (cont[k] || 0) + 1;
+    });
+    return Object.keys(cont).map(k => cont[k] + 'x ' + k).join('; ');
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = M; else root.PlantaModelo = M;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+/* Planta_modelo_v2.js — extensão ADITIVA do modelo (v2): apps/protocolos, cômodo finalizado,
+ * novo cômodo por medidas, mover cômodo com encaixe, parede por clique. Carregar DEPOIS de Planta_modelo.js.
+ * Não altera nada de Planta_modelo.js no disco: só acrescenta/embrulha funções do objeto PlantaModelo. */
+(function (root) {
+  'use strict';
+  const isNode = typeof require !== 'undefined' && typeof module !== 'undefined' && module.exports;
+  const G = isNode ? require('./Planta_geo.js') : root.PlantaGeo;
+  const M = isNode ? require('./Planta_modelo.js') : root.PlantaModelo;
+  if (M.v2) return;
+  M.v2 = true;
+
+  /* ---------- apps e protocolos ---------- */
+  M.APPS_PADRAO = ['eWeLink (Sonoff)', 'Tuya / Smart Life', 'Positivo Casa Inteligente', 'Intelbras (Mibo / ISC)', 'KaBuM! Smart', 'Multi', 'eHome', 'eLink', 'ICC', 'Simply Connect',
+    'Nova Digital', 'Broadlink', 'Alexa', 'TP-Link Deco', 'Fire TV', 'Electrolux', 'Huawei AI Life', 'Google Home', 'SmartThings', 'LG ThinQ', 'Xiaomi Home'];
+  M.PROTOCOLOS = ['Wi-Fi', 'Zigbee', 'Bluetooth', 'RF 433 MHz', 'Infravermelho (IR)', 'Matter', 'Z-Wave', 'Cabo / Ethernet', 'Nuvem do fabricante', 'Outro'];
+  M.STATUS_APP = { pendente: 'Cadastro pendente', cadastrado: 'Conta criada', instalado: 'Instalado no celular', ativo: 'Em uso / configurado' };
+  M.PRECISA_APP = ['interruptor', 'botao', 'fita_led', 'caixa_som', 'amplificador', 'echo', 'hub', 'ar_condicionado', 'ventilador', 'cortina', 'portao', 'tv', 'camera', 'sensor', 'fechadura', 'roteador', 'outro'];
+
+  M.novoApp = function (p, nome, extra) {
+    p.apps = p.apps || [];
+    const a = Object.assign({ id: M.id(p, 'ap'), nome: nome || 'Novo app', tipo: 'app', conta: '', titular: '', home: '', rede: '', status: 'pendente',
+      credencial: '', link: '', instalacao: '', uso: '', obs: '' }, extra || {});
+    p.apps.push(a); return a;
+  };
+  M.garantirApp = function (p, nome) {
+    p.apps = p.apps || [];
+    const n = String(nome || '').trim().toLowerCase();
+    return p.apps.find(a => a.nome.toLowerCase() === n) || M.novoApp(p, nome, { tipo: M.PROTOCOLOS.indexOf(nome) >= 0 ? 'protocolo' : 'app' });
+  };
+  M.aparelhosDoApp = function (p, appId) { return p.pontos.filter(x => x.appId === appId); };
+  M.resumoApps = function (p) {
+    return (p.apps || []).map(a => {
+      const ap = M.aparelhosDoApp(p, a.id);
+      return Object.assign({}, a, { aparelhos: ap.map(x => ({ id: x.id, nome: M.nomeDe(x), comodo: (p.comodos.find(c => c.id === x.comodo) || { nome: '' }).nome, protocolo: x.protocolo || '' })) });
+    });
+  };
+
+  /* ---------- embrulhos (não substituem: chamam a versão original) ---------- */
+  const recalc0 = M.recalc, migrar0 = M.migrar, novoPonto0 = M.novoPonto, validar0 = M.validar, lev0 = M.levantamento;
+
+  M.recalc = function (p) {
+    const velhos = (p.comodos || []).map(c => ({ id: c.id, feito: !!c.feito }));
+    recalc0(p);
+    p.comodos.forEach(c => { const v = velhos.find(x => x.id === c.id); c.feito = !!(v && v.feito); });
+    return p;
+  };
+  M.migrar = function (p) {
+    p = migrar0(p);
+    p.apps = p.apps || [];
+    p.pontos.forEach(pt => { if (pt.appId == null) pt.appId = ''; if (pt.protocolo == null) pt.protocolo = ''; });
+    p.comodos.forEach(c => { c.feito = !!c.feito; });
+    let mx = 0; p.apps.forEach(o => { const n = parseInt(String(o.id).replace(/\D/g, ''), 10); if (n > mx) mx = n; });
+    p.seq = Math.max(p.seq || 1, mx + 1);
+    return p;
+  };
+  M.novoPonto = function (p, tipo, x, y, extra) { const o = novoPonto0(p, tipo, x, y, extra); if (o.appId == null) o.appId = ''; if (o.protocolo == null) o.protocolo = ''; return o; };
+
+  M.validar = function (p) {
+    const out = validar0(p), add = (nivel, msg, tipo, id) => out.push({ nivel, msg, alvo: { tipo, id } });
+    const nomeC = id => { const c = p.comodos.find(x => x.id === id); return c ? c.nome : 'sem cômodo'; };
+    const apps = p.apps || [];
+    p.pontos.forEach(pt => {
+      if (M.PRECISA_APP.indexOf(pt.tipo) >= 0 && !pt.appId && !pt.protocolo) add('info', 'Sem app/protocolo definido: ' + M.nomeDe(pt) + ' (' + nomeC(pt.comodo) + ')', 'ponto', pt.id);
+      if (pt.appId && !apps.some(a => a.id === pt.appId)) add('aviso', 'App do aparelho não existe mais na lista: ' + M.nomeDe(pt), 'ponto', pt.id);
+    });
+    apps.forEach(a => {
+      const n = M.aparelhosDoApp(p, a.id).length; if (!n) return;
+      if (a.status === 'pendente') add('aviso', 'App "' + a.nome + '" ainda sem cadastro do cliente (' + n + ' aparelho/s).', 'app', a.id);
+      else if (!(a.conta || '').trim()) add('aviso', 'App "' + a.nome + '" sem e-mail/conta registrado.', 'app', a.id);
+    });
+    return out;
+  };
+
+  /** pendências que impedem "finalizar" um cômodo: só erros ligados a ele */
+  M.pendenciasComodo = function (p, comodoId) {
+    const pts = new Set(p.pontos.filter(x => x.comodo === comodoId).map(x => x.id));
+    return M.validar(p).filter(v => v.nivel === 'erro' && ((v.alvo.tipo === 'ponto' && pts.has(v.alvo.id)) || (v.alvo.tipo === 'comodo' && v.alvo.id === comodoId)));
+  };
+  M.progresso = function (p) { const t = p.comodos.length, f = p.comodos.filter(c => c.feito).length; return { total: t, feitos: f }; };
+
+  M.levantamento = function (p) {
+    const r = lev0(p), ap = id => (p.apps || []).find(a => a.id === id);
+    r.forEach(g => g.linhas.forEach(l => { const pt = p.pontos.find(x => x.id === l.id) || {}, a = ap(pt.appId); l.appId = pt.appId || ''; l.app = a ? a.nome : ''; l.protocolo = pt.protocolo || ''; }));
+    return r;
+  };
+
+  /* ---------- geometria de cômodos ---------- */
+  M.espPadrao = p => (p.paredes[0] && p.paredes[0].esp) || 15;
+  /** retângulo pelo VÃO LIVRE (como o app Medidas mede) → polígono pelo eixo das paredes */
+  M.retangulo = function (largLivre, compLivre, esp, x, y) {
+    const W = largLivre + esp, H = compLivre + esp; x = x || 0; y = y || 0;
+    return [[x, y], [x + W, y], [x + W, y + H], [x, y + H]];
+  };
+  const centroide = P => { const a = G.areaPoly(P); let cx = 0, cy = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length], k = p[0] * q[1] - q[0] * p[1]; cx += (p[0] + q[0]) * k; cy += (p[1] + q[1]) * k; } return [cx / (6 * a), cy / (6 * a)]; };
+  M.centroide = centroide;
+  const distSeg = (x, y, a, b) => G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, x, y).d;
+  const naBorda = (poly, x, y, tol) => { for (let i = 0; i < poly.length; i++) if (distSeg(x, y, poly[i], poly[(i + 1) % poly.length]) <= (tol || 2)) return true; return false; };
+  const meio = w => [(w.x1 + w.x2) / 2, (w.y1 + w.y2) / 2];
+  const deslocar = (poly, dx, dy) => poly.map(q => [Math.round(q[0] + dx), Math.round(q[1] + dy)]);
+
+  /** divide paredes nos encontros (pontas de outras paredes), remove trechos duplicados e remapeia portas/janelas/pontos */
+  M.normalizarParedes = function (p) {
+    const EPS = 2, orig = p.paredes.map(w => Object.assign({}, w)), pecas = {}, nova = [];
+    orig.forEach(w => {
+      const L = Math.hypot(w.x2 - w.x1, w.y2 - w.y1); if (L < 1) { pecas[w.id] = []; return; }
+      const cuts = [0, 1];
+      orig.forEach(o => { if (o.id === w.id) return; [[o.x1, o.y1], [o.x2, o.y2]].forEach(q => { const r = G.projT(w, q[0], q[1]); if (r.d <= EPS && r.t > EPS / L && r.t < 1 - EPS / L) cuts.push(r.t); }); });
+      cuts.sort((a, b) => a - b);
+      const u = cuts.filter((v, i) => !i || (v - cuts[i - 1]) * L > EPS);
+      pecas[w.id] = [];
+      for (let i = 0; i < u.length - 1; i++) {
+        const t0 = u[i], t1 = u[i + 1], id = i === 0 ? w.id : M.id(p, 'w');
+        const n = { id, x1: w.x1 + (w.x2 - w.x1) * t0, y1: w.y1 + (w.y2 - w.y1) * t0, x2: w.x1 + (w.x2 - w.x1) * t1, y2: w.y1 + (w.y2 - w.y1) * t1, esp: w.esp || 15 };
+        nova.push(n); pecas[w.id].push({ id, t0, t1 });
+      }
+    });
+    // duplicadas
+    const mantidas = [], troca = {};  // id removido -> {id, inverte}
+    nova.forEach(n => {
+      const d = mantidas.find(m => (Math.hypot(m.x1 - n.x1, m.y1 - n.y1) <= EPS && Math.hypot(m.x2 - n.x2, m.y2 - n.y2) <= EPS) || (Math.hypot(m.x1 - n.x2, m.y1 - n.y2) <= EPS && Math.hypot(m.x2 - n.x1, m.y2 - n.y1) <= EPS));
+      if (d) { const inv = Math.hypot(d.x1 - n.x1, d.y1 - n.y1) > EPS; troca[n.id] = { id: d.id, inv }; d.esp = Math.max(d.esp, n.esp); } else mantidas.push(n);
+    });
+    const final = id => troca[id] || { id, inv: false };
+    // aberturas
+    p.aberturas.forEach(a => {
+      const ps = pecas[a.parede]; if (!ps || !ps.length) return;
+      const pc = ps.find(q => a.t >= q.t0 - 1e-9 && a.t <= q.t1 + 1e-9) || ps[ps.length - 1];
+      a.t = Math.min(1, Math.max(0, (a.t - pc.t0) / (pc.t1 - pc.t0)));
+      const f = final(pc.id); a.parede = f.id; if (f.inv) { a.t = 1 - a.t; a.lado = -(a.lado || 1); }
+    });
+    // pontos coladas
+    p.pontos.forEach(pt => {
+      if (!pt.parede) return; const w = orig.find(q => q.id === pt.parede), ps = pecas[pt.parede]; if (!w || !ps || !ps.length) return;
+      const t = G.projT(w, pt.x, pt.y).t, pc = ps.find(q => t >= q.t0 - 1e-9 && t <= q.t1 + 1e-9) || (t < 0 ? ps[0] : ps[ps.length - 1]);
+      pt.parede = final(pc.id).id;
+    });
+    p.paredes = mantidas;
+    return p;
+  };
+
+  /** junta paredes retas consecutivas que não têm mais motivo para estarem separadas */
+  M.unirColineares = function (p) {
+    const EPS = 1.5; let mudou = true, guard = 0;
+    while (mudou && guard++ < 400) {
+      mudou = false;
+      for (let i = 0; i < p.paredes.length && !mudou; i++) for (let j = i + 1; j < p.paredes.length && !mudou; j++) {
+        const w = p.paredes[i], o = p.paredes[j]; if ((w.esp || 15) !== (o.esp || 15)) continue;
+        const ends = [[[w.x1, w.y1], [w.x2, w.y2]], [[o.x1, o.y1], [o.x2, o.y2]]];
+        let comum = null, far = null;
+        [0, 1].forEach(a => [0, 1].forEach(b => { if (!comum && Math.hypot(ends[0][a][0] - ends[1][b][0], ends[0][a][1] - ends[1][b][1]) <= EPS) comum = { a, b }; }));
+        if (!comum) continue;
+        const E = ends[0][comum.a], A = ends[0][1 - comum.a], B = ends[1][1 - comum.b];
+        const la = Math.hypot(A[0] - E[0], A[1] - E[1]), lb = Math.hypot(B[0] - E[0], B[1] - E[1]); if (la < 1 || lb < 1) continue;
+        const cr = ((A[0] - E[0]) * (B[1] - E[1]) - (A[1] - E[1]) * (B[0] - E[0])) / (la * lb), dt = ((A[0] - E[0]) * (B[0] - E[0]) + (A[1] - E[1]) * (B[1] - E[1])) / (la * lb);
+        if (Math.abs(cr) > 1e-3 || dt > 0) continue;
+        const bloqueia = p.paredes.some((x, k) => k !== i && k !== j && (Math.hypot(x.x1 - E[0], x.y1 - E[1]) <= EPS || Math.hypot(x.x2 - E[0], x.y2 - E[1]) <= EPS || (() => { const r = G.projT(x, E[0], E[1]); return r.d <= EPS && r.t > 0.001 && r.t < 0.999; })()));
+        if (bloqueia) continue;
+        const velhoW = Object.assign({}, w), velhoO = Object.assign({}, o);
+        const dirOld = { w: [velhoW.x2 - velhoW.x1, velhoW.y2 - velhoW.y1], o: [velhoO.x2 - velhoO.x1, velhoO.y2 - velhoO.y1] };
+        w.x1 = A[0]; w.y1 = A[1]; w.x2 = B[0]; w.y2 = B[1];
+        const nd = [w.x2 - w.x1, w.y2 - w.y1];
+        p.aberturas.forEach(a => {
+          const src = a.parede === w.id ? velhoW : a.parede === o.id ? velhoO : null; if (!src) return;
+          const cx = src.x1 + (src.x2 - src.x1) * a.t, cy = src.y1 + (src.y2 - src.y1) * a.t, d0 = a.parede === w.id ? dirOld.w : dirOld.o;
+          a.t = Math.min(1, Math.max(0, G.projT(w, cx, cy).t)); if (d0[0] * nd[0] + d0[1] * nd[1] < 0) a.lado = -(a.lado || 1); a.parede = w.id;
+        });
+        p.pontos.forEach(pt => { if (pt.parede === o.id) pt.parede = w.id; });
+        p.paredes.splice(j, 1); mudou = true;
+      }
+    }
+    return p;
+  };
+
+  /** o polígono (cm) invade o interior de algum cômodo existente? (amostragem em grade) */
+  M.sobrepoe = function (p, poly, ignorarId) {
+    const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]), x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+    const passo = 25, outros = p.comodos.filter(c => c.id !== ignorarId);
+    for (let x = x0 + passo / 2; x < x1; x += passo) for (let y = y0 + passo / 2; y < y1; y += passo) {
+      if (!G.dentro(poly, x, y)) continue;
+      for (const c of outros) if (G.dentro(c.pontos, x, y) && !naBorda(c.pontos, x, y, 4)) return c;
+    }
+    return null;
+  };
+
+  /** encaixe magnético: devolve {dx,dy,x,y} ajustados para que arestas retas do polígono coincidam com paredes existentes */
+  M.encaixar = function (p, poly, dx, dy, th) {
+    th = th || 30;
+    const ed = poly.map((a, i) => { const b = poly[(i + 1) % poly.length]; return { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }; });
+    const vert = p.paredes.filter(w => Math.abs(w.x1 - w.x2) < 1), hor = p.paredes.filter(w => Math.abs(w.y1 - w.y2) < 1);
+    let bx = null, by = null;
+    ed.forEach(e => {
+      if (Math.abs(e.x1 - e.x2) < 1) {
+        const ex = e.x1 + dx, a = Math.min(e.y1, e.y2) + dy, b = Math.max(e.y1, e.y2) + dy;
+        vert.forEach(w => { const ov = Math.min(b, Math.max(w.y1, w.y2)) - Math.max(a, Math.min(w.y1, w.y2)), d = w.x1 - ex; if (Math.abs(d) <= th && ov > -th && (bx === null || Math.abs(d) < Math.abs(bx))) bx = d; });
+      }
+    });
+    const dx2 = dx + (bx || 0);
+    ed.forEach(e => {
+      if (Math.abs(e.y1 - e.y2) < 1) {
+        const ey = e.y1 + dy, a = Math.min(e.x1, e.x2) + dx2, b = Math.max(e.x1, e.x2) + dx2;
+        hor.forEach(w => { const ov = Math.min(b, Math.max(w.x1, w.x2)) - Math.max(a, Math.min(w.x1, w.x2)), d = w.y1 - ey; if (Math.abs(d) <= th && ov > -th && (by === null || Math.abs(d) < Math.abs(by))) by = d; });
+      }
+    });
+    return { dx: Math.round(dx2), dy: Math.round(dy + (by || 0)), x: bx !== null, y: by !== null };
+  };
+
+  function cobertaPorParede(p, a, b) { return p.paredes.some(w => { const r1 = G.projT(w, a[0], a[1]), r2 = G.projT(w, b[0], b[1]); return r1.d <= 2 && r2.d <= 2; }); }
+  function adicionarPerimetro(p, poly, esp) {
+    const novos = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length]; if (Math.hypot(a[0] - b[0], a[1] - b[1]) < 10) continue;
+      if (cobertaPorParede(p, a, b)) continue;
+      const w = { id: M.id(p, 'w'), x1: a[0], y1: a[1], x2: b[0], y2: b[1], esp }; p.paredes.push(w); novos.push(w.id);
+    }
+    return novos;
+  }
+  /** trechos onde o polígono encosta (mesmo eixo) em paredes que já existiam: candidatos a porta */
+  function compartilhados(p, poly) {
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 10) continue;
+      p.paredes.forEach(w => {
+        const r1 = G.projT(w, a[0], a[1]), r2 = G.projT(w, b[0], b[1]); if (r1.d > 2 || r2.d > 2) return;
+        const lo = Math.max(0, Math.min(r1.t, r2.t)), hi = Math.min(1, Math.max(r1.t, r2.t)), Lw = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+        if ((hi - lo) * Lw >= 90) { const tm = (lo + hi) / 2; out.push([w.x1 + (w.x2 - w.x1) * tm, w.y1 + (w.y2 - w.y1) * tm]); }
+      });
+    }
+    return out;
+  }
+  function addPortaEm(p, cx, cy, larg) {
+    let b = null; p.paredes.forEach(w => { const r = G.projT(w, cx, cy); if (r.d <= 4 && (!b || r.d < b.d)) b = { d: r.d, w, t: r.tc }; });
+    if (!b) return null;
+    const L = Math.hypot(b.w.x2 - b.w.x1, b.w.y2 - b.w.y1); larg = larg || 80; if (L < larg + 20) return null;
+    if (p.aberturas.some(a => a.parede === b.w.id && Math.abs(a.t - b.t) * L < larg)) return null;
+    const m = larg / 2 / L, a = { id: M.id(p, 'a'), tipo: 'porta', parede: b.w.id, t: Math.min(1 - m, Math.max(m, b.t)), larg, alt: 210, peitoril: 0, lado: 1 };
+    p.aberturas.push(a); return a;
+  }
+
+  /** NOVO CÔMODO por medidas. opts: {nome, largura, comprimento (vão livre, cm), dx, dy (posição do canto sup. esq.), porta, esp} */
+  M.novoComodo = function (p, opts) {
+    const esp = opts.esp || M.espPadrao(p);
+    if (!(opts.largura >= 50) || !(opts.comprimento >= 50)) return { ok: false, motivo: 'Medidas inválidas (mínimo 50 cm).' };
+    let poly = M.retangulo(opts.largura, opts.comprimento, esp, 0, 0), dx = opts.dx || 0, dy = opts.dy || 0;
+    if (!p.paredes.length) { dx = 0; dy = 0; }
+    poly = deslocar(poly, dx, dy);
+    const inv = M.sobrepoe(p, poly); if (inv) return { ok: false, motivo: 'Sobrepõe o cômodo "' + inv.nome + '".' };
+    const comp = opts.porta === false ? [] : compartilhados(p, poly);
+    adicionarPerimetro(p, poly, esp);
+    M.normalizarParedes(p); M.unirColineares(p);
+    comp.forEach(q => addPortaEm(p, q[0], q[1], 80));
+    M.recalc(p);
+    const c0 = centroide(poly), c = p.comodos.find(x => G.dentro(x.pontos, c0[0], c0[1]));
+    if (c && opts.nome) c.nome = opts.nome;
+    return { ok: true, comodoId: c ? c.id : null, portas: comp.length };
+  };
+
+  /** MOVER CÔMODO: desloca o cômodo (paredes exclusivas, partições internas, aberturas e pontos) e refaz o perímetro no novo lugar. */
+  M.moverComodo = function (p, comodoId, dx, dy, opts) {
+    opts = opts || {}; dx = Math.round(dx); dy = Math.round(dy);
+    const c0 = p.comodos.find(c => c.id === comodoId); if (!c0) return { ok: false, motivo: 'Cômodo não encontrado.' };
+    if (!dx && !dy) return { ok: true, comodoId, portas: 0 };
+    const c = JSON.parse(JSON.stringify(c0)), novoPoly = deslocar(c.pontos, dx, dy);
+    const inv = M.sobrepoe(p, novoPoly, comodoId); if (inv) return { ok: false, motivo: 'Sobrepõe o cômodo "' + inv.nome + '".' };
+    M.normalizarParedes(p);
+    const outros = p.comodos.filter(x => x.id !== comodoId);
+    const mover = new Set();
+    let espMax = 0;
+    p.paredes.forEach(w => {
+      const m = meio(w);
+      if (naBorda(c.pontos, m[0], m[1], 2)) { if (!outros.some(o => naBorda(o.pontos, m[0], m[1], 2))) { mover.add(w.id); espMax = Math.max(espMax, w.esp || 15); } }
+      else if (G.dentro(c.pontos, m[0], m[1])) mover.add(w.id);
+    });
+    // portas que ligavam este cômodo aos vizinhos ficam sem sentido quando ele sai de lá
+    const soltas = new Set(p.paredes.filter(w => { const m = meio(w); return !mover.has(w.id) && naBorda(c.pontos, m[0], m[1], 2); }).map(w => w.id));
+    p.aberturas = p.aberturas.filter(a => !(soltas.has(a.parede) && a.tipo === 'porta'));
+    const esp = espMax || M.espPadrao(p), internas = p.paredes.filter(w => mover.has(w.id) && !naBorda(c.pontos, meio(w)[0], meio(w)[1], 2));
+    // aberturas das paredes que vão: posição absoluta
+    const abs = [];
+    p.aberturas = p.aberturas.filter(a => {
+      if (!mover.has(a.parede)) return true; const w = p.paredes.find(q => q.id === a.parede); if (!w) return false;
+      abs.push({ a, cx: w.x1 + (w.x2 - w.x1) * a.t + dx, cy: w.y1 + (w.y2 - w.y1) * a.t + dy }); return false;
+    });
+    // remove paredes exclusivas de borda; desloca as internas
+    p.paredes = p.paredes.filter(w => !(mover.has(w.id) && naBorda(c.pontos, meio(w)[0], meio(w)[1], 2)));
+    internas.forEach(w => { w.x1 += dx; w.x2 += dx; w.y1 += dy; w.y2 += dy; });
+    // pontos do cômodo vão junto
+    const comParede = new Set(); const meus = p.pontos.filter(pt => G.dentro(c.pontos, pt.x, pt.y) || pt.comodo === comodoId);
+    meus.forEach(pt => { pt.x = Math.round(pt.x + dx); pt.y = Math.round(pt.y + dy); if (pt.parede) comParede.add(pt.id); pt.parede = null; });
+    const comp = opts.porta === false ? [] : compartilhados(p, novoPoly);
+    adicionarPerimetro(p, novoPoly, esp);
+    M.normalizarParedes(p);
+    abs.forEach(o => {
+      let b = null; p.paredes.forEach(w => { const r = G.projT(w, o.cx, o.cy); if (r.d <= 8 && (!b || r.d < b.d)) b = { d: r.d, w, t: r.tc }; });
+      if (!b) return; const L = Math.hypot(b.w.x2 - b.w.x1, b.w.y2 - b.w.y1), m = o.a.larg / 2 / L; if (L < o.a.larg + 5) return;
+      o.a.parede = b.w.id; o.a.t = Math.min(1 - m, Math.max(m, b.t)); p.aberturas.push(o.a);
+    });
+    meus.forEach(pt => { if (!comParede.has(pt.id)) return; let b = null; p.paredes.forEach(w => { const r = G.projT(w, pt.x, pt.y); if (r.d <= esp + 12 && (!b || r.d < b.d)) b = { d: r.d, w }; }); if (b) pt.parede = b.w.id; });
+    M.unirColineares(p);
+    comp.forEach(q => addPortaEm(p, q[0], q[1], 80));
+    M.recalc(p);
+    const cn = centroide(novoPoly), nc = p.comodos.find(x => G.dentro(x.pontos, cn[0], cn[1]));
+    if (nc) { nc.id = c.id; nc.nome = c.nome; nc.obs = c.obs || ''; nc.pe = c.pe || 0; nc.feito = !!c.feito; }
+    p.pontos.forEach(pt => { pt.comodo = G.comodoDoPonto(p.comodos, pt.x, pt.y); });
+    return { ok: true, comodoId: nc ? nc.id : null, portas: comp.length };
+  };
+
+  /** PAREDE POR CLIQUE: comprimento sugerido igual ao de uma parede paralela/vizinha (para a prévia magnética) */
+  M.sugerirComprimento = function (p, a, b, tol) {
+    tol = tol || 10;
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy); if (L < 30) return null;
+    const hor = Math.abs(dx) >= Math.abs(dy); let best = null;
+    M.trechos(p).forEach(t => {
+      const th = Math.abs(t.x2 - t.x1) >= Math.abs(t.y2 - t.y1); if (th !== hor || t.len < 30) return;
+      const d = Math.abs(t.len - L); if (d <= Math.max(tol, 0) + 0 && (!best || d < best.d)) best = { d, len: t.len, esp: t.esp };
+    });
+    return best;
+  };
+
+  if (isNode) module.exports = M;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+(function () {
+'use strict';
+const G = window.PlantaGeo, M = window.PlantaModelo, CTX = window.PLANTA_CTX || {};
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtM = cm => (cm / 100).toFixed(2).replace('.', ',');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ===================== estado ===================== */
+let P = M.novaPlanta('Nova planta');
+const S = { tool: 'rabisco', sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
+  dedo: false, interna: true, cotas: true, ligs: true, fotoDataUrl: null, fotoSuja: false, planoId: CTX.plantaId || null, cal: [], prev: null, tab: 'v2d', filtro: '', cadeia: false, rodaZoom: false, p1: null, dig: '', live: null, ultima: null, ativo: null, ghost: null, mouse: null };
+const undo = [], redo = [];
+const ptrs = new Map(); let gest = null;
+const svg = $('#svg'), gMain = $('#gMain'), gGrid = $('#gGrid'), imgF = $('#imgF');
+
+/* ===================== utilidades de UI ===================== */
+let toastT; function toast(m, ms) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 2600); }
+function gas(fn) { const a = Array.prototype.slice.call(arguments, 1); return new Promise((ok, no) => {
+  if (!window.google || !google.script || !google.script.run) return no(new Error('Fora do Apps Script'));
+  google.script.run.withSuccessHandler(ok).withFailureHandler(e => no(new Error((e && e.message) || e)))[fn].apply(google.script.run, a); }); }
+
+/** modal genérico: campos [{k,rot,tipo:text|number|select|textarea|info,val,opts:[[v,t]],ph}] → Promise<obj|null> */
+function modal(titulo, campos, ok, extra) {
+  return new Promise(res => {
+    const h = ['<h3>' + esc(titulo) + '</h3>'];
+    if (extra) h.push('<div class="note">' + extra + '</div>');
+    campos.forEach(c => {
+      if (c.tipo === 'info') { h.push('<div class="note" style="margin:8px 0">' + c.val + '</div>'); return; }
+      h.push('<label>' + esc(c.rot) + '</label>');
+      if (c.tipo === 'select') h.push('<select data-k="' + c.k + '">' + c.opts.map(o => '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(c.val) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>');
+      else if (c.tipo === 'textarea') h.push('<textarea data-k="' + c.k + '" placeholder="' + esc(c.ph || '') + '">' + esc(c.val) + '</textarea>');
+      else h.push('<input data-k="' + c.k + '" type="' + (c.tipo === 'number' ? 'number' : 'text') + '" value="' + esc(c.val) + '" placeholder="' + esc(c.ph || '') + '" inputmode="' + (c.tipo === 'number' ? 'decimal' : 'text') + '">');
+    });
+    h.push('<div class="row" style="margin-top:12px"><button data-m="no">Cancelar</button><button class="pri" data-m="ok">' + esc(ok || 'OK') + '</button></div>');
+    const box = $('#mbox'); box.innerHTML = h.join(''); $('#modal').classList.add('on');
+    const fim = v => { $('#modal').classList.remove('on'); box.onclick = null; res(v); };
+    const coleta = () => { const o = {}; box.querySelectorAll('[data-k]').forEach(e => { o[e.dataset.k] = e.value; }); return o; };
+    box.onclick = e => { const m = e.target.dataset && e.target.dataset.m; if (m === 'ok') fim(coleta()); else if (m === 'no') fim(null); };
+    box.onkeydown = e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') fim(coleta()); if (e.key === 'Escape') fim(null); };
+    const f = box.querySelector('input,textarea,select'); if (f) setTimeout(() => { const v0 = f.value; f.focus(); if (f.select && v0 && f.value === v0) f.select(); }, 30);
+  });
+}
+const confirmar = (msg, ok) => modal('Confirmar', [{ tipo: 'info', val: esc(msg) }], ok || 'Confirmar').then(r => !!r);
+
+/* ===================== histórico / persistência ===================== */
+function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo.length = 0; S.dirty = true; }
+function desfazer() { if (!undo.length) return; redo.push(JSON.stringify(P)); P = JSON.parse(undo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
+function refazer() { if (!redo.length) return; undo.push(JSON.stringify(P)); P = JSON.parse(redo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
+let draftT; function rascunho() { clearTimeout(draftT); draftT = setTimeout(() => { try { localStorage.setItem('planta_rascunho', JSON.stringify({ P, planoId: S.planoId, ctx: CTX.clienteId || '' })); } catch (e) { } }, 700); }
+
+/* ===================== geometria de tela ===================== */
+const rectOf = () => svg.getBoundingClientRect();
+const wpp = () => S.view.w / Math.max(1, rectOf().width);
+function toWorldXY(cx, cy) { const r = rectOf(); return { x: S.view.x + (cx - r.left) * S.view.w / r.width, y: S.view.y + (cy - r.top) * S.view.w / r.width }; }
+const toWorld = e => toWorldXY(e.clientX, e.clientY);
+function zoomAt(cx, cy, f) { const a = toWorldXY(cx, cy); S.view.w = clamp(S.view.w * f, 150, 60000); const b = toWorldXY(cx, cy); S.view.x += a.x - b.x; S.view.y += a.y - b.y; renderSVG(); }
+function fit() {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  P.paredes.forEach(w => { x0 = Math.min(x0, w.x1, w.x2); x1 = Math.max(x1, w.x1, w.x2); y0 = Math.min(y0, w.y1, w.y2); y1 = Math.max(y1, w.y1, w.y2); });
+  if (P.fundo) { x0 = Math.min(x0, P.fundo.x); y0 = Math.min(y0, P.fundo.y); x1 = Math.max(x1, P.fundo.x + P.fundo.w); y1 = Math.max(y1, P.fundo.y + P.fundo.h); }
+  if (x0 > x1) { x0 = 0; y0 = 0; x1 = 1200; y1 = 800; }
+  const r = rectOf(), pad = 80, w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad, k = Math.max(w / r.width, h / r.height);
+  S.view.w = k * r.width; S.view.x = (x0 + x1) / 2 - S.view.w / 2; S.view.y = (y0 + y1) / 2 - (k * r.height) / 2; renderSVG();
+}
+function vertices() { const v = []; P.paredes.forEach(w => { v.push([w.x1, w.y1], [w.x2, w.y2]); }); return v; }
+function snapPt(p, r) {
+  let b = null; vertices().forEach(v => { const d = Math.hypot(v[0] - p.x, v[1] - p.y); if (d <= r && (!b || d < b.d)) b = { d, x: v[0], y: v[1] }; });
+  return b ? { x: b.x, y: b.y } : { x: Math.round(p.x / 5) * 5, y: Math.round(p.y / 5) * 5 };
+}
+function wallGeo(w) { const dx = w.x2 - w.x1, dy = w.y2 - w.y1, L = Math.hypot(dx, dy) || 1; return { L, ux: dx / L, uy: dy / L, nx: -dy / L, ny: dx / L }; }
+const getById = (arr, id) => arr.find(x => x.id === id);
+
+/* ===================== desenho SVG ===================== */
+const PAL_COM = ['#e8f1fb', '#fdf1e3', '#e9f7ee', '#f4e9fb', '#fff7d9', '#e6f6f8'];
+const NEU_COR = { a_confirmar: '#e5484d', tem: '#2ea44f', jumper: '#0ea5a4', puxar: '#f59e0b', eletricista_cliente: '#a855f7' };
+function renderSVG() {
+  const r = rectOf(), W = S.view.w, H = W * r.height / Math.max(1, r.width), k = wpp(), V = S.view;
+  svg.setAttribute('viewBox', V.x + ' ' + V.y + ' ' + W + ' ' + H);
+  // grade
+  let g = '<rect x="' + V.x + '" y="' + V.y + '" width="' + W + '" height="' + H + '" fill="#f4f6fa"/>';
+  const grade = (step, cor) => { let s = ''; const a = Math.floor(V.x / step) * step, b = Math.floor(V.y / step) * step;
+    for (let x = a; x < V.x + W; x += step) s += 'M' + x + ' ' + V.y + 'V' + (V.y + H);
+    for (let y = b; y < V.y + H; y += step) s += 'M' + V.x + ' ' + y + 'H' + (V.x + W);
+    return '<path d="' + s + '" stroke="' + cor + '" stroke-width="1" vector-effect="non-scaling-stroke" fill="none"/>'; };
+  if (50 / k >= 9) g += grade(50, '#e6ebf3'); if (100 / k >= 9) g += grade(100, '#d6dde9'); else g += grade(500, '#d6dde9');
+  gGrid.innerHTML = g;
+  updateFundo();
+  const sel = S.sel, esp0 = P.paredes[0] ? (P.paredes[0].esp || 15) : 15;
+  let s = '';
+  // cômodos
+  P.comodos.forEach((c, i) => {
+    const fe = !!c.feito, at = S.ativo === c.id, dim = S.ativo && !at, selc = sel && sel.k === 'comodo' && sel.id === c.id;
+    const stk = selc ? '#1e88ff' : (at ? '#ff7a00' : (fe ? '#2ea44f' : null));
+    s += '<path data-k="comodo" data-id="' + c.id + '" d="M' + c.pontos.map(p => p[0] + ' ' + p[1]).join('L') + 'Z" fill="' + (fe ? '#cfeedb' : PAL_COM[i % PAL_COM.length]) + '" fill-opacity="' + ((P.fundo ? .55 : .9) * (dim ? .45 : 1)) + '" style="pointer-events:' + (S.tool === 'sel' ? 'all' : 'none') + (S.tool === 'sel' && selc ? ';cursor:move' : '') + '"' + (stk ? ' stroke="' + stk + '" stroke-width="3" vector-effect="non-scaling-stroke"' : '') + '/>';
+    s += '<text x="' + c.cx + '" y="' + c.cy + '" text-anchor="middle" font-size="' + 15 * k + '" font-weight="700" fill="' + (fe ? '#14532d' : '#334155') + '" style="pointer-events:none">' + esc(c.nome) + '</text>';
+    s += '<text x="' + c.cx + '" y="' + (c.cy + 15 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" fill="' + (fe ? '#166534' : '#64748b') + '" style="pointer-events:none">' + c.area.toFixed(1).replace('.', ',') + ' m²</text>';
+    if (fe) s += '<g transform="translate(' + c.cx + ' ' + (c.cy - 27 * k) + ')" style="pointer-events:none"><circle r="' + 12 * k + '" fill="#2ea44f"/><path d="M' + -5.5 * k + ' ' + 0 + 'L' + -1.5 * k + ' ' + 4.2 * k + 'L' + 6 * k + ' ' + -4.5 * k + '" stroke="#fff" stroke-width="' + 2.8 * k + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>';
+  });
+  // paredes
+  P.paredes.forEach(w => {
+    const sw = Math.max(w.esp || 15, 5 * k), on = sel && sel.k === 'parede' && sel.id === w.id;
+    s += '<line x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="' + (on ? '#1e88ff' : '#1c2b3a') + '" stroke-width="' + sw + '" stroke-linecap="square" style="pointer-events:none"/>';
+    s += '<line data-k="parede" data-id="' + w.id + '" x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="transparent" stroke-width="18" vector-effect="non-scaling-stroke"/>';
+  });
+  // aberturas
+  P.aberturas.forEach(a => {
+    const w = getById(P.paredes, a.parede); if (!w) return;
+    const q = wallGeo(w), cx = w.x1 + q.ux * q.L * a.t, cy = w.y1 + q.uy * q.L * a.t, h = a.larg / 2, sw = Math.max(w.esp || 15, 5 * k);
+    const A = [cx - q.ux * h, cy - q.uy * h], B = [cx + q.ux * h, cy + q.uy * h], on = sel && sel.k === 'abertura' && sel.id === a.id;
+    s += '<line x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="#f4f6fa" stroke-width="' + (sw + 2 * k) + '" style="pointer-events:none"/>';
+    if (a.tipo === 'porta') {
+      const side = a.lado || 1, E = [A[0] + q.nx * a.larg * side, A[1] + q.ny * a.larg * side];
+      s += '<line x1="' + A[0] + '" y1="' + A[1] + '" x2="' + E[0] + '" y2="' + E[1] + '" stroke="' + (on ? '#1e88ff' : '#b45309') + '" stroke-width="3" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+      s += '<path d="M' + E[0] + ' ' + E[1] + 'A' + a.larg + ' ' + a.larg + ' 0 0 ' + (side > 0 ? 0 : 1) + ' ' + B[0] + ' ' + B[1] + '" fill="none" stroke="' + (on ? '#1e88ff' : '#b45309') + '" stroke-width="1.5" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+    } else {
+      const o = (w.esp || 15) / 4;
+      [-o, 0, o].forEach(d => { s += '<line x1="' + (A[0] + q.nx * d) + '" y1="' + (A[1] + q.ny * d) + '" x2="' + (B[0] + q.nx * d) + '" y2="' + (B[1] + q.ny * d) + '" stroke="' + (on ? '#1e88ff' : '#2a7de1') + '" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; });
+    }
+    s += '<line data-k="abertura" data-id="' + a.id + '" x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="transparent" stroke-width="22" vector-effect="non-scaling-stroke"/>';
+  });
+  // cotas por trecho
+  if (S.cotas) M.trechos(P).forEach((t, i) => {
+    if (t.len < 40) return;
+    const q = { ux: (t.x2 - t.x1) / t.len, uy: (t.y2 - t.y1) / t.len }, nx = -q.uy, ny = q.ux;
+    const off = Math.max(t.esp, 5 * k) / 2 + 11 * k, mx = (t.x1 + t.x2) / 2 + nx * off, my = (t.y1 + t.y2) / 2 + ny * off;
+    const v = S.interna ? Math.max(0, t.len - t.esp) : t.len, on = sel && sel.k === 'trecho' && sel.parede === t.parede && Math.abs(sel.t0 - t.t0) < 1e-3;
+    s += '<text data-k="trecho" data-i="' + i + '" x="' + mx + '" y="' + (my + 4 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" font-weight="700" fill="' + (on ? '#1e88ff' : '#0b3a6b') + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + fmtM(v) + '</text>';
+  });
+  // ligações
+  if (S.ligs) P.ligacoes.forEach(l => {
+    const a = getById(P.pontos, l.de), b = getById(P.pontos, l.para); if (!a || !b) return;
+    const cor = M.corDe(b), on = sel && sel.k === 'ligacao' && sel.id === l.id;
+    s += '<line x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="' + cor + '" stroke-width="' + (on ? 5 : 2.6) + '" stroke-dasharray="' + (on ? '' : '9 4') + '" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+    s += '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + 4 * k + '" fill="' + cor + '" style="pointer-events:none"/>';
+    s += '<line data-k="ligacao" data-id="' + l.id + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="transparent" stroke-width="14" vector-effect="non-scaling-stroke"/>';
+    if (l.tecla) s += '<text x="' + (a.x + (b.x - a.x) * .18) + '" y="' + (a.y + (b.y - a.y) * .18 - 4 * k) + '" text-anchor="middle" font-size="' + 11 * k + '" font-weight="800" fill="' + cor + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">T' + l.tecla + '</text>';
+  });
+  // pontos
+  const sz = Math.max(26, 19 * k);
+  P.pontos.forEach(p => {
+    const cor = M.corDe(p), T = M.TIPOS[p.tipo] || M.TIPOS.outro, cat = M.catDe(p), cmd = p.tipo === 'interruptor' || p.tipo === 'botao';
+    const on = sel && sel.k === 'ponto' && sel.id === p.id, de = S.tool === 'ligar' && S.lig.de === p.id, h = sz / 2;
+    s += '<g data-k="ponto" data-id="' + p.id + '" transform="translate(' + p.x + ' ' + p.y + ')"' + (S.ativo && p.comodo !== S.ativo ? ' opacity=".35"' : '') + '>';
+    if (on || de) s += '<circle r="' + (sz * .95) + '" fill="none" stroke="' + (de ? '#ff7a00' : '#1e88ff') + '" stroke-width="3" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>';
+    if (cmd) s += '<rect x="' + -h + '" y="' + -h + '" width="' + sz + '" height="' + sz + '" rx="' + sz * .18 + '" fill="#fff" stroke="' + cor + '" stroke-width="' + sz * .13 + '"/><text y="' + sz * .22 + '" text-anchor="middle" font-size="' + sz * .62 + '" font-weight="800" fill="#1f2937">' + (p.tipo === 'botao' ? 'B' : (p.teclas || 1)) + '</text>';
+    else if (cat === 'luz') s += '<circle r="' + h + '" fill="#fffbe6" stroke="' + cor + '" stroke-width="' + sz * .13 + '"/><path d="M' + -h * .55 + ' ' + -h * .55 + 'L' + h * .55 + ' ' + h * .55 + 'M' + h * .55 + ' ' + -h * .55 + 'L' + -h * .55 + ' ' + h * .55 + '" stroke="' + cor + '" stroke-width="' + sz * .1 + '"/>';
+    else if (cat === 'energia') s += '<circle r="' + h + '" fill="#fff" stroke="' + cor + '" stroke-width="' + sz * .13 + '"/><text y="' + sz * .2 + '" text-anchor="middle" font-size="' + sz * .55 + '" font-weight="800" fill="' + cor + '">' + esc(M.siglaDe(p)) + '</text>';
+    else s += '<rect x="' + -h * 1.25 + '" y="' + -h * .8 + '" width="' + sz * 1.25 + '" height="' + sz * .8 + '" rx="' + sz * .18 + '" fill="#fff" stroke="' + cor + '" stroke-width="' + sz * .12 + '"/><text y="' + sz * .13 + '" text-anchor="middle" font-size="' + sz * .38 + '" font-weight="800" fill="' + cor + '">' + esc(M.siglaDe(p)) + '</text>';
+    if (cmd && p.neutro) s += '<circle cx="' + h + '" cy="' + -h + '" r="' + sz * .19 + '" fill="' + (NEU_COR[p.neutro.modo] || '#999') + '" stroke="#fff" stroke-width="' + sz * .05 + '"/>';
+    if (p.obs) { const r0 = sz * .26; s += '<g data-k="obs" data-id="' + p.id + '" transform="translate(' + (-h * 1.05) + ' ' + (-h * 1.05) + ')" style="cursor:pointer"><title>' + esc(p.obs.slice(0, 200)) + '</title><circle r="' + r0 * 1.7 + '" fill="transparent"/><path d="M' + -r0 + ' ' + -r0 * .8 + 'H' + r0 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + r0 * .3 + ' ' + r0 * .3 + 'V' + r0 * .5 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + -r0 * .3 + ' ' + r0 * .3 + 'H' + -r0 * .2 + 'L' + -r0 * .7 + ' ' + r0 * 1.2 + 'V' + r0 * .8 + 'H' + -r0 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + -r0 * .3 + ' ' + -r0 * .3 + 'V' + -r0 * .5 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + r0 * .3 + ' ' + -r0 * .3 + 'Z" fill="#ffd54a" stroke="#7a5b00" stroke-width="' + sz * .05 + '"/><path d="M' + -r0 * .55 + ' ' + -r0 * .3 + 'H' + r0 * .55 + 'M' + -r0 * .55 + ' ' + r0 * .15 + 'H' + r0 * .3 + '" stroke="#7a5b00" stroke-width="' + sz * .04 + '"/></g>'; }
+    if (p.nome) s += '<text y="' + (h + 11 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome) + '</text>';
+    s += '</g>';
+  });
+  // alças da parede selecionada
+  if (sel && sel.k === 'parede') { const w = getById(P.paredes, sel.id); if (w) [1, 2].forEach(i => { s += '<circle data-k="handle" data-id="' + w.id + '" data-i="' + i + '" cx="' + w['x' + i] + '" cy="' + w['y' + i] + '" r="' + 9 * k + '" fill="#fff" stroke="#1e88ff" stroke-width="' + 3 * k + '"/>'; }); }
+  // pré-visualizações
+  if (S.prev) {
+    if (S.prev.k === 'poly') s += '<polyline points="' + S.prev.pts.map(p => p.x + ',' + p.y).join(' ') + '" fill="none" stroke="#ff7a00" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linecap="round" style="pointer-events:none"/>';
+    if (S.prev.k === 'linha') s += '<line x1="' + S.prev.a.x + '" y1="' + S.prev.a.y + '" x2="' + S.prev.b.x + '" y2="' + S.prev.b.y + '" stroke="#ff7a00" stroke-width="' + Math.max(15, 5 * k) + '" stroke-linecap="square" opacity=".6" style="pointer-events:none"/><text x="' + (S.prev.a.x + S.prev.b.x) / 2 + '" y="' + ((S.prev.a.y + S.prev.b.y) / 2 - 12 * k) + '" text-anchor="middle" font-size="' + 13 * k + '" font-weight="700" fill="#b45309" style="pointer-events:none">' + fmtM(Math.hypot(S.prev.b.x - S.prev.a.x, S.prev.b.y - S.prev.a.y)) + ' m</text>';
+  }
+  const Lv = S.live;
+  if (Lv && Lv.k === 'parede2') {
+    const a = Lv.a, b = Lv.b, med = S.interna ? Math.max(0, Lv.len - S.esp) : Lv.len, cor = Lv.sug ? '#16a34a' : '#ff7a00';
+    s += '<line x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="' + cor + '" stroke-width="' + Math.max(S.esp, 5 * k) + '" stroke-linecap="square" opacity=".55" style="pointer-events:none"/>';
+    s += '<circle cx="' + a.x + '" cy="' + a.y + '" r="' + 6 * k + '" fill="' + cor + '" stroke="#fff" stroke-width="' + 2 * k + '" style="pointer-events:none"/><circle cx="' + b.x + '" cy="' + b.y + '" r="' + 5 * k + '" fill="#fff" stroke="' + cor + '" stroke-width="' + 3 * k + '" style="pointer-events:none"/>';
+    const txt = (Lv.dig ? '⌨ ' + Lv.dig + ' → ' : '') + fmtM(med) + ' m' + (Lv.sug ? '  = ' + (Lv.sug.prev ? 'parede anterior' : 'parede paralela') : '');
+    s += '<text x="' + (b.x + 14 * k) + '" y="' + (b.y - 12 * k) + '" font-size="' + 15 * k + '" font-weight="800" fill="' + cor + '" stroke="#fff" stroke-width="' + 4.5 * k + '" paint-order="stroke" style="pointer-events:none">' + esc(txt) + '</text>';
+  }
+  if (S.ghost) {
+    const g = S.ghost, esp = P.paredes.length ? M.espPadrao(P) : S.esp, poly = M.retangulo(g.l, g.c, esp, g.dx, g.dy), cx = g.dx + (g.l + esp) / 2, cy = g.dy + (g.c + esp) / 2, cor = g.valid ? '#1e88ff' : '#e5484d';
+    s += '<polygon points="' + poly.map(q => q[0] + ',' + q[1]).join(' ') + '" fill="' + (g.valid ? 'rgba(30,136,255,.22)' : 'rgba(229,72,77,.28)') + '" stroke="' + cor + '" stroke-width="3" stroke-dasharray="8 5" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+    s += '<text x="' + cx + '" y="' + (cy - 6 * k) + '" text-anchor="middle" font-size="' + 16 * k + '" font-weight="800" fill="' + cor + '" style="pointer-events:none">' + esc(g.nome) + '</text>';
+    s += '<text x="' + cx + '" y="' + (cy + 14 * k) + '" text-anchor="middle" font-size="' + 13 * k + '" font-weight="700" fill="#334155" style="pointer-events:none">' + fmtM(g.l) + ' × ' + fmtM(g.c) + ' m</text>';
+    if (!g.valid) s += '<text x="' + cx + '" y="' + (cy + 32 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" fill="#e5484d" font-weight="700" style="pointer-events:none">' + esc(g.motivo) + '</text>';
+    else if (g.enc) s += '<text x="' + cx + '" y="' + (cy + 32 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" fill="#16a34a" font-weight="700" style="pointer-events:none">encaixado nas paredes vizinhas</text>';
+  }
+  if (S.prev && S.prev.k === 'mover') {
+    const m = S.prev, cor = m.valid ? '#ff7a00' : '#e5484d';
+    s += '<polygon points="' + m.poly.map(q => q[0] + ',' + q[1]).join(' ') + '" fill="' + (m.valid ? 'rgba(255,122,0,.2)' : 'rgba(229,72,77,.28)') + '" stroke="' + cor + '" stroke-width="3" stroke-dasharray="8 5" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+    const cc = M.centroide(m.poly); s += '<text x="' + cc[0] + '" y="' + cc[1] + '" text-anchor="middle" font-size="' + 14 * k + '" font-weight="800" fill="' + cor + '" style="pointer-events:none">' + (m.valid ? (m.enc ? 'encaixado — solte' : 'solte para mover') : esc(m.motivo)) + '</text>';
+  }
+  S.cal.forEach(c => { s += '<circle cx="' + c.x + '" cy="' + c.y + '" r="' + 7 * k + '" fill="#ff7a00" stroke="#fff" stroke-width="' + 2 * k + '" style="pointer-events:none"/>'; });
+  if (S.cal.length === 2) s += '<line x1="' + S.cal[0].x + '" y1="' + S.cal[0].y + '" x2="' + S.cal[1].x + '" y2="' + S.cal[1].y + '" stroke="#ff7a00" stroke-width="2" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+  gMain.innerHTML = s;
+}
+function updateFundo() {
+  const f = P.fundo;
+  if (!f || !S.fotoDataUrl) { imgF.style.display = 'none'; return; }
+  if (imgF.dataset.src !== S.fotoDataUrl) { imgF.setAttribute('href', S.fotoDataUrl); imgF.dataset.src = S.fotoDataUrl; }
+  imgF.style.display = ''; imgF.setAttribute('x', f.x); imgF.setAttribute('y', f.y); imgF.setAttribute('width', f.w); imgF.setAttribute('height', f.h);
+  imgF.setAttribute('opacity', f.opac == null ? .55 : f.opac);
+  imgF.setAttribute('transform', f.rot ? 'rotate(' + f.rot + ' ' + f.cx + ' ' + f.cy + ')' : '');
+}
+
+/* ===================== ferramentas / paleta ===================== */
+const FERR = [['rabisco', '✎ Rabiscar parede', 'Desenhe com a Pencil: o traço vira parede reta e fecha nos cantos. Dedo = mover/zoom.'],
+  ['parede', '▭ Parede reta', 'Clique para iniciar e clique de novo para terminar (a medida cresce junto do cursor). Também dá para arrastar, ou digitar a medida e Enter. Esc cancela.'],
+  ['porta', '⌂ Porta', 'Toque em cima de uma parede.'], ['janela', '▥ Janela', 'Toque em cima de uma parede.'],
+  ['medir', '⇔ Medir trecho', 'Toque num trecho de parede e digite a medida do app Medidas. Os cantos se ajustam.'],
+  ['sel', '☝ Selecionar / mover', 'Toque para editar. Arraste um símbolo para mover. Arraste as bolinhas da parede para mudar os cantos.'],
+  ['ligar', '⟿ Ligar pontos', 'Toque na origem (interruptor/botão) e depois nos destinos. Escolha a tecla.'],
+  ['del', '✕ Apagar', 'Toque no que quer apagar (símbolo, parede, porta/janela ou ligação).'],
+  ['cal', '⌖ Calibrar fundo', 'Toque em 2 pontos de uma medida conhecida da planta importada.']];
+function renderTools() {
+  let h = '<input id="fPal" placeholder="🔎 Filtrar paleta (luz, som, câmera…)" value="' + esc(S.filtro) + '" autocomplete="off"><div class="sec" style="margin-top:2px">Ferramentas</div><div style="display:grid;gap:5px">';
+  FERR.forEach(f => { if (f[0] === 'cal' && !P.fundo) return; h += '<button class="tool' + (S.tool === f[0] ? ' on' : '') + '" data-tool="' + f[0] + '">' + f[1] + '</button>'; });
+  h += '</div>';
+  h += '<div class="sec">Cômodos</div><div style="display:grid;gap:5px"><button class="tool pri" data-room="novo">＋ Novo cômodo (por medidas)</button><button class="tool" data-room="mover">↔ Mover cômodo selecionado</button>' + (S.ativo ? '<button class="tool" data-room="fin">✓ Finalizar cômodo ativo</button>' : '') + '</div>';
+  h += '<div class="sec">Teclas do próximo interruptor</div><div class="row">' + [1, 2, 3, 4].map(n => '<button data-teclas="' + n + '"' + (S.teclasNovo === n ? ' class="on"' : '') + '>' + n + '</button>').join('') + '</div>';
+  let grp = '';
+  Object.keys(M.TIPOS).forEach(t => {
+    const T = M.TIPOS[t];
+    if (T.grupo !== grp) { if (grp) h += '</div>'; grp = T.grupo; h += '<div class="sec">' + esc(grp) + '</div><div class="grid2">'; }
+    h += '<button class="pal' + (S.tool === 'p:' + t ? ' on' : '') + '" data-tool="p:' + t + '" data-busca="' + esc(semAcento(T.nome + ' ' + T.sigla + ' ' + T.grupo + ' ' + M.CATS[T.cat].nome + ' ' + (SIN[T.cat] || ''))) + '"><i style="border-color:' + M.CATS[T.cat].cor + '">' + esc(T.sigla) + '</i>' + esc(T.nome) + '</button>';
+  });
+  h += '</div><div class="sec">Categorias (cor das linhas)</div>' + Object.keys(M.CATS).map(c => '<div class="note"><span class="dot" style="background:' + M.CATS[c].cor + '"></span>' + M.CATS[c].nome + '</div>').join('');
+  h += '<div id="palVazio" style="display:none">Nada na paleta com esse nome — use <b>Outro (livre)</b>.</div>';
+  $('#tools').innerHTML = h; aplicarFiltro();
+}
+function renderHint() {
+  let h = '';
+  const f = FERR.find(x => x[0] === S.tool);
+  if (f) h = f[2]; else if (S.tool.indexOf('p:') === 0) { const T = M.TIPOS[S.tool.slice(2)]; h = 'Toque na planta para colocar: ' + T.nome + (T.parede ? ' (gruda na parede mais próxima)' : '') + '.'; }
+  let x = '<span>' + esc(h) + '</span>';
+  if (S.tool === 'cal') x += '<span>' + S.cal.length + '/2 pontos</span>';
+  if (S.tool === 'parede') x += '<span class="chips"><button data-h="cadeia"' + (S.cadeia ? ' class="on"' : '') + '>Encadear paredes: ' + (S.cadeia ? 'sim' : 'não') + '</button></span>' + (S.p1 ? '<span>Início marcado · clique no fim · digite medida + Enter · Esc cancela</span>' : '');
+  if (S.ghost) { const g = S.ghost; x = '<span>Posicionando "' + esc(g.nome) + '" ' + fmtM(g.l) + ' × ' + fmtM(g.c) + ' m — ' + (g.valid ? (g.enc ? 'encaixado nas paredes vizinhas' : 'livre') : '✗ ' + esc(g.motivo)) + '</span><span class="chips"><button data-h="gok">✓ Colocar aqui</button><button data-h="grot">↻ Girar (R)</button><button data-h="gno">✕ Cancelar</button></span>'; }
+  if (S.tool === 'ligar') {
+    const de = S.lig.de ? getById(P.pontos, S.lig.de) : null;
+    x += '<span>' + (de ? 'Origem: ' + esc(M.nomeDe(de)) : 'Escolha a origem') + '</span>';
+    if (de && (de.tipo === 'interruptor' || de.tipo === 'botao')) x += '<span class="chips">' + Array.from({ length: de.teclas || 1 }, (_, i) => '<button data-lt="' + (i + 1) + '"' + (S.lig.tecla === i + 1 ? ' class="on"' : '') + '>Tecla ' + (i + 1) + '</button>').join('') + '</span>';
+  }
+  $('#hint').innerHTML = x;
+}
+
+/* ===================== painel lateral ===================== */
+const optSel = (o, v) => Object.keys(o).map(k => '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
+const fld = (rot, f, v, extra) => '<label>' + rot + '</label><input data-f="' + f + '" value="' + esc(v) + '" ' + (extra || '') + '>';
+function renderPanel() {
+  const el = $('#panel'), sel = S.sel; let h = '';
+  const nomeCom = id => { const c = getById(P.comodos, id); return c ? c.nome : '—'; };
+  if (!sel) {
+    h += '<div class="sec" style="margin-top:2px">Planta</div>';
+    h += fld('Nome', 'nome', P.nome, 'data-t="planta"');
+    h += '<label>Pé-direito (cm)</label><input data-t="planta" data-f="peDireito" data-n="1" type="number" value="' + P.peDireito + '">';
+    h += '<label>Espessura das paredes novas</label><select id="espSel">' + [10, 12, 15, 20].map(n => '<option' + (n === S.esp ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>';
+    h += '<label><input type="checkbox" id="chInt" style="width:auto" ' + (S.interna ? 'checked' : '') + '> Medidas são vão livre (app Medidas)</label>';
+    h += '<label><input type="checkbox" id="chCotas" style="width:auto" ' + (S.cotas ? 'checked' : '') + '> Mostrar medidas</label>';
+    h += '<label><input type="checkbox" id="chLigs" style="width:auto" ' + (S.ligs ? 'checked' : '') + '> Mostrar ligações</label>';
+    h += '<label><input type="checkbox" id="chDedo" style="width:auto" ' + (S.dedo ? 'checked' : '') + '> Desenhar também com o dedo</label>';
+    h += '<label><input type="checkbox" id="chCadeia" style="width:auto" ' + (S.cadeia ? 'checked' : '') + '> Parede por clique: encadear (o fim vira o início da próxima)</label>';
+    h += '<label><input type="checkbox" id="chRoda" style="width:auto" ' + (S.rodaZoom ? 'checked' : '') + '> Roda do mouse dá zoom (padrão: pinça dá zoom, roda/2 dedos movem)</label>';
+    if (P.fundo) h += '<label>Opacidade da planta importada</label><input type="range" id="rgOp" min="10" max="100" value="' + Math.round((P.fundo.opac == null ? .55 : P.fundo.opac) * 100) + '"><div class="row" style="margin-top:6px"><button id="bIA">Ler planta com IA</button><button id="bRmF" class="danger">Remover fundo</button></div>';
+    h += '<label>Observações gerais da obra</label><textarea data-t="planta" data-f="notas" placeholder="Texto livre">' + esc(P.notas) + '</textarea>';
+    h += '<div class="note" style="margin-top:10px">Cômodos: ' + P.comodos.length + ' · Pontos: ' + P.pontos.length + ' · Ligações: ' + P.ligacoes.length + '</div>';
+  } else if (sel.k === 'ponto') {
+    const p = getById(P.pontos, sel.id); if (!p) { S.sel = null; return renderPanel(); }
+    const T = M.TIPOS[p.tipo] || M.TIPOS.outro, cmd = p.tipo === 'interruptor' || p.tipo === 'botao';
+    h += '<div class="sec" style="margin-top:2px"><span class="dot" style="background:' + M.corDe(p) + '"></span>' + esc(T.nome) + ' · ' + esc(nomeCom(p.comodo)) + '</div>';
+    h += fld('Nome / identificação', 'nome', p.nome, 'placeholder="' + esc(T.nome) + '"');
+    h += '<label>Categoria (cor)</label><select data-f="cat">' + Object.keys(M.CATS).map(c => '<option value="' + c + '"' + (c === M.catDe(p) ? ' selected' : '') + '>' + M.CATS[c].nome + '</option>').join('') + '</select>';
+    if (p.tipo === 'outro') h += fld('Sigla (até 3)', 'sigla', p.sigla || '');
+    h += '<div class="row"><div>' + fld('Altura (cm)', 'altura', p.altura, 'data-n="1" type="number"') + '</div><div><label>Cômodo</label><select data-f="comodo"><option value="">—</option>' + P.comodos.map(c => '<option value="' + c.id + '"' + (c.id === p.comodo ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select></div></div>';
+    if (cmd) {
+      h += '<div class="sec">Interruptor</div><div class="row"><div><label>Teclas</label><select data-f="teclas" data-n="1">' + [1, 2, 3, 4].map(n => '<option' + (n === (p.teclas || 1) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div><div><label>Caixa</label><select data-f="caixa">' + ['4x2', '4x4', 'outra'].map(c => '<option' + (c === p.caixa ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div></div>';
+      const ne = p.neutro || { modo: 'a_confirmar', origem: '', fio: 'a_definir' };
+      h += '<label>Neutro</label><select data-f="neutro.modo">' + optSel(M.NEUTRO, ne.modo) + '</select>';
+      if (ne.modo === 'puxar') h += fld('Puxar de onde?', 'neutro.origem', ne.origem, 'placeholder="ex.: caixa da luz da sala"');
+      if (ne.modo === 'puxar' || ne.modo === 'eletricista_cliente') h += '<label>Fio novo do neutro</label><select data-f="neutro.fio">' + optSel(M.FIO, ne.fio) + '</select>';
+      h += '<div class="sec">Comanda (por tecla)</div>';
+      const ls = P.ligacoes.filter(l => l.de === p.id).sort((a, b) => (a.tecla || 0) - (b.tecla || 0));
+      h += ls.length ? ls.map(l => { const b = getById(P.pontos, l.para); return '<div class="row" style="margin:3px 0"><span class="pill" style="background:' + (b ? M.corDe(b) : '#555') + ';color:#111">T' + (l.tecla || '·') + '</span><span style="flex:3">' + esc(b ? M.nomeDe(b) + ' (' + nomeCom(b.comodo) + ')' : '?') + '</span><button data-act="dellig" data-id="' + l.id + '" style="flex:none">✕</button></div>'; }).join('') : '<div class="note">Nenhuma ligação ainda.</div>';
+      h += '<button data-act="ligar" style="margin-top:6px;width:100%">⟿ Ligar a partir deste</button>';
+    } else {
+      const entra = P.ligacoes.filter(l => l.para === p.id);
+      if (entra.length) h += '<div class="sec">Comandado por</div>' + entra.map(l => { const a = getById(P.pontos, l.de); return '<div class="row" style="margin:3px 0"><span style="flex:3">' + esc(a ? M.nomeDe(a) : '?') + (l.tecla ? ' · tecla ' + l.tecla : '') + '</span><button data-act="dellig" data-id="' + l.id + '" style="flex:none">✕</button></div>'; }).join('');
+    }
+    h += '<div class="sec">Aparelho</div><label>Origem</label><select data-f="origem">' + optSel(M.ORIGEM, p.origem || 'a_definir') + '</select>';
+    h += fld('Produto / modelo', 'produto', p.produto, 'placeholder="texto livre"');
+    h += '<div class="sec">App / protocolo</div><label>App ou plataforma</label><select data-f="appId"><option value="">—</option>' + (P.apps || []).map(a => '<option value="' + a.id + '"' + (a.id === p.appId ? ' selected' : '') + '>' + esc(a.nome) + '</option>').join('') + '<option value="__novo">＋ Adicionar app / plataforma…</option></select>';
+    h += '<label>Protocolo</label><select data-f="protocolo"><option value="">—</option>' + M.PROTOCOLOS.map(q => '<option' + (q === p.protocolo ? ' selected' : '') + '>' + esc(q) + '</option>').join('') + '</select>';
+    h += '<label>Observações / cenas</label><button data-act="obs" style="width:100%;text-align:left">' + (p.obs ? '💬 ' + esc(p.obs.slice(0, 70)) + (p.obs.length > 70 ? '…' : '') : '＋ Adicionar observação') + '</button><div class="note">Vira um balão no aparelho; toque no balão para abrir.</div>';
+    h += '<div class="row" style="margin-top:8px"><button data-act="dup">Duplicar</button><button class="danger" data-act="delsel">Excluir</button></div>';
+  } else if (sel.k === 'parede') {
+    const w = getById(P.paredes, sel.id); if (!w) { S.sel = null; return renderPanel(); }
+    h += '<div class="sec" style="margin-top:2px">Parede</div><div class="note">Comprimento total (eixo): ' + fmtM(M.comprimento(w)) + ' m. Para medir por cômodo use "Medir trecho" ou toque no número da medida.</div>';
+    h += '<label>Espessura (cm)</label><input data-f="esp" data-n="1" type="number" value="' + (w.esp || 15) + '">';
+    h += '<div class="row" style="margin-top:8px"><button data-act="medirw">Medir trechos</button><button class="danger" data-act="delsel">Excluir</button></div>';
+  } else if (sel.k === 'trecho') {
+    const w = getById(P.paredes, sel.parede); if (!w) { S.sel = null; return renderPanel(); }
+    const t = M.trechos(P).find(x => x.parede === sel.parede && Math.abs(x.t0 - sel.t0) < 1e-3);
+    if (!t) { S.sel = null; return renderPanel(); }
+    h += '<div class="sec" style="margin-top:2px">Trecho de parede</div><div class="note">Atual: ' + fmtM(S.interna ? t.len - t.esp : t.len) + ' m ' + (S.interna ? '(vão livre)' : '(eixo)') + '</div><button data-act="medirt" class="pri" style="width:100%;margin-top:8px">Digitar medida…</button>';
+  } else if (sel.k === 'abertura') {
+    const a = getById(P.aberturas, sel.id); if (!a) { S.sel = null; return renderPanel(); }
+    h += '<div class="sec" style="margin-top:2px">' + (a.tipo === 'porta' ? 'Porta' : 'Janela') + '</div><div class="row"><div>' + fld('Largura (cm)', 'larg', a.larg, 'data-n="1" type="number"') + '</div><div>' + fld('Altura (cm)', 'alt', a.alt, 'data-n="1" type="number"') + '</div></div>';
+    if (a.tipo === 'janela') h += fld('Peitoril (cm)', 'peitoril', a.peitoril, 'data-n="1" type="number"');
+    h += '<div class="row" style="margin-top:8px"><button data-act="flip">Inverter lado</button><button class="danger" data-act="delsel">Excluir</button></div>';
+  } else if (sel.k === 'comodo') {
+    const c = getById(P.comodos, sel.id); if (!c) { S.sel = null; return renderPanel(); }
+    h += '<div class="sec" style="margin-top:2px">Cômodo · ' + c.area.toFixed(1).replace('.', ',') + ' m²</div>' + fld('Nome', 'nome', c.nome);
+    h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
+    h += '<div class="sec">Fluxo</div><div class="row"><button data-act="ativar">' + (S.ativo === c.id ? 'Sair do cômodo' : 'Trabalhar aqui') + '</button>' + (c.feito ? '<button data-act="reabrir">Reabrir</button>' : '<button class="pri" data-act="finalizar">Finalizar ✓</button>') + '</div><button data-act="moverc" style="margin-top:6px;width:100%">↔ Mover cômodo (arraste na planta)</button><div class="note">Com o cômodo selecionado, arraste-o: ele gruda nos vizinhos, leva os pontos junto e cria a porta.</div>';
+  } else if (sel.k === 'ligacao') {
+    const l = getById(P.ligacoes, sel.id); if (!l) { S.sel = null; return renderPanel(); }
+    h += '<div class="sec" style="margin-top:2px">Ligação</div>' + fld('Observação', 'obs', l.obs || '') + '<button class="danger" data-act="delsel" style="margin-top:8px;width:100%">Excluir ligação</button>';
+  }
+  if (sel) h += '<button data-act="desel" style="margin-top:10px;width:100%">Fechar</button>';
+  el.innerHTML = h;
+}
+function alvoSel() {
+  const s = S.sel; if (!s) return null;
+  return { ponto: () => getById(P.pontos, s.id), parede: () => getById(P.paredes, s.id), abertura: () => getById(P.aberturas, s.id), comodo: () => getById(P.comodos, s.id), ligacao: () => getById(P.ligacoes, s.id) }[s.k];
+}
+function setPath(o, path, v) { const ks = path.split('.'); let t = o; for (let i = 0; i < ks.length - 1; i++) { t[ks[i]] = t[ks[i]] || {}; t = t[ks[i]]; } t[ks[ks.length - 1]] = v; }
+$('#panel').addEventListener('change', e => {
+  const t = e.target; if (t.id === 'espSel') { S.esp = +t.value; return; }
+  if (t.id === 'chInt') { S.interna = t.checked; return renderSVG(); }
+  if (t.id === 'chCotas') { S.cotas = t.checked; return renderSVG(); }
+  if (t.id === 'chLigs') { S.ligs = t.checked; return renderSVG(); }
+  if (t.id === 'chDedo') { S.dedo = t.checked; return; }
+  if (t.id === 'chCadeia') { S.cadeia = t.checked; return; }
+  if (t.id === 'chRoda') { S.rodaZoom = t.checked; return; }
+  if (t.id === 'rgOp') { P.fundo.opac = t.value / 100; return renderSVG(); }
+  const f = t.dataset.f; if (!f) return;
+  if (f === 'appId' && t.value === '__novo' && S.sel && S.sel.k === 'ponto') { novoAppParaPonto(S.sel.id); return; }
+  let v = t.value; if (t.dataset.n) v = parseFloat(String(v).replace(',', '.')) || 0;
+  snap();
+  if (t.dataset.t === 'planta') { setPath(P, f, v); if (f === 'nome') $('#fNome').value = v; }
+  else { const o = alvoSel() && alvoSel()(); if (!o) return; if (f === 'comodo') v = v || null; setPath(o, f, v);
+    if (S.sel.k === 'parede' && f === 'esp') M.recalc(P);
+    if (S.sel.k === 'ponto' && f === 'teclas') P.ligacoes = P.ligacoes.filter(l => !(l.de === o.id && (l.tecla || 1) > v));
+    if (S.sel.k === 'ponto' && (f === 'neutro.modo' || f === 'teclas')) renderPanel();
+    if (S.sel.k === 'ponto' && f === 'cat') renderTools(); }
+  refresh({ panel: false });
+});
+$('#panel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'bIA') return lerComIA();
+  if (b.id === 'bRmF') { snap(); P.fundo = null; S.fotoDataUrl = null; S.fotoSuja = true; if (S.tool === 'cal') S.tool = 'rabisco'; return refresh(); }
+  const a = b.dataset.act; if (!a) return;
+  if (a === 'desel') { S.sel = null; return refresh(); }
+  if (a === 'delsel') return apagarSel();
+  if (a === 'obs') return abrirObs(S.sel.id);
+  if (a === 'ativar') return ativarComodo(S.ativo === S.sel.id ? null : S.sel.id, S.ativo !== S.sel.id);
+  if (a === 'finalizar') return finalizarComodo(S.sel.id);
+  if (a === 'reabrir') return reabrirComodo(S.sel.id);
+  if (a === 'moverc') { toast('Arraste o cômodo na planta para movê-lo.', 5000); return; }
+  if (a === 'dellig') { snap(); P.ligacoes = P.ligacoes.filter(l => l.id !== b.dataset.id); return refresh(); }
+  if (a === 'ligar') { S.tool = 'ligar'; S.lig = { de: S.sel.id, tecla: 1 }; return refresh(); }
+  if (a === 'flip') { snap(); const o = getById(P.aberturas, S.sel.id); o.lado = -(o.lado || 1); return refresh({ panel: false }); }
+  if (a === 'dup') { snap(); const o = getById(P.pontos, S.sel.id), n = JSON.parse(JSON.stringify(o)); n.id = M.id(P, 'p'); n.x += 30; n.y += 30; n.parede = null; P.pontos.push(n); n.comodo = G.comodoDoPonto(P.comodos, n.x, n.y); S.sel = { k: 'ponto', id: n.id }; return refresh(); }
+  if (a === 'medirw') { S.tool = 'medir'; S.sel = null; return refresh(); }
+  if (a === 'medirt') return pedirMedida(S.sel.parede, S.sel.t0, S.sel.t1);
+});
+function apagarSel() {
+  const s = S.sel; if (!s) return; snap();
+  if (s.k === 'ponto') M.removerPonto(P, s.id); else if (s.k === 'parede') M.removerParede(P, s.id);
+  else if (s.k === 'abertura') P.aberturas = P.aberturas.filter(a => a.id !== s.id); else if (s.k === 'ligacao') P.ligacoes = P.ligacoes.filter(l => l.id !== s.id);
+  S.sel = null; refresh();
+}
+
+/* ===================== medidas ===================== */
+async function pedirMedida(paredeId, t0, t1) {
+  const w = getById(P.paredes, paredeId); if (!w) return;
+  const dx = w.x2 - w.x1, dy = w.y2 - w.y1, hor = Math.abs(dx) >= Math.abs(dy);
+  const a = hor ? (dx >= 0 ? 'esquerdo' : 'direito') : (dy >= 0 ? 'de cima' : 'de baixo'), b = hor ? (dx >= 0 ? 'direito' : 'esquerdo') : (dy >= 0 ? 'de baixo' : 'de cima');
+  const tr = M.trechos(P).find(x => x.parede === paredeId && Math.abs(x.t0 - t0) < 1e-3); const atual = tr ? (S.interna ? tr.len - tr.esp : tr.len) : 0;
+  const r = await modal('Medida do trecho', [
+    { k: 'v', rot: (S.interna ? 'Vão livre' : 'Eixo a eixo') + ' (atual ' + fmtM(atual) + ' m) — aceita 3,50 · 3.5m · 350', tipo: 'text', val: '', ph: 'ex.: 3,50' },
+    { k: 'fixo', rot: 'Qual lado fica parado?', tipo: 'select', val: 'a', opts: [['a', 'Lado ' + a + ' (o lado ' + b + ' se move)'], ['b', 'Lado ' + b + ' (o lado ' + a + ' se move)']] }], 'Aplicar');
+  if (!r) return;
+  const cm = G.parseCota(r.v); if (!cm || cm < 20) return toast('Medida inválida.');
+  snap(); M.esticarTrecho(P, paredeId, t0, t1, S.interna ? cm + (w.esp || 15) : cm, r.fixo); P.calibrada = true; S.sel = null; refresh(); toast('Medida aplicada: ' + fmtM(cm) + ' m');
+}
+function trechoMaisPerto(p, maxD) {
+  let b = null; M.trechos(P).forEach(t => { const r = G.projT({ x1: t.x1, y1: t.y1, x2: t.x2, y2: t.y2 }, p.x, p.y); if (!b || r.d < b.d) b = { d: r.d, t }; });
+  return b && b.d <= maxD ? b.t : null;
+}
+
+/* ===================== rabisco → paredes retas ===================== */
+function encostar(sg, r) {
+  const hor = Math.abs(sg.y2 - sg.y1) < 1e-6, ver = Math.abs(sg.x2 - sg.x1) < 1e-6;
+  P.paredes.forEach(w => { [[1, 2]].forEach(() => { ['1', '2'].forEach(i => { // pontas -> vértices existentes
+    [['x1', 'y1'], ['x2', 'y2']].forEach(k => { if (Math.hypot(sg[k[0]] - w['x' + i], sg[k[1]] - w['y' + i]) <= r) { sg[k[0]] = w['x' + i]; sg[k[1]] = w['y' + i]; } }); }); }); });
+  const wh = P.paredes.filter(w => Math.abs(w.y1 - w.y2) < 1), wv = P.paredes.filter(w => Math.abs(w.x1 - w.x2) < 1);
+  if (hor) {
+    let best = null; wh.forEach(w => { const d = Math.abs(w.y1 - sg.y1); const ov = Math.min(Math.max(w.x1, w.x2), Math.max(sg.x1, sg.x2)) - Math.max(Math.min(w.x1, w.x2), Math.min(sg.x1, sg.x2)); if (d <= r && ov >= -r && (!best || d < best.d)) best = { d, y: w.y1 }; });
+    if (best) { sg.y1 = sg.y2 = best.y; }
+    ['x1', 'x2'].forEach(k => { let b = null; wv.forEach(w => { const d = Math.abs(w.x1 - sg[k]); const lo = Math.min(w.y1, w.y2) - r, hi = Math.max(w.y1, w.y2) + r; if (d <= r && sg.y1 >= lo && sg.y1 <= hi && (!b || d < b.d)) b = { d, x: w.x1 }; }); if (b) sg[k] = b.x; });
+  } else if (ver) {
+    let best = null; wv.forEach(w => { const d = Math.abs(w.x1 - sg.x1); const ov = Math.min(Math.max(w.y1, w.y2), Math.max(sg.y1, sg.y2)) - Math.max(Math.min(w.y1, w.y2), Math.min(sg.y1, sg.y2)); if (d <= r && ov >= -r && (!best || d < best.d)) best = { d, x: w.x1 }; });
+    if (best) { sg.x1 = sg.x2 = best.x; }
+    ['y1', 'y2'].forEach(k => { let b = null; wh.forEach(w => { const d = Math.abs(w.y1 - sg[k]); const lo = Math.min(w.x1, w.x2) - r, hi = Math.max(w.x1, w.x2) + r; if (d <= r && sg.x1 >= lo && sg.x1 <= hi && (!b || d < b.d)) b = { d, y: w.y1 }; }); if (b) sg[k] = b.y; });
+  }
+  return sg;
+}
+function jaCoberta(s) {
+  return P.paredes.some(w => {
+    const a = G.projT(w, s.x1, s.y1), b = G.projT(w, s.x2, s.y2); return a.d <= 3 && b.d <= 3;
+  });
+}
+function addParede(s) { if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < 20 || jaCoberta(s)) return false; P.paredes.push({ id: M.id(P, 'w'), x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, esp: S.esp }); return true; }
+function processarRabisco(pts) {
+  let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  if (len < 25) return;
+  const k = wpp(), eps = Math.max(6, k * 7), r = Math.max(15, k * 14);
+  const segs = G.tracoParaSegs(pts, eps);
+  const e = G.endireitar(segs, { corrigirRotacao: false, tolCluster: r, gap: r * 1.5, minLen: Math.max(20, k * 10), tolAngulo: 25 });
+  const novos = G.arredondar(e.segs.map(s => encostar(s, r)), 5);
+  snap(); let n = 0; novos.forEach(s => { if (addParede(s)) n++; });
+  if (!n) { undo.pop(); return toast('Traço curto demais ou já existe.'); }
+  M.recalc(P); refresh();
+}
+
+/* ===================== entrada (Pencil / dedo / mouse) ===================== */
+svg.addEventListener('contextmenu', e => { e.preventDefault(); if (S.p1) cancelarParede(); if (S.ghost) cancelarGhost(); });
+svg.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.ctrlKey) zoomAt(e.clientX, e.clientY, Math.exp(clamp(e.deltaY, -30, 30) * 0.01));          // pinça no trackpad
+  else if (S.rodaZoom) zoomAt(e.clientX, e.clientY, Math.exp(clamp(e.deltaY, -60, 60) * 0.0015));  // opcional
+  else { const k = wpp(); S.view.x += e.deltaX * k; S.view.y += e.deltaY * k; renderSVG(); }        // 2 dedos arrastando = mover
+}, { passive: false });
+svg.addEventListener('pointerdown', e => {
+  svg.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+  if (ptrs.size >= 2) { const [a, b] = Array.from(ptrs.values()); gest = { mode: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; S.prev = null; renderSVG(); return; }
+  const w = toWorld(e), el = e.target.closest ? e.target.closest('[data-k]') : null, tool = S.tool, desenha = e.pointerType !== 'touch' || S.dedo;
+  gest = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, start: w, el, tool, pts: [w], moved: false, mode: 'tap' };
+  if (e.button === 1 || e.button === 2) gest.mode = 'pan';
+  else if (tool === 'rabisco' || tool === 'parede') gest.mode = desenha ? tool : 'pan';
+  else if (tool === 'sel' && el && el.dataset.k === 'ponto') { gest.mode = 'dragPonto'; gest.pid = el.dataset.id; }
+  else if (tool === 'sel' && el && el.dataset.k === 'handle') { gest.mode = 'dragHandle'; gest.wid = el.dataset.id; gest.hi = el.dataset.i; const ww = getById(P.paredes, gest.wid); gest.old = [ww['x' + gest.hi], ww['y' + gest.hi]]; }
+  else if (tool === 'sel' || e.pointerType === 'touch') gest.mode = 'tapOuPan';
+  if (gest.mode === 'parede') { const q = snapPt(w, Math.max(15, wpp() * 12)); gest.a = S.p1 || q; }
+  if (e.button === 2 && S.p1) cancelarParede();
+  if (S.ghost && e.button === 0) { gest.mode = 'ghost'; S.mouse = w; ghostMover(w); renderSVG(); }
+  else if (gest.mode === 'tapOuPan' && tool === 'sel' && el && el.dataset.k === 'comodo' && S.sel && S.sel.k === 'comodo' && S.sel.id === el.dataset.id) { gest.mode = 'dragComodo'; gest.cid = el.dataset.id; }
+});
+svg.addEventListener('pointermove', e => {
+  const pt = ptrs.get(e.pointerId); if (!pt) return; pt.x = e.clientX; pt.y = e.clientY;
+  if (!gest) return;
+  if (gest.mode === 'pinch') {
+    if (ptrs.size < 2) return; const [a, b] = Array.from(ptrs.values()), d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const k = wpp(); S.view.x -= (cx - gest.cx) * k; S.view.y -= (cy - gest.cy) * k; if (Math.abs(d - gest.d) >= 2) { zoomAt(cx, cy, gest.d / Math.max(1, d)); gest.d = d; } else renderSVG(); gest.cx = cx; gest.cy = cy; return;
+  }
+  if (e.pointerId !== gest.id) return;
+  const mv = Math.hypot(e.clientX - gest.sx, e.clientY - gest.sy); if (mv > 6) gest.moved = true;
+  const w = toWorld(e), m = gest.mode; S.mouse = w;
+  if (m === 'pan' || (m === 'tapOuPan' && gest.moved)) { const k = wpp(); S.view.x -= (e.clientX - gest.lx) * k; S.view.y -= (e.clientY - gest.ly) * k; gest.lx = e.clientX; gest.ly = e.clientY; renderSVG(); return; }
+  if (m === 'ghost') { ghostMover(w); renderSVG(); return; }
+  if (m === 'dragComodo') {
+    if (!gest.drag && mv > 6) { gest.drag = true; prepararMoverComodo(gest); } if (!gest.drag) return;
+    const e2 = M.encaixar(gest.fake, gest.poly, w.x - gest.start.x, w.y - gest.start.y, Math.max(25, wpp() * 22)), poly = deslocarPoly(gest.poly, e2.dx, e2.dy), inv = M.sobrepoe(P, poly, gest.cid);
+    gest.dx = e2.dx; gest.dy = e2.dy; S.prev = { k: 'mover', poly, valid: !inv, enc: e2.x || e2.y, motivo: inv ? 'sobrepõe "' + inv.nome + '"' : '' }; renderSVG(); return;
+  }
+  if (m === 'rabisco') { gest.pts.push(w); S.prev = { k: 'poly', pts: gest.pts }; renderSVG(); return; }
+  if (m === 'parede') { atualizarLive(w, gest.a); return; }
+  if (m === 'dragPonto') {
+    if (!gest.drag && mv > 4) { snap(); gest.drag = true; S.sel = { k: 'ponto', id: gest.pid }; }
+    if (!gest.drag) return;
+    const p = getById(P.pontos, gest.pid), T = M.TIPOS[p.tipo] || M.TIPOS.outro; let x = w.x, y = w.y, par = null;
+    if (T.parede) { const c = G.colar({ x, y }, P.paredes, Math.max(60, wpp() * 30)); if (c) { x = c.x; y = c.y; par = c.parede; } }
+    p.x = Math.round(x); p.y = Math.round(y); p.parede = par; renderSVG(); return;
+  }
+  if (m === 'dragHandle') {
+    if (!gest.drag && mv > 4) { snap(); gest.drag = true; }
+    if (!gest.drag) return;
+    const q = snapPt(w, Math.max(15, wpp() * 12)), old = gest.old;
+    P.paredes.forEach(ww => { ['1', '2'].forEach(i => { if (Math.hypot(ww['x' + i] - old[0], ww['y' + i] - old[1]) < 1.5) { ww['x' + i] = q.x; ww['y' + i] = q.y; } }); });
+    gest.old = [q.x, q.y]; renderSVG();
+  }
+});
+function fimGesto(e, cancel) {
+  ptrs.delete(e.pointerId);
+  if (!gest) return;
+  if (gest.mode === 'pinch') { if (ptrs.size < 2) gest = null; return; }
+  if (e.pointerId !== gest.id) return;
+  const g = gest; gest = null; S.prev = null;
+  if (cancel) return renderSVG();
+  const w = toWorld(e);
+  if (g.mode === 'rabisco') return processarRabisco(g.pts);
+  if (g.mode === 'parede') {
+    if (S.p1) { concluirParede(S.p1, fimParede(S.p1, w, S.dig)); return; }
+    if (g.moved) { S.live = null; concluirParede(g.a, fimParede(g.a, w, ''), true); return; }
+    S.p1 = g.a; S.dig = ''; atualizarLive(w); renderHint(); return;
+  }
+  if (g.mode === 'ghost') { S.mouse = w; ghostMover(w); if (e.pointerType === 'mouse' && !g.moved) colocarGhost(); else { renderSVG(); } return; }
+  if (g.mode === 'dragComodo' && g.drag) {
+    const dx = g.dx || 0, dy = g.dy || 0; if (!dx && !dy) return renderSVG();
+    snap(); const r = M.moverComodo(P, g.cid, dx, dy, { porta: true });
+    if (!r.ok) { undo.pop(); toast('Não deu para mover: ' + r.motivo); return refresh(); }
+    S.sel = { k: 'comodo', id: r.comodoId }; if (S.ativo) S.ativo = r.comodoId; refresh(); toast('Cômodo movido' + (r.portas ? ' e ligado ao vizinho (porta criada).' : '.')); return;
+  }
+  if (g.mode === 'dragPonto' && g.drag) { const p = getById(P.pontos, g.pid); p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); return refresh(); }
+  if (g.mode === 'dragHandle' && g.drag) { M.recalc(P); return refresh(); }
+  if (g.moved) return renderSVG();
+  tocar(g, w);
+}
+svg.addEventListener('pointerup', e => fimGesto(e, false));
+svg.addEventListener('pointercancel', e => fimGesto(e, true));
+
+/* toque simples conforme a ferramenta */
+function tocar(g, w) {
+  const tool = g.tool, el = g.el, k = wpp(), kind = el && el.dataset.k, id = el && el.dataset.id;
+  if (kind === 'obs' && tool !== 'del') return abrirObs(id);
+  if (tool === 'sel' || tool === 'rabisco' || tool === 'parede') {
+    if (kind === 'trecho') { const t = M.trechos(P)[+el.dataset.i]; if (t) { S.sel = { k: 'trecho', parede: t.parede, t0: t.t0, t1: t.t1 }; return refresh(); } }
+    if (kind && kind !== 'handle') { S.sel = { k: kind, id }; if (kind === 'comodo' && false) return; return refresh(); }
+    if (tool === 'sel') { S.sel = null; return refresh(); }
+    return;
+  }
+  if (tool === 'del') {
+    if (!kind || kind === 'comodo' || kind === 'trecho' || kind === 'handle') return;
+    S.sel = { k: kind, id }; return apagarSel();
+  }
+  if (tool === 'medir') {
+    const t = kind === 'trecho' ? M.trechos(P)[+el.dataset.i] : trechoMaisPerto(w, Math.max(40, k * 25));
+    if (t) return pedirMedida(t.parede, t.t0, t.t1); return;
+  }
+  if (tool === 'porta' || tool === 'janela') {
+    let b = null; P.paredes.forEach(ww => { const r = G.projT(ww, w.x, w.y); if (!b || r.d < b.d) b = { d: r.d, t: r.tc, w: ww }; });
+    if (!b || b.d > Math.max(40, k * 25)) return toast('Toque em cima de uma parede.');
+    const q = wallGeo(b.w), porta = tool === 'porta', larg = porta ? 80 : 120, m = larg / 2 / q.L; if (q.L < larg + 10) return toast('Parede curta demais.');
+    snap(); const a = { id: M.id(P, 'a'), tipo: tool, parede: b.w.id, t: clamp(Math.round(b.t * q.L / 5) * 5 / q.L, m, 1 - m), larg, alt: porta ? 210 : 120, peitoril: porta ? 0 : 100, lado: 1 };
+    P.aberturas.push(a); S.sel = { k: 'abertura', id: a.id }; return refresh();
+  }
+  if (tool.indexOf('p:') === 0) {
+    const tipo = tool.slice(2), T = M.TIPOS[tipo]; let x = w.x, y = w.y, parede = null;
+    if (T.parede) { const c = G.colar({ x, y }, P.paredes, Math.max(60, k * 30)); if (c) { x = c.x; y = c.y; parede = c.parede; } }
+    if (S.ativo) { const at = getById(P.comodos, S.ativo); if (at && !dentroOuPerto(at.pontos, x, y, 30)) return toast('Cômodo ativo: "' + at.nome + '". Toque dentro dele ou escolha "Todos" na barra de baixo.', 4000); }
+    const ex = { parede }; if (tipo === 'interruptor') ex.teclas = S.teclasNovo;
+    if (tipo === 'outro' && S.outro) { ex.nome = S.outro.nome; ex.cat = S.outro.cat; ex.sigla = S.outro.sigla; ex.altura = S.outro.altura; }
+    snap(); const p = M.novoPonto(P, tipo, x, y, ex); p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); P.pontos.push(p); S.sel = { k: 'ponto', id: p.id }; return refresh();
+  }
+  if (tool === 'ligar') {
+    if (kind === 'ponto') {
+      if (!S.lig.de) { S.lig = { de: id, tecla: 1 }; return refresh({ panel: false }); }
+      if (S.lig.de === id) { S.lig = { de: null, tecla: 1 }; return refresh({ panel: false }); }
+      const o = getById(P.pontos, S.lig.de); snap();
+      const l = M.ligar(P, S.lig.de, id, (o.tipo === 'interruptor' || o.tipo === 'botao') ? S.lig.tecla : 0);
+      if (!l) { undo.pop(); toast('Essa ligação já existe.'); } else toast('Ligado: ' + M.nomeDe(o) + ' → ' + M.nomeDe(getById(P.pontos, id)));
+      return refresh({ panel: false });
+    }
+    S.lig = { de: null, tecla: 1 }; return refresh({ panel: false });
+  }
+  if (tool === 'cal') {
+    S.cal.push(w); if (S.cal.length < 2) { renderHint(); return renderSVG(); }
+    const d = Math.hypot(S.cal[1].x - S.cal[0].x, S.cal[1].y - S.cal[0].y), c0 = S.cal[0];
+    modal('Calibrar planta importada', [{ k: 'v', rot: 'Distância real entre os 2 pontos (ex.: 3,50 · 350cm)', tipo: 'text', val: '', ph: '3,50' }], 'Calibrar').then(r => {
+      S.cal = []; if (!r) return refresh(); const cm = G.parseCota(r.v); if (!cm) { toast('Medida inválida.'); return refresh(); }
+      const f = cm / d; snap(); const F = P.fundo; F.x = c0.x + (F.x - c0.x) * f; F.y = c0.y + (F.y - c0.y) * f; F.w *= f; F.h *= f; F.cx = c0.x + ((F.cx || 0) - c0.x) * f; F.cy = c0.y + ((F.cy || 0) - c0.y) * f;
+      P.calibrada = true; S.tool = 'rabisco'; refresh(); fit(); toast('Calibrado. Agora é só decalcar com a Pencil.');
+    });
+  }
+}
+
+/* botões de ferramenta, teclas, hint */
+$('#tools').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.teclas) { S.teclasNovo = +b.dataset.teclas; S.tool = 'p:interruptor'; return refresh({ panel: false }); }
+  if (b.dataset.room) return roomAction(b.dataset.room);
+  const t = b.dataset.tool; if (!t) return;
+  S.p1 = null; S.live = null; S.dig = ''; S.ghost = null;
+  if (t === 'p:outro') {
+    const r = await modal('Aparelho livre', [{ k: 'nome', rot: 'Nome (texto livre)', tipo: 'text', val: S.outro ? S.outro.nome : '', ph: 'ex.: Motor da persiana, Campainha, Fita blackout…' },
+      { k: 'cat', rot: 'Categoria (define a cor das linhas)', tipo: 'select', val: S.outro ? S.outro.cat : 'outro', opts: Object.keys(M.CATS).map(c => [c, M.CATS[c].nome]) },
+      { k: 'sigla', rot: 'Sigla no desenho (até 3 letras)', tipo: 'text', val: S.outro ? S.outro.sigla : '' },
+      { k: 'altura', rot: 'Altura do ponto (cm)', tipo: 'number', val: S.outro ? S.outro.altura : 100 }], 'Usar');
+    if (!r) return; S.outro = { nome: r.nome.trim(), cat: r.cat, sigla: (r.sigla || r.nome || '?').trim().slice(0, 3).toUpperCase(), altura: parseFloat(r.altura) || 100 };
+  }
+  S.tool = t; S.cal = []; if (t !== 'ligar') S.lig = { de: null, tecla: 1 }; if (t !== 'sel') S.sel = (S.sel && S.sel.k === 'ponto') ? S.sel : null;
+  refresh();
+});
+$('#hint').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.lt) { S.lig.tecla = +b.dataset.lt; renderHint(); } });
+$('#zIn').onclick = () => { const r = rectOf(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 0.75); };
+$('#zOut').onclick = () => { const r = rectOf(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.33); };
+$('#zFit').onclick = fit;
+$('#bUndo').onclick = desfazer; $('#bRedo').onclick = refazer;
+window.addEventListener('keydown', e => {
+  if (/INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ''))) return;
+  if ($('#modal').classList.contains('on')) return;
+  if (S.ghost) { if (e.key === 'Escape') cancelarGhost(); else if (e.key.toLowerCase() === 'r') girarGhost(); else if (e.key === 'Enter') colocarGhost(); return; }
+  if (S.tool === 'parede' && S.p1) {
+    if (e.key === 'Escape') { cancelarParede(); e.preventDefault(); }
+    else if (/^[0-9.,]$/.test(e.key)) { S.dig += e.key; atualizarLive(S.mouse || S.p1); e.preventDefault(); }
+    else if (e.key === 'Backspace') { S.dig = S.dig.slice(0, -1); atualizarLive(S.mouse || S.p1); e.preventDefault(); }
+    else if (e.key === 'Enter') { concluirParede(S.p1, fimParede(S.p1, S.mouse || { x: S.p1.x + 100, y: S.p1.y }, S.dig)); e.preventDefault(); }
+    else if (e.key.toLowerCase() === 'c') { S.cadeia = !S.cadeia; renderHint(); }
+    return;
+  }
+  if (S.tool === 'parede' && e.key.toLowerCase() === 'c') { S.cadeia = !S.cadeia; renderHint(); return; }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? refazer() : desfazer(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { if (S.sel) { e.preventDefault(); apagarSel(); } }
+  else if (e.key === 'Escape') { S.sel = null; S.lig = { de: null, tecla: 1 }; S.tool = 'sel'; S.p1 = null; S.live = null; refresh(); }
+});
+window.addEventListener('resize', () => { renderSVG(); if (T3.on) resize3d(); });
+$('#fNome').addEventListener('change', e => { P.nome = e.target.value; });
+
+/* ===================== abas ===================== */
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.tab)));
+function mostrar(id) {
+  S.tab = id; document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === id));
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id));
+  T3.on = id === 'v3d';
+  if (id === 'v2d') setTimeout(renderSVG, 30); if (id === 'v3d') abrir3d(); if (id === 'vpontos') renderPontos(); if (id === 'vapps') renderApps(); if (id === 'vcenas') renderCenas(); if (id === 'vchecks') renderChecks();
+}
+function updateBadge() {
+  const v = M.validar(P), er = v.filter(x => x.nivel === 'erro').length, b = $('#badge');
+  b.textContent = er || '✓'; b.className = 'badge' + (er ? '' : ' ok'); updBadgeApps();
+}
+function refresh(o) {
+  o = o || {}; if (S.ativo && !getById(P.comodos, S.ativo)) S.ativo = null; renderSVG(); renderTools(); renderHint(); if (o.panel !== false) renderPanel(); updateBadge(); renderRoombar(); rascunho();
+  if (S.tab === 'vapps') renderApps();
+  if (S.tab === 'vpontos') renderPontos(); if (S.tab === 'vchecks') renderChecks(); if (S.tab === 'vcenas' && o.cenas !== false) renderCenas(); if (S.tab === 'v3d') build3d();
+}
+
+/* ===================== aba Pontos ===================== */
+const PROMPT_3D = 'Aja como arquiteto de interiores. Use a planta anexada como base, mantendo paredes, portas e proporções. Gere uma vista isométrica 3D realista do cômodo, com piso, iluminação e acabamento de padrão alto. Posicione apenas os dispositivos da lista abaixo, cada um em um lugar coerente com a planta (ex.: caixas de som embutidas no forro, Echo Dot embutido, interruptor ao lado da porta, sensores de presença no teto). Não invente aparelhos fora da lista. Estilo limpo, sem texto na imagem.\nLista: {LISTA}';
+function renderPontos() {
+  const lev = M.levantamento(P); let h = '';
+  const tot = {}; P.pontos.forEach(p => { const c = M.catDe(p); tot[c] = (tot[c] || 0) + 1; });
+  h += '<div class="card"><b>' + P.pontos.length + ' pontos</b> · ' + Object.keys(tot).map(c => '<span class="pill" style="background:' + M.CATS[c].cor + ';color:#111;margin-right:4px">' + M.CATS[c].nome + ' ' + tot[c] + '</span>').join('') + '<div class="row" style="margin-top:8px"><button data-a="copiar">Copiar lista de pontos</button><button data-a="json">Baixar planta (JSON)</button></div></div>';
+  if (!lev.length) h += '<div class="note">Nenhum ponto ainda.</div>';
+  lev.forEach(g => {
+    h += '<div class="card"><div class="row" style="margin-bottom:6px"><b style="flex:3">' + esc(g.comodo) + '</b><button data-a="prompt" data-c="' + g.comodoId + '" style="flex:none">Copiar prompt 3D (Gemini)</button></div><div style="overflow:auto"><table><tr><th>Item</th><th>Teclas</th><th>Caixa</th><th>Neutro</th><th>Fio novo</th><th>Origem</th><th>App / protocolo</th><th>Comanda</th><th>Obs.</th></tr>';
+    g.linhas.forEach(l => {
+      h += '<tr class="click" data-p="' + l.id + '"><td><span class="dot" style="background:' + M.CATS[l.cat].cor + '"></span>' + esc(l.nome) + '</td><td>' + (l.teclas || '') + '</td><td>' + esc(l.caixa) + '</td><td>' + (l.neutro ? esc(M.NEUTRO[l.neutro] || l.neutro) + (l.neutroOrigem ? ' (' + esc(l.neutroOrigem) + ')' : '') : '') + '</td><td>' + (l.neutro ? esc(M.FIO[l.fio] || '') : '') + '</td><td>' + esc(M.ORIGEM[l.origem] || '') + '</td><td>' + esc([l.app, l.protocolo].filter(Boolean).join(' · ')) + '</td><td>' + esc(l.destinos.join(', ')) + '</td><td>' + esc(l.obs) + '</td></tr>';
+    });
+    h += '</table></div></div>';
+  });
+  $('#pontosBox').innerHTML = h;
+}
+$('#pontosBox').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-p]'); if (tr && !e.target.closest('button')) { S.sel = { k: 'ponto', id: tr.dataset.p }; mostrar('v2d'); refresh(); return; }
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.a === 'prompt') { const txt = PROMPT_3D.replace('{LISTA}', M.resumoComodo(P, b.dataset.c) || '(sem aparelhos)'); copiar(txt, 'Prompt copiado.'); }
+  if (b.dataset.a === 'copiar') copiar(listaTexto(), 'Lista copiada.');
+  if (b.dataset.a === 'json') baixar(P.nome + '.json', JSON.stringify(P, null, 1), 'application/json');
+});
+function listaTexto() {
+  return M.levantamento(P).map(g => g.comodo + '\n' + g.linhas.map(l => ' - ' + l.nome + (l.teclas ? ' (' + l.teclas + ' tecla/s' + (l.caixa ? ', caixa ' + l.caixa : '') + ')' : '') + (l.neutro ? ' · neutro: ' + (M.NEUTRO[l.neutro] || l.neutro) + (l.neutroOrigem ? ' [' + l.neutroOrigem + ']' : '') + (l.fio && l.fio !== 'a_definir' && l.fio !== 'nao_precisa' ? ' · fio: ' + M.FIO[l.fio] : '') : '') + ((l.app || l.protocolo) ? ' · ' + [l.app, l.protocolo].filter(Boolean).join('/') : '') + (l.destinos.length ? ' → ' + l.destinos.join(', ') : '') + (l.obs ? ' · ' + l.obs : '')).join('\n')).join('\n\n');
+}
+function copiar(t, msg) { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast(msg), () => { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); toast(msg); } catch (e) { toast('Não consegui copiar.'); } a.remove(); }); }
+function baixar(nome, txt, mime) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: mime })); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+
+/* ===================== aba Cenas ===================== */
+function renderCenas() {
+  let h = '<div class="row" style="margin-bottom:10px"><button class="pri" data-a="nova" style="flex:none">+ Nova cena</button><span class="note" style="flex:3">Cenas pedidas pelo cliente ou ideias futuras. Texto livre.</span></div>';
+  if (!P.cenas.length) h += '<div class="note">Nenhuma cena ainda.</div>';
+  const optsP = P.pontos.map(p => '<option value="' + p.id + '">' + esc(M.nomeDe(p) + ' — ' + ((getById(P.comodos, p.comodo) || { nome: 'sem cômodo' }).nome)) + '</option>').join('');
+  P.cenas.forEach((c, i) => {
+    h += '<div class="card" data-i="' + i + '"><div class="row"><div style="flex:3"><label>Nome</label><input data-f="nome" value="' + esc(c.nome) + '"></div><div><label>Status</label><select data-f="status">' + optsSel(M.STATUS_CENA, c.status) + '</select></div><div><label>Cômodo</label><select data-f="comodo"><option value="">Casa toda</option>' + P.comodos.map(x => '<option value="' + x.id + '"' + (x.id === c.comodo ? ' selected' : '') + '>' + esc(x.nome) + '</option>').join('') + '</select></div></div>';
+    h += '<label>Descrição / como deve funcionar</label><textarea data-f="descricao" placeholder="Ex.: Cinema — luzes da sala a 10%, sanca apagada, TV liga, cortina fecha.">' + esc(c.descricao || '') + '</textarea>';
+    h += '<label>Aparelhos envolvidos</label>' + (c.itens || []).map((it, j) => '<div class="row" style="margin:3px 0" data-j="' + j + '"><select data-g="ponto" style="flex:2">' + P.pontos.map(p => '<option value="' + p.id + '"' + (p.id === it.ponto ? ' selected' : '') + '>' + esc(M.nomeDe(p) + ' — ' + ((getById(P.comodos, p.comodo) || { nome: 'sem cômodo' }).nome)) + '</option>').join('') + '</select><input data-g="acao" value="' + esc(it.acao || '') + '" placeholder="ação (ex.: 10%, desligar)" style="flex:2"><button data-a="rmitem" style="flex:none">✕</button></div>').join('');
+    h += '<div class="row" style="margin-top:6px"><button data-a="additem" ' + (P.pontos.length ? '' : 'disabled') + '>+ Aparelho</button><button class="danger" data-a="delcena">Excluir cena</button></div></div>';
+  });
+  $('#cenasBox').innerHTML = h;
+}
+const optsSel = (o, v) => Object.keys(o).map(k => '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('');
+$('#cenasBox').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const a = b.dataset.a, card = b.closest('[data-i]'), i = card ? +card.dataset.i : -1;
+  snap();
+  if (a === 'nova') P.cenas.push({ id: M.id(P, 's'), nome: 'Nova cena', status: 'solicitada', comodo: '', descricao: '', itens: [] });
+  else if (a === 'delcena') P.cenas.splice(i, 1);
+  else if (a === 'additem') P.cenas[i].itens.push({ ponto: P.pontos[0].id, acao: '' });
+  else if (a === 'rmitem') P.cenas[i].itens.splice(+b.closest('[data-j]').dataset.j, 1);
+  else { undo.pop(); return; }
+  refresh();
+});
+$('#cenasBox').addEventListener('change', e => {
+  const t = e.target, card = t.closest('[data-i]'); if (!card) return; const c = P.cenas[+card.dataset.i]; snap();
+  if (t.dataset.f) c[t.dataset.f] = t.value; else if (t.dataset.g) { const j = +t.closest('[data-j]').dataset.j; c.itens[j][t.dataset.g] = t.value; }
+  rascunho();
+});
+
+/* ===================== aba Checagem ===================== */
+function renderChecks() {
+  const v = M.validar(P), n = k => v.filter(x => x.nivel === k).length; let h;
+  h = '<div class="card"><b>' + (n('erro') ? n('erro') + ' pendência(s) a resolver' : 'Sem pendências críticas — projeto pronto para orçamento') + '</b><div class="note">' + n('aviso') + ' avisos · ' + n('info') + ' informações</div></div>';
+  ['erro', 'aviso', 'info'].forEach(nv => { v.filter(x => x.nivel === nv).forEach((x, i) => { h += '<div class="card click" style="cursor:pointer" data-t="' + x.alvo.tipo + '" data-id="' + (x.alvo.id || '') + '"><span class="lv ' + nv + '">' + nv.toUpperCase() + '</span>' + esc(x.msg) + '</div>'; }); });
+  $('#checksBox').innerHTML = h;
+}
+$('#checksBox').addEventListener('click', e => { const c = e.target.closest('[data-t]'); if (!c) return; if (c.dataset.t === 'app') { mostrar('vapps'); return; } if (c.dataset.id) S.sel = { k: c.dataset.t, id: c.dataset.id }; mostrar('v2d'); refresh(); });
+
+/* ===================== 3D ===================== */
+const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
+function loadScript(u) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = u; s.onload = ok; s.onerror = () => no(new Error('Falha ao carregar ' + u)); document.head.appendChild(s); }); }
+async function abrir3d() {
+  $('#pe3').value = P.peDireito; $('#com3').innerHTML = P.comodos.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('');
+  if (!T3.ok) {
+    try {
+      if (!window.THREE) await loadScript(window.PLANTA_THREE || 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+      if (!THREE.OrbitControls) await loadScript(window.PLANTA_ORBIT || 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js');
+    } catch (e) { return toast('Não consegui carregar o 3D: ' + e.message, 5000); }
+    const c = $('#c3d'); T3.ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); T3.ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    c.insertBefore(T3.ren.domElement, c.firstChild);
+    T3.scene = new THREE.Scene(); T3.scene.background = new THREE.Color(0xe9eef5);
+    T3.cam = new THREE.PerspectiveCamera(40, 1, 5, 80000); T3.ctl = new THREE.OrbitControls(T3.cam, T3.ren.domElement); T3.ctl.enableDamping = true;
+    T3.scene.add(new THREE.AmbientLight(0xffffff, .5)); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); T3.scene.add(d);
+    T3.grp = new THREE.Group(); T3.scene.add(T3.grp); T3.ok = true;
+    (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; T3.ctl.update(); T3.ren.render(T3.scene, T3.cam); })();
+  }
+  resize3d(); build3d(true);
+}
+function resize3d() { const c = $('#c3d'), w = c.clientWidth, h = c.clientHeight; if (!T3.ren || !w || !h) return; T3.ren.setSize(w, h); T3.cam.aspect = w / h; T3.cam.updateProjectionMatrix(); }
+function peDe(c) { return (c && c.pe) || P.peDireito; }
+function build3d(reenquadrar) {
+  if (!T3.ok) return; const g = T3.grp; while (g.children.length) { const o = g.children.pop(); if (o.geometry) o.geometry.dispose(); }
+  const modo = $('#modo3').value, Hn = P.peDireito, Hw = modo === 'corte' ? Math.min(110, Hn) : Hn;
+  const mWall = new THREE.MeshStandardMaterial({ color: 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: .9 });
+  const mTop = new THREE.MeshStandardMaterial({ color: 0xd5dbe5 });
+  const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); g.add(m); };
+  P.paredes.forEach(w => {
+    const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
+    let cur = -(w.esp || 15) / 2;
+    ops.forEach(o => {
+      box(cur, o.u0, 0, Hw, w, q, mWall);
+      const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : 0, y1 = Math.min(Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
+      if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
+      if (y1 > y0 && o.a.tipo === 'janela') { const gl = new THREE.Mesh(new THREE.BoxGeometry(o.u1 - o.u0, y1 - y0, 2), new THREE.MeshStandardMaterial({ color: 0x7fc4ff, transparent: true, opacity: .35 })); const um = (o.u0 + o.u1) / 2; gl.position.set(w.x1 + q.ux * um, (y0 + y1) / 2, w.y1 + q.uy * um); gl.rotation.y = -Math.atan2(q.uy, q.ux); g.add(gl); }
+      if (y1 > y0 && o.a.tipo === 'porta') { const dr = new THREE.Mesh(new THREE.BoxGeometry(o.u1 - o.u0, y1 - y0, 3), new THREE.MeshStandardMaterial({ color: 0xa8743b, transparent: true, opacity: .55 })); const um = (o.u0 + o.u1) / 2; dr.position.set(w.x1 + q.ux * um, (y0 + y1) / 2, w.y1 + q.uy * um); dr.rotation.y = -Math.atan2(q.uy, q.ux); g.add(dr); }
+      cur = o.u1;
+    });
+    box(cur, q.L + (w.esp || 15) / 2, 0, Hw, w, q, mWall);
+  });
+  const cores = [0xb9d3f0, 0xf0d2a8, 0xb8e0c6, 0xd6bfee, 0xf2dc8c, 0xa9dde6];
+  P.comodos.forEach((c, i) => {
+    const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; g.add(m);
+  });
+  const altP = p => p.altura == null ? 100 : p.altura;
+  P.pontos.forEach(p => {
+    const cor = new THREE.Color(M.corDe(p)), cat = M.catDe(p), w = getById(P.paredes, p.parede), mat = new THREE.MeshStandardMaterial({ color: cor, emissive: cor, emissiveIntensity: .25 });
+    let m; const y = clamp(altP(p), 5, Hn);
+    if (cat === 'luz' && !w) m = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 3, 18), mat);
+    else if (p.tipo === 'interruptor' || p.tipo === 'botao') m = new THREE.Mesh(new THREE.BoxGeometry(11 + 4 * ((p.teclas || 1) - 1), 11, 4), mat);
+    else if (cat === 'energia') m = new THREE.Mesh(new THREE.BoxGeometry(11, 11, 4), mat);
+    else m = new THREE.Mesh(new THREE.BoxGeometry(16, 12, 7), mat);
+    m.position.set(p.x, y, p.y); if (w) { const q = wallGeo(w); m.rotation.y = -Math.atan2(q.uy, q.ux); } g.add(m);
+  });
+  if ($('#lig3').checked) P.ligacoes.forEach(l => {
+    const a = getById(P.pontos, l.de), b = getById(P.pontos, l.para); if (!a || !b) return;
+    const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x, clamp(altP(a), 5, Hn), a.y), new THREE.Vector3(b.x, clamp(altP(b), 5, Hn), b.y)]);
+    g.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(M.corDe(b)) })));
+  });
+  $('#leg3d').innerHTML = Object.keys(M.CATS).map(c => '<span style="margin-right:8px"><span class="dot" style="background:' + M.CATS[c].cor + '"></span>' + M.CATS[c].nome + '</span>').join('');
+  if (reenquadrar) iso();
+}
+function bbox() { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; P.paredes.forEach(w => { x0 = Math.min(x0, w.x1, w.x2); x1 = Math.max(x1, w.x1, w.x2); y0 = Math.min(y0, w.y1, w.y2); y1 = Math.max(y1, w.y1, w.y2); }); if (x0 > x1) { x0 = y0 = 0; x1 = y1 = 800; } return { x0, y0, x1, y1 }; }
+function iso() { if (!T3.ok) return; const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, s = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300); T3.cam.position.set(cx + s * .85, s * .95 + P.peDireito, cy + s * .85); T3.ctl.target.set(cx, P.peDireito * .3, cy); T3.cam.lookAt(T3.ctl.target); T3.ctl.update(); }
+function focarComodo(c) {
+  const xs = c.pontos.map(p => p[0]), ys = c.pontos.map(p => p[1]), w = Math.max.apply(null, xs) - Math.min.apply(null, xs), h = Math.max.apply(null, ys) - Math.min.apply(null, ys), d = Math.max(w, h) * 1.05 + 180;
+  T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
+}
+$('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => build3d(false);
+$('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
+$('#bIso').onclick = iso; $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
+$('#bPng').onclick = () => { T3.ren.render(T3.scene, T3.cam); const a = document.createElement('a'); a.href = T3.ren.domElement.toDataURL('image/png'); a.download = (P.nome || 'planta') + '_3d.png'; a.click(); };
+$('#bImgs').onclick = async () => {
+  if (!P.comodos.length) return toast('Sem cômodos.');
+  if (!S.planoId) { try { await salvar(true); } catch (e) { return toast('Salve a planta primeiro: ' + e.message, 5000); } }
+  const modoAnt = $('#modo3').value; $('#modo3').value = 'corte'; build3d(false); toast('Gerando imagens 3D…', 6000);
+  try {
+    for (const c of P.comodos) { focarComodo(c); T3.ren.render(T3.scene, T3.cam); const url = T3.ren.domElement.toDataURL('image/jpeg', .9); const r = await gas('Planta_salvarImagem3D', S.planoId, c.id, url); P.imagens3d[c.id] = r.fileId; }
+    toast('Imagens salvas para o orçamento (' + P.comodos.length + ').'); await salvar(true);
+  } catch (e) { toast('Erro: ' + e.message, 6000); }
+  $('#modo3').value = modoAnt; build3d(true);
+};
+
+/* ===================== importar planta do cliente (imagem / PDF) ===================== */
+$('#bImp').onclick = () => $('#fileIn').click();
+$('#fileIn').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    let dataUrl;
+    if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)) {
+      if (!window.pdfjsLib) { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'); pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
+      const doc = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise; let pg = 1;
+      if (doc.numPages > 1) { const r = await modal('PDF com ' + doc.numPages + ' páginas', [{ k: 'p', rot: 'Qual página é a planta baixa?', tipo: 'number', val: 1 }], 'Importar'); if (!r) return; pg = clamp(parseInt(r.p, 10) || 1, 1, doc.numPages); }
+      const page = await doc.getPage(pg), v1 = page.getViewport({ scale: 1 }), sc = Math.min(3, 2600 / Math.max(v1.width, v1.height)), vp = page.getViewport({ scale: sc });
+      const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext: cx, viewport: vp }).promise; dataUrl = cv.toDataURL('image/jpeg', .88);
+    } else {
+      dataUrl = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => { const sc = Math.min(1, 2600 / Math.max(im.width, im.height)), cv = document.createElement('canvas'); cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); ok(cv.toDataURL('image/jpeg', .88)); }; im.onerror = no; im.src = fr.result; }; fr.onerror = no; fr.readAsDataURL(f); });
+    }
+    const dim = await new Promise(ok => { const im = new Image(); im.onload = () => ok({ w: im.width, h: im.height }); im.src = dataUrl; });
+    snap(); S.fotoDataUrl = dataUrl; S.fotoSuja = true;
+    P.fundo = { x: 0, y: 0, w: dim.w, h: dim.h, px: dim.w, py: dim.h, opac: .55, rot: 0, cx: 0, cy: 0 };
+    S.tool = 'cal'; S.cal = []; refresh(); fit(); toast('Planta importada. Toque em 2 pontos de uma medida conhecida para calibrar.', 5000);
+  } catch (err) { toast('Não consegui importar: ' + (err && err.message || err), 5000); }
+};
+async function lerComIA() {
+  if (!P.fundo || !S.fotoDataUrl) return;
+  if (!P.calibrada && !(await confirmar('A planta importada ainda não foi calibrada (ferramenta Calibrar fundo). Sem isso a escala será um chute. Continuar mesmo assim?', 'Continuar'))) return;
+  toast('Lendo com IA…', 8000);
+  try {
+    const raw = await gas('Planta_lerFoto', S.fotoDataUrl), F = P.fundo, f = F.w / F.px;
+    const imp = G.importar(raw, F.px, F.py, { f, ox: F.x, oy: F.y });
+    snap(); const mw = {}, ml = {};
+    imp.planta.paredes.forEach(w => { const id = M.id(P, 'w'); mw[w.id] = id; w.id = id; w.esp = w.esp || S.esp; P.paredes.push(w); });
+    imp.planta.aberturas.forEach(a => { a.id = M.id(P, 'a'); a.parede = mw[a.parede]; if (a.parede) P.aberturas.push(a); });
+    imp.planta.pontos.forEach(p => { const id = M.id(P, 'p'); p.id = id; p.cat = (M.TIPOS[p.tipo] || M.TIPOS.outro).cat; p.nome = ''; p.produto = ''; p.origem = 'a_definir'; if (p.parede) p.parede = mw[p.parede] || null; if (p.tipo === 'interruptor') p.neutro = { modo: 'a_confirmar', origem: '', fio: 'a_definir' }; P.pontos.push(p); });
+    if (Math.abs(imp.rotacao) > .4) { F.rot = -imp.rotacao; F.cx = imp.centro.x; F.cy = imp.centro.y; }
+    M.recalc(P);
+    (imp.rotulos || []).forEach(r => { const id = G.comodoDoPonto(P.comodos, r.x, r.y), c = getById(P.comodos, id); if (c && /^Cômodo \d+$/.test(c.nome) && r.texto) c.nome = String(r.texto).slice(0, 40); });
+    refresh(); fit(); toast('IA leu: ' + imp.planta.paredes.length + ' paredes, ' + imp.planta.aberturas.length + ' aberturas, ' + imp.planta.pontos.length + ' pontos. Confira e ajuste.', 6000);
+  } catch (e) { toast('IA: ' + e.message, 6000); }
+}
+
+/* ===================== salvar / abrir ===================== */
+async function salvar(silencioso) {
+  P.nome = $('#fNome').value || P.nome;
+  // bloco de exportação: é o que o orçamento / prompt 3D / PDF leem no servidor (mesma regra do navegador, sem duplicar código)
+  P.export = { atualizado: new Date().toISOString(), pendencias: M.validar(P).filter(x => x.nivel === 'erro').length, levantamento: M.levantamento(P),
+    comodos: P.comodos.map(c => ({ id: c.id, nome: c.nome, area: +c.area.toFixed(2), resumo: M.resumoComodo(P, c.id), feito: !!c.feito })), apps: M.resumoApps(P), emailCodigos: P.emailCodigos || '' };
+  const obj = { id: S.planoId, clienteId: CTX.clienteId || $('#fCliente').value, imovel: $('#fImovel').value || CTX.imovel || '', nome: P.nome, planta: JSON.parse(JSON.stringify(P)), fotoDataUrl: S.fotoSuja ? (S.fotoDataUrl || '') : null };
+  try {
+    const r = await gas('Planta_salvar', obj); S.planoId = r.id; S.fotoSuja = false; S.dirty = false;
+    if (!silencioso) toast('Planta salva (' + r.id + ').');
+    try { window.parent.postMessage({ tipo: 'planta:salva', id: r.id, clienteId: obj.clienteId }, '*'); } catch (e) { }
+    return r;
+  } catch (e) {
+    if (!window.google || !google.script) { const id = S.planoId || ('local_' + Date.now()); S.planoId = id; try { localStorage.setItem('planta_' + id, JSON.stringify({ P, nome: P.nome, cliente: obj.clienteId, imovel: obj.imovel })); if (!silencioso) toast('Salvo só neste navegador (fora do Apps Script).'); return { id }; } catch (x) { } }
+    if (!silencioso) toast('Erro ao salvar: ' + e.message, 6000); throw e;
+  }
+}
+$('#bSalvar').onclick = () => salvar(false).catch(() => { });
+$('#bAbrir').onclick = async () => {
+  let lista = [];
+  try { lista = await gas('Planta_listar', CTX.clienteId || $('#fCliente').value || ''); } catch (e) { Object.keys(localStorage).filter(k => k.indexOf('planta_local_') === 0).forEach(k => { try { const o = JSON.parse(localStorage[k]); lista.push({ id: k.slice(7), nome: o.nome, imovel: o.imovel, comodos: (o.P.comodos || []).length, pontos: (o.P.pontos || []).length }); } catch (x) { } }); }
+  const r = await modal('Abrir planta', [{ k: 'id', rot: lista.length ? 'Plantas salvas' : 'Nenhuma planta salva ainda', tipo: 'select', val: '', opts: lista.map(l => [l.id, (l.nome || 'Planta') + ' · ' + (l.imovel || '—') + ' · ' + l.comodos + ' cômodos / ' + l.pontos + ' pontos'])
+    .concat([['__novo', '＋ Começar planta nova']]) }], 'Abrir');
+  if (!r) return;
+  if (r.id === '__novo') { if (S.dirty && !(await confirmar('Descartar as alterações não salvas?', 'Descartar'))) return; return carregar(M.novaPlanta('Nova planta'), null, null); }
+  try {
+    if (/^local_/.test(r.id)) { const o = JSON.parse(localStorage['planta_' + r.id]); return carregar(M.migrar(o.P), r.id, null); }
+    const pl = await gas('Planta_abrir', r.id); const foto = pl.fotoDataUrl || null; delete pl.fotoDataUrl; carregar(M.migrar(pl), r.id, foto);
+  } catch (e) { toast('Erro ao abrir: ' + e.message, 5000); }
+};
+function carregar(p, id, foto) {
+  P = p; S.planoId = id; S.fotoDataUrl = foto; S.fotoSuja = false; S.sel = null; S.tool = 'sel'; S.dirty = false; undo.length = 0; redo.length = 0; S.cal = [];
+  $('#fNome').value = P.nome || ''; if (!P.comodos.length && P.paredes.length) M.recalc(P);
+  refresh(); fit();
+}
+
+/* ===================== v2: filtro da paleta ===================== */
+const SIN = { luz: 'luz lampada iluminacao', som: 'som audio musica caixa', alexa: 'alexa assistente voz echo', energia: 'tomada energia eletrica', clima: 'clima motor ar', midia: 'tv midia video', seguranca: 'seguranca camera alarme sensor', rede: 'rede wifi internet', comando: 'comando interruptor botao tecla' };
+const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function aplicarFiltro() {
+  const q = semAcento(S.filtro).trim(); let tot = 0;
+  document.querySelectorAll('#tools .grid2').forEach(g => {
+    let n = 0;
+    g.querySelectorAll('.pal').forEach(b => { const ok = !q || (b.dataset.busca || '').indexOf(q) >= 0 || b.dataset.tool === 'p:outro'; b.style.display = ok ? '' : 'none'; if (ok) n++; });
+    g.style.display = n ? '' : 'none'; const sec = g.previousElementSibling; if (sec && sec.classList.contains('sec')) sec.style.display = n ? '' : 'none'; tot += n;
+  });
+  const m = $('#palVazio'); if (m) m.style.display = q && tot <= 1 ? '' : 'none';
+}
+$('#tools').addEventListener('input', e => { if (e.target.id === 'fPal') { S.filtro = e.target.value; aplicarFiltro(); } });
+
+/* ===================== v2: parede por clique (clique inicia, clique termina) ===================== */
+function fimParede(a, w, dig) {
+  const k = wpp(), r = Math.max(15, k * 12); let b = null, snapped = false;
+  vertices().forEach(v => { const d = Math.hypot(v[0] - w.x, v[1] - w.y); if (d <= r && (!b || d < b.d)) b = { d, x: v[0], y: v[1] }; });
+  if (b) { b = { x: b.x, y: b.y }; snapped = true; } else b = { x: Math.round(w.x / 5) * 5, y: Math.round(w.y / 5) * 5 };
+  const dx = b.x - a.x, dy = b.y - a.y, ang = Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI; let ortho = false;
+  if (ang < 12) { b = { x: b.x, y: a.y }; ortho = true; } else if (ang > 78) { b = { x: a.x, y: b.y }; ortho = true; }
+  let len = Math.hypot(b.x - a.x, b.y - a.y), sug = null, typed = false;
+  const ux = len ? (b.x - a.x) / len : 1, uy = len ? (b.y - a.y) / len : 0;
+  if (dig) { const cm = G.parseCota(dig); if (cm > 0) { len = S.interna ? cm + S.esp : cm; b = { x: a.x + ux * len, y: a.y + uy * len }; typed = true; } }
+  else if (!snapped && ortho && len > 30) {
+    const hor = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y), ult = S.ultima ? getById(P.paredes, S.ultima) : null;
+    if (ult) { const uh = Math.abs(ult.x2 - ult.x1) >= Math.abs(ult.y2 - ult.y1), lu = M.comprimento(ult); if (uh === hor && Math.abs(lu - len) <= Math.max(10, k * 30)) sug = { len: lu, prev: true }; }
+    if (!sug) { const s2 = M.sugerirComprimento(P, a, b, Math.max(10, k * 14)); if (s2) sug = { len: s2.len, prev: false }; }
+    if (sug) { len = sug.len; b = { x: a.x + ux * len, y: a.y + uy * len }; }
+  }
+  b = { x: Math.round(b.x), y: Math.round(b.y) };
+  return { b, len, sug, typed, snapped };
+}
+function atualizarLive(w, a) {
+  a = a || S.p1; if (!a) return; const f = fimParede(a, w, S.p1 ? S.dig : '');
+  S.live = { k: 'parede2', a, b: f.b, len: f.len, sug: f.sug, typed: f.typed, dig: S.p1 ? S.dig : '' }; renderSVG();
+}
+function concluirParede(a, f, drag) {
+  if (f.len < 20) { toast('Parede curta demais.'); return; }
+  snap();
+  if (addParede({ x1: a.x, y1: a.y, x2: f.b.x, y2: f.b.y })) {
+    S.ultima = P.paredes[P.paredes.length - 1].id; P.calibrada = P.calibrada || f.typed;
+    M.recalc(P); S.p1 = (!drag && S.cadeia) ? { x: f.b.x, y: f.b.y } : null; S.dig = ''; S.live = null; refresh();
+    if (S.p1) atualizarLive(S.mouse || S.p1);
+  } else { undo.pop(); S.p1 = null; S.live = null; S.dig = ''; renderSVG(); toast('Já existe uma parede aí.'); }
+}
+function cancelarParede() { S.p1 = null; S.live = null; S.dig = ''; renderSVG(); renderHint(); }
+svg.addEventListener('pointermove', e => {           // passagem do mouse/caneta sem apertar
+  if (ptrs.has(e.pointerId)) return; const w = toWorld(e); S.mouse = w;
+  if (S.ghost) { ghostMover(w); renderSVG(); return; }
+  if (S.tool === 'parede' && S.p1) atualizarLive(w);
+});
+
+/* ===================== v2: pinça = zoom; arrastar com 2 dedos/trackpad = mover ===================== */
+let gz = null;
+svg.addEventListener('gesturestart', e => { e.preventDefault(); gz = { last: 1 }; });
+svg.addEventListener('gesturechange', e => { e.preventDefault(); if (!gz || ptrs.size >= 2) return; zoomAt(e.clientX, e.clientY, gz.last / e.scale); gz.last = e.scale; });
+svg.addEventListener('gestureend', e => { e.preventDefault(); gz = null; });
+
+/* ===================== v2: observação como balão no aparelho ===================== */
+async function abrirObs(id) {
+  const p = getById(P.pontos, id); if (!p) return;
+  const r = await modal('Observação — ' + M.nomeDe(p), [{ k: 'obs', rot: 'Texto livre (cena, detalhe de instalação, pedido do cliente…)', tipo: 'textarea', val: p.obs || '' }], 'Salvar', 'Deixe vazio para remover o balão.');
+  if (!r) return; snap(); p.obs = (r.obs || '').trim(); refresh();
+}
+
+/* ===================== v2: apps / protocolos ===================== */
+async function escolherApp(titulo, protocolo) {
+  const lista = protocolo ? M.PROTOCOLOS : M.APPS_PADRAO, ja = new Set((P.apps || []).map(a => a.nome.toLowerCase()));
+  const r = await modal(titulo, [{ k: 'padrao', rot: protocolo ? 'Protocolo' : 'App / plataforma da lista', tipo: 'select', val: '', opts: [['', '— escolher —']].concat(lista.filter(n => !ja.has(n.toLowerCase())).map(n => [n, n])) },
+    { k: 'nome', rot: 'ou digite outro nome (texto livre)', tipo: 'text', val: '', ph: 'ex.: app do fabricante X' }], 'Adicionar');
+  if (!r) return null; const nome = (r.nome || '').trim() || r.padrao; if (!nome) { toast('Escolha ou digite um nome.'); return null; }
+  return nome;
+}
+async function novoAppParaPonto(pid) {
+  const nome = await escolherApp('Adicionar app / plataforma ao aparelho'); const p = getById(P.pontos, pid);
+  if (!nome || !p) return refresh(); snap(); const a = M.garantirApp(P, nome); p.appId = a.id; refresh(); toast('App "' + a.nome + '" vinculado. Complete os dados na aba Apps.');
+}
+function updBadgeApps() {
+  const n = (P.apps || []).filter(a => a.status === 'pendente' && M.aparelhosDoApp(P, a.id).length).length, b = $('#badgeApps'); if (!b) return;
+  b.textContent = n || (P.apps || []).length; b.className = 'badge' + (n ? '' : ' ok');
+}
+function fichaApp(a) {
+  const ap = M.aparelhosDoApp(P, a.id), L = x => (x || '').trim() || '—';
+  return [(a.tipo === 'protocolo' ? 'PROTOCOLO: ' : 'APP: ') + a.nome + ' — ' + (M.STATUS_APP[a.status] || a.status), 'Conta/e-mail: ' + L(a.conta), 'Titular: ' + L(a.titular), 'Home/casa no app: ' + L(a.home), 'Rede Wi-Fi: ' + L(a.rede),
+    'Credencial guardada em: ' + L(a.credencial), 'Códigos por e-mail encaminhados à Domótica: ' + (a.encaminha ? 'sim' : 'não'), 'Link: ' + L(a.link), 'Instalação: ' + L(a.instalacao), 'Uso: ' + L(a.uso), 'Obs.: ' + L(a.obs),
+    'Aparelhos (' + ap.length + '): ' + (ap.map(x => M.nomeDe(x) + ' [' + ((getById(P.comodos, x.comodo) || { nome: 'sem cômodo' }).nome) + ']').join('; ') || '—')].join('\n');
+}
+function renderApps() {
+  const apps = P.apps || []; let h = '<div class="card"><b>Apps e protocolos do cliente</b><div class="note" style="margin:6px 0">O que o cliente precisa ter cadastrado/instalado e o que você precisa para instalar e orientar. <b>Não digite senhas aqui</b> — anote só onde a credencial está guardada.</div>';
+  h += '<label>E-mail da Domótica que recebe códigos de acesso e redefinições (encaminhamento)</label><input data-g="emailCodigos" value="' + esc(P.emailCodigos || '') + '" placeholder="ex.: codigos@seudominio.com.br">';
+  h += '<div class="row" style="margin-top:8px"><button class="pri" data-a="addapp">＋ App</button><button data-a="addprot">＋ Protocolo</button><button data-a="copyall">Copiar tudo</button></div></div>';
+  if (!apps.length) h += '<div class="note">Nenhum app ainda. Ao escolher "App / plataforma" num aparelho, ele entra aqui automaticamente.</div>';
+  const sel = (f, o, v) => '<select data-f="' + f + '">' + Object.keys(o).map(k => '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + esc(o[k]) + '</option>').join('') + '</select>';
+  apps.forEach(a => {
+    const ap = M.aparelhosDoApp(P, a.id);
+    h += '<div class="card" data-id="' + a.id + '"><div class="row"><div style="flex:3"><label>' + (a.tipo === 'protocolo' ? 'Protocolo' : 'App / plataforma') + '</label><input data-f="nome" value="' + esc(a.nome) + '"></div>' +
+      '<div><label>Tipo</label>' + sel('tipo', { app: 'App', protocolo: 'Protocolo' }, a.tipo) + '</div><div><label>Situação</label>' + sel('status', M.STATUS_APP, a.status) + '</div></div>';
+    h += '<div class="row"><div><label>Conta / e-mail de acesso</label><input data-f="conta" value="' + esc(a.conta) + '"></div><div><label>Titular da conta</label><input data-f="titular" value="' + esc(a.titular) + '"></div></div>';
+    h += '<div class="row"><div><label>Home / casa no app</label><input data-f="home" value="' + esc(a.home) + '"></div><div><label>Rede Wi-Fi (nome, 2,4 GHz)</label><input data-f="rede" value="' + esc(a.rede) + '"></div></div>';
+    h += '<div class="row"><div><label>Onde está a senha / como acessar (sem digitar a senha)</label><input data-f="credencial" value="' + esc(a.credencial) + '" placeholder="ex.: gerenciador de senhas do cliente"></div><div><label>Códigos por e-mail chegam à Domótica?</label>' + sel('encaminha', { '': 'Não / a combinar', '1': 'Sim, encaminhamento ativo' }, a.encaminha ? '1' : '') + '</div></div>';
+    h += '<label>Link (loja de apps / site)</label><input data-f="link" value="' + esc(a.link) + '">';
+    h += '<label>Instalação (passo a passo, pareamento, particularidades)</label><textarea data-f="instalacao">' + esc(a.instalacao) + '</textarea>';
+    h += '<label>Uso (o que o cliente precisa saber)</label><textarea data-f="uso">' + esc(a.uso) + '</textarea>';
+    h += '<label>Observações</label><input data-f="obs" value="' + esc(a.obs) + '">';
+    h += '<div class="sec">Aparelhos neste ' + (a.tipo === 'protocolo' ? 'protocolo' : 'app') + ' (' + ap.length + ')</div>' + (ap.length ? ap.map(x => '<button class="pill" data-p="' + x.id + '" style="margin:2px 4px 2px 0">' + esc(M.nomeDe(x) + ' · ' + ((getById(P.comodos, x.comodo) || { nome: 'sem cômodo' }).nome)) + '</button>').join('') : '<div class="note">Nenhum aparelho vinculado ainda (escolha o app no painel do aparelho).</div>');
+    h += '<div class="row" style="margin-top:8px"><button data-a="copy">Copiar ficha</button><button class="danger" data-a="delapp">Excluir</button></div></div>';
+  });
+  $('#appsBox').innerHTML = h; updBadgeApps();
+}
+$('#appsBox').addEventListener('change', e => {
+  const t = e.target; if (t.dataset.g) { snap(); P[t.dataset.g] = t.value; rascunho(); return; }
+  const card = t.closest('[data-id]'), a = card && getById(P.apps, card.dataset.id); if (!a || !t.dataset.f) return;
+  snap(); a[t.dataset.f] = t.dataset.f === 'encaminha' ? !!t.value : t.value; rascunho(); updBadgeApps(); updateBadge();
+  if (t.dataset.f === 'tipo' || t.dataset.f === 'status') renderApps();
+});
+$('#appsBox').addEventListener('click', async e => {
+  const pp = e.target.closest('[data-p]'); if (pp) { S.sel = { k: 'ponto', id: pp.dataset.p }; mostrar('v2d'); refresh(); return; }
+  const b = e.target.closest('button'); if (!b || !b.dataset.a) return; const card = b.closest('[data-id]'), a = card && getById(P.apps, card.dataset.id);
+  if (b.dataset.a === 'addapp' || b.dataset.a === 'addprot') {
+    const prot = b.dataset.a === 'addprot', nome = await escolherApp(prot ? 'Adicionar protocolo' : 'Adicionar app / plataforma', prot); if (!nome) return;
+    if ((P.apps || []).some(x => x.nome.toLowerCase() === nome.toLowerCase())) return toast('Já está na lista.');
+    snap(); M.novoApp(P, nome, { tipo: prot ? 'protocolo' : 'app' }); refresh({ panel: false }); renderApps();
+  } else if (b.dataset.a === 'copyall') copiar((P.apps || []).map(fichaApp).join('\n\n———\n\n') || '(nenhum app)', 'Fichas copiadas.');
+  else if (a && b.dataset.a === 'copy') copiar(fichaApp(a), 'Ficha copiada.');
+  else if (a && b.dataset.a === 'delapp') {
+    if (!(await confirmar('Excluir "' + a.nome + '"? Os aparelhos ficam sem app.', 'Excluir'))) return;
+    snap(); P.apps = P.apps.filter(x => x.id !== a.id); P.pontos.forEach(p => { if (p.appId === a.id) p.appId = ''; }); refresh({ panel: false }); renderApps();
+  }
+});
+
+/* ===================== v2: cômodo ativo, finalizar ✓, novo cômodo por medidas, mover ===================== */
+function fitBox(x0, y0, x1, y1) {
+  const r = rectOf(), pad = 90, w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad, k = Math.max(w / r.width, h / r.height);
+  S.view.w = k * r.width; S.view.x = (x0 + x1) / 2 - S.view.w / 2; S.view.y = (y0 + y1) / 2 - (k * r.height) / 2; renderSVG();
+}
+function fitComodo(c) { const xs = c.pontos.map(p => p[0]), ys = c.pontos.map(p => p[1]); fitBox(Math.min.apply(null, xs), Math.min.apply(null, ys), Math.max.apply(null, xs), Math.max.apply(null, ys)); }
+function ativarComodo(id, fitar) {
+  S.ativo = id || null; const c = id ? getById(P.comodos, id) : null; S.sel = c ? { k: 'comodo', id } : null; refresh(); if (c && fitar) fitComodo(c);
+}
+async function finalizarComodo(id) {
+  const c = getById(P.comodos, id); if (!c) return; const pend = M.pendenciasComodo(P, id);
+  if (pend.length) {
+    const r = await modal('Finalizar "' + c.nome + '"', [{ tipo: 'info', val: '<b>' + pend.length + ' pendência(s) neste cômodo:</b><br>' + pend.slice(0, 8).map(x => '• ' + esc(x.msg)).join('<br>') + (pend.length > 8 ? '<br>…' : '') }], 'Finalizar mesmo assim');
+    if (!r) return;
+  }
+  snap(); c.feito = true; const prox = P.comodos.find(x => !x.feito && x.id !== id);
+  if (prox) { S.ativo = prox.id; S.sel = { k: 'comodo', id: prox.id }; refresh(); fitComodo(prox); toast('"' + c.nome + '" finalizado ✓ — agora: ' + prox.nome); }
+  else { S.ativo = null; S.sel = null; refresh(); toast('Todos os cômodos finalizados ✓', 4000); }
+}
+function reabrirComodo(id) { const c = getById(P.comodos, id); if (!c) return; snap(); c.feito = false; S.ativo = id; S.sel = { k: 'comodo', id }; refresh(); }
+function renderRoombar() {
+  const el = $('#roombar'), pr = M.progresso(P), bd = $('#badgeCom'); if (!el) return;
+  if (bd) { bd.textContent = pr.feitos + '/' + pr.total; bd.className = 'badge' + (pr.total && pr.feitos === pr.total ? ' ok' : ''); bd.style.background = (pr.total && pr.feitos === pr.total) ? '' : '#475569'; }
+  if (!P.comodos.length) { el.style.display = 'none'; return; } el.style.display = 'flex';
+  let h = '<span class="rbt">Cômodos ' + pr.feitos + '/' + pr.total + '</span><button data-rb="todos"' + (!S.ativo ? ' class="on"' : '') + '>Todos</button>';
+  P.comodos.forEach(c => { h += '<button data-rb="' + c.id + '" class="rb' + (c.feito ? ' feito' : '') + (S.ativo === c.id ? ' on' : '') + '">' + (c.feito ? '✓ ' : '') + esc(c.nome) + '</button>'; });
+  if (S.ativo) { const c = getById(P.comodos, S.ativo); if (c) h += c.feito ? '<button data-rb="reabrir">Reabrir</button>' : '<button class="pri" data-rb="fin">Finalizar ✓</button>'; }
+  el.innerHTML = h;
+}
+$('#roombar').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; const k = b.dataset.rb;
+  if (k === 'todos') return ativarComodo(null); if (k === 'fin') return finalizarComodo(S.ativo); if (k === 'reabrir') return reabrirComodo(S.ativo);
+  S.tool = 'sel'; S.ghost = null; ativarComodo(k, true);
+});
+const bordaDe = (poly, m) => { for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; if (G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, m[0], m[1]).d <= 2) return true; } return false; };
+function paredesDoComodo(c) {
+  const outros = P.comodos.filter(x => x.id !== c.id), ids = new Set();
+  P.paredes.forEach(w => { const m = [(w.x1 + w.x2) / 2, (w.y1 + w.y2) / 2]; if (bordaDe(c.pontos, m)) { if (!outros.some(o => bordaDe(o.pontos, m))) ids.add(w.id); } else if (G.dentro(c.pontos, m[0], m[1])) ids.add(w.id); });
+  return ids;
+}
+function prepararMoverComodo(g) {
+  M.normalizarParedes(P); const c = getById(P.comodos, g.cid), ids = paredesDoComodo(c); g.poly = c.pontos; g.fake = { paredes: P.paredes.filter(w => !ids.has(w.id)) };
+}
+const deslocarPoly = (poly, dx, dy) => poly.map(q => [q[0] + dx, q[1] + dy]);
+function dentroOuPerto(poly, x, y, tol) { return G.dentro(poly, x, y) || bordaDe0(poly, x, y, tol); }
+function bordaDe0(poly, x, y, tol) { for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; if (G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, x, y).d <= tol) return true; } return false; }
+
+/* novo cômodo: o "fantasma" acompanha o cursor, gruda nas paredes dos vizinhos e só entra se não sobrepor */
+const espGhost = () => P.paredes.length ? M.espPadrao(P) : S.esp;
+function ghostMover(w) {
+  const g = S.ghost; if (!g) return; const esp = espGhost(), p0 = M.retangulo(g.l, g.c, esp, 0, 0), W = p0[2][0], H = p0[2][1];
+  const e = M.encaixar(P, p0, w.x - W / 2, w.y - H / 2, Math.max(25, wpp() * 22));
+  g.dx = e.dx; g.dy = e.dy; g.enc = e.x || e.y; const inv = M.sobrepoe(P, deslocarPoly(p0, g.dx, g.dy)); g.valid = !inv; g.motivo = inv ? 'sobrepõe "' + inv.nome + '"' : ''; renderHint();
+}
+function iniciarNovoComodo() {
+  return modal('Novo cômodo', [
+    { k: 'nome', rot: 'Nome do cômodo', tipo: 'text', val: '', ph: 'ex.: Quarto casal' },
+    { k: 'l', rot: 'Largura — vão livre (aceita 3,50 · 350)', tipo: 'text', val: '', ph: '3,50' },
+    { k: 'c', rot: 'Comprimento — vão livre', tipo: 'text', val: '', ph: '4,00' },
+    { k: 'porta', rot: 'Porta automática onde encostar em outro cômodo', tipo: 'select', val: '1', opts: [['1', 'Sim (80 cm)'], ['0', 'Não']] }], 'Posicionar',
+    'Use as medidas do app Medidas (por dentro, parede a parede). Depois é só levar o cômodo até onde ele fica: ele gruda nas paredes dos vizinhos.').then(r => {
+    if (!r) return; const l = G.parseCota(r.l), c = G.parseCota(r.c); if (!l || !c || l < 50 || c < 50) return toast('Medidas inválidas (mínimo 0,50 m).');
+    S.tool = 'sel'; S.sel = null; S.p1 = null; S.live = null;
+    S.ghost = { nome: (r.nome || '').trim() || ('Cômodo ' + (P.comodos.length + 1)), l, c, porta: r.porta === '1', dx: 0, dy: 0, enc: false, valid: true, motivo: '' };
+    if (!P.paredes.length) { ghostMover({ x: 0, y: 0 }); S.ghost.dx = 0; S.ghost.dy = 0; return colocarGhost(true); }
+    const rc = rectOf(), w0 = toWorldXY(rc.left + rc.width / 2, rc.top + rc.height / 2); ghostMover(w0); refresh({ panel: false });
+    toast('Leve o cômodo até o lugar (mouse, ou arraste na tela) e clique/confirme. R gira · Esc cancela.', 7000);
+  });
+}
+function colocarGhost(primeiro) {
+  const g = S.ghost; if (!g) return; if (!g.valid) return toast('Não dá para colocar aqui: ' + g.motivo + '.');
+  snap(); const r = M.novoComodo(P, { nome: g.nome, largura: g.l, comprimento: g.c, dx: g.dx, dy: g.dy, porta: g.porta, esp: P.paredes.length ? undefined : S.esp });
+  if (!r.ok) { undo.pop(); return toast(r.motivo); }
+  S.ghost = null; S.ativo = r.comodoId; S.sel = r.comodoId ? { k: 'comodo', id: r.comodoId } : null; P.calibrada = true; refresh(); if (primeiro) fit();
+  toast('"' + g.nome + '" colocado' + (r.portas ? ' com ' + r.portas + ' porta(s) automática(s)' : '') + '.');
+}
+function girarGhost() { const g = S.ghost; if (!g) return; const t = g.l; g.l = g.c; g.c = t; ghostMover(S.mouse || { x: g.dx, y: g.dy }); renderSVG(); }
+function cancelarGhost() { S.ghost = null; refresh({ panel: false }); }
+function roomAction(a) {
+  if (a === 'novo') return iniciarNovoComodo();
+  if (a === 'fin') return finalizarComodo(S.ativo);
+  if (a === 'mover') {
+    const id = (S.sel && S.sel.k === 'comodo') ? S.sel.id : S.ativo; if (!id) return toast('Selecione um cômodo (toque nele) ou escolha na barra de baixo.');
+    S.tool = 'sel'; S.sel = { k: 'comodo', id }; refresh(); toast('Arraste o cômodo para onde ele vai. Ele gruda nos vizinhos e leva os pontos junto.', 6000);
+  }
+}
+$('#hint').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !b.dataset.h) return; const h = b.dataset.h;
+  if (h === 'gok') colocarGhost(); else if (h === 'grot') girarGhost(); else if (h === 'gno') cancelarGhost(); else if (h === 'cadeia') { S.cadeia = !S.cadeia; renderHint(); }
+});
+
+/* ===================== início ===================== */
+function iniciar() {
+  if (CTX.clienteId) { $('#fCliente').value = CTX.clienteId; $('#fCliente').readOnly = true; } if (CTX.imovel) $('#fImovel').value = CTX.imovel;
+  $('#fNome').value = P.nome; renderTools(); renderPanel(); renderHint();
+  const iniciaVazio = () => { try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
+  if (CTX.plantaId) { gas('Planta_abrir', CTX.plantaId).then(pl => { const f = pl.fotoDataUrl || null; delete pl.fotoDataUrl; carregar(M.migrar(pl), CTX.plantaId, f); }).catch(e => { toast('Erro ao abrir: ' + e.message, 5000); }); }
+  else iniciaVazio();
+  refresh(); setTimeout(fit, 60);
+  window.Planta = { get: () => JSON.parse(JSON.stringify(P)), carregar: (p, id) => carregar(M.migrar(p), id || null, null), salvar, levantamento: () => M.levantamento(P), validar: () => M.validar(P), apps: () => M.resumoApps(P) };
+}
+iniciar();
+})();
+</script>
+</body>
+</html>

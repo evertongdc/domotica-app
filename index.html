@@ -1293,318 +1293,116 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
 </script>
 
 <script>
-// Plantas e projetos: subir a planta, marcar pontos/fios/anotações e marcar cada execução como feita.
+// Plantas e projetos: lista, abre o editor de planta (planta.html) e a tela de execução (marcar cada ponto como feito).
 (function() {
-  const CATEGORIAS = [
-    { id: 'interruptor_1', nome: 'Interruptor 1 tecla', sigla: '1' }, { id: 'interruptor_2', nome: 'Interruptor 2 teclas', sigla: '2' },
-    { id: 'interruptor_3', nome: 'Interruptor 3 teclas', sigla: '3' }, { id: 'interruptor_4', nome: 'Interruptor 4 teclas', sigla: '4' },
-    { id: 'tomada', nome: 'Tomada', sigla: 'T' }, { id: 'iluminacao', nome: 'Ponto de luz', sigla: 'L' }, { id: 'sensor', nome: 'Sensor', sigla: 'S' },
-    { id: 'camera', nome: 'Câmera', sigla: 'C' }, { id: 'fechadura', nome: 'Fechadura', sigla: 'F' }, { id: 'alexa', nome: 'Alexa / Echo', sigla: 'A' },
-    { id: 'cortina', nome: 'Cortina / persiana', sigla: 'P' }, { id: 'hub', nome: 'Central / hub', sigla: 'H' },
-    { id: 'infra', nome: 'Infraestrutura (caixa / eletroduto)', sigla: 'I' }, { id: 'outro', nome: 'Outro', sigla: '•' },
-  ];
-  const cat = function(id) { return CATEGORIAS.filter(function(c) { return c.id === id; })[0] || CATEGORIAS[CATEGORIAS.length - 1]; };
-  const COR_PEND = '#FE792C', COR_FEITO = '#16a34a', COR_SEL = '#0D44DE';
+  const TIPOS = { interruptor: ['Interruptor', 'I'], botao: ['Botão / Keypad', 'B'], ponto_luz: ['Ponto de luz', 'L'], spot: ['Spot', 'SP'], fita_led: ['Fita / Sanca LED', 'LED'], arandela: ['Arandela', 'AR'],
+    caixa_som: ['Caixa de som', 'SOM'], amplificador: ['Amplificador', 'AMP'], echo: ['Echo (Alexa)', 'ECHO'], hub: ['Hub / Gateway', 'HUB'], tomada: ['Tomada', 'T'], tomada_alta: ['Tomada alta', 'TA'],
+    ar_condicionado: ['Ar-condicionado', 'AC'], ventilador: ['Ventilador', 'VT'], cortina: ['Cortina motor.', 'CT'], portao: ['Portão / Motor', 'PT'], tv: ['TV', 'TV'], camera: ['Câmera', 'CAM'],
+    sensor: ['Sensor', 'SEN'], fechadura: ['Fechadura', 'FE'], roteador: ['Roteador / AP', 'AP'], outro: ['Outro (livre)', '?'] };
+  const COR_PEND = '#FE792C', COR_FEITO = '#16a34a';
   const PL = { lista: [], clientes: [], busca: '' };
-  let ED = null;
+  let EX = null;
 
-  function injetarCss() {
+  function css() {
     if (document.getElementById('pl-css')) return;
     const s = document.createElement('style'); s.id = 'pl-css';
-    s.textContent =
-      '.pl-corpo{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:12px}' +
-      '.pl-palco{height:calc(100vh - 270px);min-height:380px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.18);background:#fff;position:relative}' +
-      '.pl-tools,.pl-paleta{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;flex-wrap:nowrap}' +
-      '.pl-btn,.pl-chip{flex:none;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:inherit;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}' +
-      '.pl-btn.ativo,.pl-chip.ativo{background:#FE792C;border-color:#FE792C;color:#fff;font-weight:600}' +
-      '.pl-chip b{display:inline-block;min-width:18px;text-align:center;margin-right:4px}' +
+    s.textContent = '.pl-btn{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);color:inherit;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}' +
+      '.pl-btn.ativo{background:#FE792C;border-color:#FE792C;color:#fff;font-weight:600}' +
       '.pl-barra{height:8px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}.pl-barra>i{display:block;height:100%;background:#16a34a;border-radius:99px}' +
-      '.pl-item{display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.1);cursor:pointer}' +
-      '.pl-item input{width:24px;height:24px;flex:none}.pl-sigla{flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff}' +
-      '.pl-grupo{margin:12px 0 2px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.65}' +
-      '.pl-abas{display:none;gap:8px;margin-bottom:10px}.pl-abas .pl-btn{flex:1;text-align:center}' +
-      '.pl-corpo>*{min-width:0}.pl-tools,.pl-paleta{max-width:100%;-webkit-overflow-scrolling:touch}' +
-      '@media(max-width:900px){.pl-corpo{grid-template-columns:minmax(0,1fr)}.pl-corpo[data-aba=planta] .pl-lado{display:none}.pl-corpo[data-aba=lista] .pl-col-planta{display:none}.pl-abas{display:flex}.pl-palco{height:calc(100vh - 360px);min-height:320px}}';
+      '.pl-item{display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.1)}.pl-item input{width:26px;height:26px;flex:none}' +
+      '.pl-sigla{flex:none;min-width:34px;height:30px;padding:0 6px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff}' +
+      '.pl-grupo{margin:14px 0 2px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.65;display:flex;justify-content:space-between}';
     document.head.appendChild(s);
   }
 
-  VIEWS.plantas = {
-    titulo: 'Plantas e projetos',
-    render: function(c, params) { injetarCss(); if (params && params.id) abrirEditor(c, params.id); else renderLista(c); },
-  };
+  VIEWS.plantas = { titulo: 'Plantas e projetos', render: function(c, params) { css(); if (params && params.exec) renderExec(c, params.exec); else renderLista(c); } };
 
-  // ───────────────────────── lista de plantas ─────────────────────────
   function renderLista(c) {
     $id('topbar-actions').innerHTML = '<button class="btn btn-primary" data-acao="nova">+ Nova planta</button>';
-    c.innerHTML = '<div class="toolbar"><input id="pl-busca" class="form-input grow" placeholder="Buscar planta ou cliente..." value="' + escHtml(PL.busca) + '"></div><div id="pl-lista"><div class="glass card empty">Carregando...</div></div>';
-    $id('pl-busca').addEventListener('input', debounce(function(e) { PL.busca = e.target.value; pintaLista(); }, 150));
+    c.innerHTML = '<div class="toolbar"><input id="pl-busca" class="form-input grow" placeholder="Buscar planta, cliente ou obra..." value="' + escHtml(PL.busca) + '"></div><div id="pl-lista"><div class="glass card empty">Carregando...</div></div>';
+    $id('pl-busca').addEventListener('input', debounce(function(e) { PL.busca = e.target.value; pinta(); }, 150));
     const acao = function(e) {
-      const el = e.target.closest('[data-acao]'); if (!el) return;
-      if (el.getAttribute('data-acao') === 'nova') abrirNova();
-      else if (el.getAttribute('data-acao') === 'abrir') navegar('plantas', { id: el.getAttribute('data-id') });
+      const el = e.target.closest('[data-acao]'); if (!el) return; const a = el.getAttribute('data-acao'), id = el.getAttribute('data-id');
+      if (a === 'nova') abrirNova();
+      else if (a === 'editor') { const p = PL.lista.filter(function(x) { return x.ID_PLANTA === id; })[0]; location.href = 'planta.html?planta=' + encodeURIComponent(id) + (p && p.ID_CLIENTE ? '&cliente=' + encodeURIComponent(p.ID_CLIENTE) : ''); }
+      else if (a === 'exec') navegar('plantas', { exec: id });
+      else if (a === 'excluir') confirmarAcao('Excluir esta planta e a execução marcada? Não dá para desfazer.', function() { chamarBackend('excluirPlanta', [APP.token, id], function() { PL.lista = PL.lista.filter(function(x) { return x.ID_PLANTA !== id; }); pinta(); toast('Planta excluída.'); }); }, { textoConfirmar: 'Excluir', perigo: true });
     };
     c.addEventListener('click', acao); $id('topbar-actions').addEventListener('click', acao);
-    chamarBackend('listarPlantas', [APP.token], function(r) { PL.lista = r.plantas; PL.clientes = r.clientes; pintaLista(); });
+    chamarBackend('listarPlantas', [APP.token], function(r) { PL.lista = r.plantas; PL.clientes = r.clientes; pinta(); });
   }
 
-  function pintaLista() {
+  function pinta() {
     const box = $id('pl-lista'); if (!box) return;
-    const q = norm(PL.busca), l = PL.lista.filter(function(p) { return !q || norm(p.NOME + ' ' + p.CLIENTE).indexOf(q) > -1; });
-    if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (PL.lista.length ? 'Nenhuma planta com essa busca.' : 'Nenhuma planta ainda. Use “+ Nova planta” para subir a planta de um cliente.') + '</div>'; return; }
+    const q = norm(PL.busca), l = PL.lista.filter(function(p) { return !q || norm(p.NOME + ' ' + p.CLIENTE + ' ' + p.IMOVEL).indexOf(q) > -1; });
+    if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (PL.lista.length ? 'Nenhuma planta com essa busca.' : 'Nenhuma planta ainda. Use “+ Nova planta” para abrir o editor.') + '</div>'; return; }
     box.innerHTML = l.map(function(p) {
-      const pct = p.TOTAL ? Math.round(100 * p.FEITOS / p.TOTAL) : 0;
-      return '<div class="glass item-card" data-acao="abrir" data-id="' + escHtml(p.ID_PLANTA) + '" style="margin-bottom:10px;cursor:pointer">' +
-        '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="row-title">' + escHtml(p.NOME) + '</div><div class="small">' + escHtml(p.CLIENTE || 'Sem cliente') + '</div></div>' +
-        '<div class="small" style="text-align:right"><b>' + p.FEITOS + ' de ' + p.TOTAL + '</b> executados<br>' + pct + '%</div></div>' +
-        '<div class="pl-barra" style="margin-top:10px"><i style="width:' + pct + '%"></i></div></div>';
+      const pct = p.PONTOS ? Math.round(100 * p.EXECUTADOS / p.PONTOS) : 0;
+      return '<div class="glass item-card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="row-title">' + escHtml(p.NOME) + '</div>' +
+        '<div class="small">' + escHtml([p.CLIENTE || 'Sem cliente', p.IMOVEL].filter(Boolean).join(' · ')) + '</div></div>' +
+        '<div class="small" style="text-align:right"><b>' + p.EXECUTADOS + ' de ' + p.PONTOS + '</b> pontos executados (' + pct + '%)<br>' + p.COMODOS_FEITOS + ' de ' + p.COMODOS + ' cômodos concluídos</div></div>' +
+        '<div class="pl-barra" style="margin:10px 0"><i style="width:' + pct + '%"></i></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-acao="editor" data-id="' + escHtml(p.ID_PLANTA) + '">Abrir editor</button>' +
+        '<button class="btn btn-secondary btn-sm" data-acao="exec" data-id="' + escHtml(p.ID_PLANTA) + '">Execução</button>' +
+        '<button class="btn btn-ghost btn-sm" data-acao="excluir" data-id="' + escHtml(p.ID_PLANTA) + '">Excluir</button></div></div>';
     }).join('');
   }
 
   function abrirNova() {
     abrirModal('Nova planta',
-      '<div class="form-group"><label class="form-label required">Nome do projeto</label><input id="np-nome" class="form-input" placeholder="Ex.: Casa da Ana — térreo"></div>' +
-      '<div class="form-group"><label class="form-label">Cliente</label><select id="np-cli" class="form-input"><option value="">— sem cliente —</option>' +
-        PL.clientes.map(function(c) { return '<option value="' + escHtml(c.ID_CLIENTE) + '">' + escHtml(c.NOME) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="form-group"><label class="form-label">Imagem da planta (foto, print ou imagem exportada)</label><input id="np-arq" type="file" accept="image/*" class="form-input"><div class="small" style="margin-top:6px">JPG, PNG ou WEBP. Sem imagem, o sistema cria uma folha em branco quadriculada para você desenhar. PDF: exporte como imagem antes.</div></div>',
-      '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="np-salvar">Criar planta</button>');
-    $id('np-salvar').addEventListener('click', function() {
-      const nome = inputVal('np-nome'); if (!nome) { toast('Dê um nome ao projeto.', 'warn'); return; }
-      const arq = $id('np-arq').files[0] || null, btn = $id('np-salvar'); btn.disabled = true; btn.textContent = 'Criando...';
-      chamarBackend('criarPlanta', [APP.token, { nome: nome, clienteId: $id('np-cli').value, arquivo: arq }], function(r) { fecharModal(); navegar('plantas', { id: r.ID_PLANTA }); },
-        function(err) { btn.disabled = false; btn.textContent = 'Criar planta'; toast(err, 'error', 8000); });
-    });
+      '<div class="form-group"><label class="form-label">Cliente</label><select id="np-cli" class="form-input"><option value="">— escolher depois —</option>' + PL.clientes.map(function(c) { return '<option value="' + escHtml(c.ID_CLIENTE) + '">' + escHtml(c.NOME) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Imóvel / obra</label><input id="np-imovel" class="form-input" placeholder="Ex.: Apartamento 82"></div>' +
+      '<div class="small">O editor abre em tela cheia. Lá você importa a planta do cliente (imagem ou PDF), calibra a escala e marca paredes, cômodos e pontos.</div>',
+      '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="np-ir">Abrir editor</button>');
+    $id('np-ir').addEventListener('click', function() { const c = $id('np-cli').value, i = inputVal('np-imovel'); location.href = 'planta.html?' + [c ? 'cliente=' + encodeURIComponent(c) : '', i ? 'imovel=' + encodeURIComponent(i) : ''].filter(Boolean).join('&'); });
   }
 
-  // ───────────────────────── editor ─────────────────────────
-  function abrirEditor(c, id) {
-    ED = { id: id, plano: null, marcas: [], produtos: [], url: '', W: 1600, H: 1200, view: { s: 1, tx: 0, ty: 0 }, ferramenta: 'mover', cat: 'interruptor_1', rascunho: [], sel: null, movendo: null, filtro: 'pendentes', aba: 'planta' };
-    $id('topbar-actions').innerHTML = '<button class="btn btn-secondary" data-acao="voltar">← Plantas</button> <button class="btn btn-ghost" data-acao="excluir-planta">Excluir</button>';
-    c.innerHTML = '<div class="glass card" style="padding:12px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><div class="row-title" id="pl-titulo">Carregando...</div><div class="small" id="pl-prog"></div></div><div class="pl-barra" style="margin-top:8px"><i id="pl-barra" style="width:0%"></i></div></div>' +
-      '<div class="pl-abas"><button class="pl-btn ativo" data-aba="planta">Planta</button><button class="pl-btn" data-aba="lista" id="pl-aba-lista">Execução</button></div>' +
-      '<div class="pl-corpo" id="pl-corpo" data-aba="planta">' +
-        '<div class="pl-col-planta"><div class="pl-tools" id="pl-tools"></div><div class="pl-paleta" id="pl-paleta"></div><div class="pl-palco" id="pl-palco"></div>' +
-        '<div class="small" id="pl-dica" style="margin-top:6px"></div></div>' +
-        '<div class="pl-lado glass card" style="padding:12px 14px" id="pl-lado"></div></div>';
+  // ── execução: marcar cada ponto como executado ──
+  function renderExec(c, id) {
+    EX = { id: id, dados: null, filtro: 'pendentes' };
+    $id('topbar-actions').innerHTML = '<button class="btn btn-secondary" data-acao="voltar">← Plantas</button> <button class="btn btn-secondary" data-acao="editor">Abrir editor</button>';
+    c.innerHTML = '<div class="glass card" style="padding:12px 14px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><div class="row-title" id="ex-titulo">Carregando...</div><div class="small" id="ex-prog"></div></div><div class="pl-barra" style="margin-top:8px"><i id="ex-barra" style="width:0%"></i></div></div>' +
+      '<div class="glass card" style="padding:12px 14px" id="ex-lista"></div>';
     const acao = function(e) {
-      const el = e.target.closest('[data-acao],[data-aba],[data-cat],[data-ferr],[data-toggle],[data-ir]'); if (!el) return;
-      if (el.hasAttribute('data-aba')) { ED.aba = el.getAttribute('data-aba'); $id('pl-corpo').setAttribute('data-aba', ED.aba); document.querySelectorAll('.pl-abas .pl-btn').forEach(function(b) { b.classList.toggle('ativo', b.getAttribute('data-aba') === ED.aba); }); if (ED.aba === 'planta') setTimeout(ajustar, 30); return; }
-      if (el.hasAttribute('data-cat')) { ED.cat = el.getAttribute('data-cat'); ED.ferramenta = 'ponto'; ED.rascunho = []; pintaBarra(); desenhar(); return; }
-      if (el.hasAttribute('data-ferr')) { trocarFerramenta(el.getAttribute('data-ferr')); return; }
-      if (el.hasAttribute('data-toggle')) { e.stopPropagation(); alternar(el.getAttribute('data-toggle')); return; }
-      if (el.hasAttribute('data-ir')) { irPara(el.getAttribute('data-ir')); return; }
-      const a = el.getAttribute('data-acao');
-      if (a === 'voltar') { ED = null; navegar('plantas'); }
-      else if (a === 'excluir-planta') confirmarAcao('Excluir esta planta e todas as marcações? Não dá para desfazer.', excluirPlanta, { textoConfirmar: 'Excluir', perigo: true });
-      else if (a === 'zoom-mais') zoomCentro(1.3); else if (a === 'zoom-menos') zoomCentro(1 / 1.3); else if (a === 'ajustar') ajustar();
-      else if (a === 'concluir-linha') concluirLinha(); else if (a === 'cancelar-linha') { ED.rascunho = []; pintaBarra(); desenhar(); }
-      else if (a === 'filtro') { ED.filtro = el.getAttribute('data-valor'); pintaLado(); }
+      const t = e.target.closest('[data-toggle],[data-acao],[data-filtro]'); if (!t || !EX) return;
+      if (t.hasAttribute('data-toggle')) { alternar(t.getAttribute('data-toggle'), t.checked); return; }
+      if (t.hasAttribute('data-filtro')) { EX.filtro = t.getAttribute('data-filtro'); pintaExec(); return; }
+      const a = t.getAttribute('data-acao');
+      if (a === 'voltar') navegar('plantas');
+      else if (a === 'editor') location.href = 'planta.html?planta=' + encodeURIComponent(EX.id) + (EX.dados && EX.dados.plano.clienteId ? '&cliente=' + encodeURIComponent(EX.dados.plano.clienteId) : '');
     };
     c.addEventListener('click', acao); $id('topbar-actions').addEventListener('click', acao);
-    chamarBackend('obterPlanta', [APP.token, id], function(r) {
-      ED.plano = r.plano; ED.marcas = r.marcas; ED.produtos = r.produtos; ED.url = r.url; ED.W = r.plano.largura; ED.H = r.plano.altura; ED.cliente = r.cliente;
-      $id('pl-titulo').textContent = r.plano.nome + (r.cliente ? ' · ' + r.cliente : '');
-      pintaBarra(); montarPalco(); pintaLado();
-    }, function(err) { toast(err, 'error', 8000); navegar('plantas'); });
+    chamarBackend('obterExecucao', [APP.token, id], function(r) { EX.dados = r; $id('ex-titulo').textContent = r.plano.nome + (r.plano.cliente ? ' · ' + r.plano.cliente : '') + (r.plano.imovel ? ' · ' + r.plano.imovel : ''); pintaExec(); },
+      function(err) { toast(err, 'error', 8000); navegar('plantas'); });
   }
 
-  function trocarFerramenta(f) { ED.ferramenta = f; ED.rascunho = []; ED.movendo = null; pintaBarra(); desenhar(); }
-
-  function pintaBarra() {
-    const t = $id('pl-tools'), p = $id('pl-paleta'); if (!t) return;
-    const fb = function(id, txt) { return '<button class="pl-btn' + (ED.ferramenta === id ? ' ativo' : '') + '" data-ferr="' + id + '">' + txt + '</button>'; };
-    t.innerHTML = fb('mover', '✋ Mover') + fb('linha', '✎ Fio / linha') + fb('texto', 'T Anotação') +
-      '<button class="pl-btn" data-acao="zoom-menos">−</button><button class="pl-btn" data-acao="zoom-mais">+</button><button class="pl-btn" data-acao="ajustar">Ajustar</button>' +
-      (ED.ferramenta === 'linha' && ED.rascunho.length ? '<button class="pl-btn ativo" data-acao="concluir-linha">✔ Concluir linha (' + ED.rascunho.length + ' pts)</button><button class="pl-btn" data-acao="cancelar-linha">Cancelar</button>' : '');
-    p.innerHTML = CATEGORIAS.map(function(c) { return '<button class="pl-chip' + (ED.ferramenta === 'ponto' && ED.cat === c.id ? ' ativo' : '') + '" data-cat="' + c.id + '"><b>' + c.sigla + '</b>' + escHtml(c.nome.replace(/ \(.*\)/, '')) + '</button>'; }).join('');
-    const d = $id('pl-dica'); if (!d) return;
-    d.textContent = ED.movendo ? 'Toque no novo lugar da marcação.' : ED.ferramenta === 'ponto' ? 'Toque na planta para colocar: ' + cat(ED.cat).nome + '. Toque numa marcação existente para editar ou marcar como executada.' :
-      ED.ferramenta === 'linha' ? 'Toque nos pontos do caminho do fio/eletroduto e depois em “Concluir linha”.' : ED.ferramenta === 'texto' ? 'Toque onde quer a anotação.' : 'Arraste para mover a planta, use dois dedos (ou a roda do mouse) para ampliar. Escolha um tipo acima para marcar pontos.';
-  }
-
-  // ── palco (SVG com zoom e arraste) ──
-  function montarPalco() {
-    const palco = $id('pl-palco'); if (!palco) return;
-    const NS = 'http://www.w3.org/2000/svg';
-    palco.innerHTML = '<svg id="pl-svg" width="100%" height="100%" style="display:block;touch-action:none;user-select:none"><defs><pattern id="pl-grade" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#dbe3f0" stroke-width="1"/></pattern></defs>' +
-      '<g id="pl-g"><rect width="' + ED.W + '" height="' + ED.H + '" fill="#fff"/>' + (ED.url ? '<image id="pl-img" href="' + escHtml(ED.url) + '" width="' + ED.W + '" height="' + ED.H + '" preserveAspectRatio="none"/>' : '<rect width="' + ED.W + '" height="' + ED.H + '" fill="url(#pl-grade)"/>') +
-      '<g id="pl-linhas"></g><g id="pl-pontos"></g><g id="pl-rasc"></g></g></svg>';
-    const svg = $id('pl-svg'), ptrs = {};
-    let gesto = null;
-    const dist = function(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
-    svg.addEventListener('pointerdown', function(e) {
-      try { svg.setPointerCapture(e.pointerId); } catch (x) { /* toque sintético */ }
-      ptrs[e.pointerId] = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: Date.now(), alvo: e.target.closest('[data-m]'), moveu: false, multi: false };
-      const ids = Object.keys(ptrs);
-      if (ids.length === 2) { ids.forEach(function(k) { ptrs[k].multi = true; }); gesto = { d0: dist(ptrs[ids[0]], ptrs[ids[1]]), s0: ED.view.s }; }
-    });
-    svg.addEventListener('pointermove', function(e) {
-      const p = ptrs[e.pointerId]; if (!p) return;
-      const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-      const ids = Object.keys(ptrs);
-      if (ids.length === 1) {
-        if (Math.hypot(p.x - p.x0, p.y - p.y0) > 7) p.moveu = true;
-        if (p.moveu) { ED.autoFit = false; ED.view.tx += dx; ED.view.ty += dy; aplicar(); }
-      } else if (ids.length === 2 && gesto) {
-        const a = ptrs[ids[0]], b = ptrs[ids[1]], r = svg.getBoundingClientRect(), mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
-        const alvo = Math.min(14, Math.max(0.05, gesto.s0 * dist(a, b) / (gesto.d0 || 1)));
-        zoomEm(mx, my, alvo / ED.view.s); ED.view.tx += dx / 2; ED.view.ty += dy / 2; aplicar();
-      }
-    });
-    const fim = function(e) {
-      const p = ptrs[e.pointerId]; delete ptrs[e.pointerId];
-      if (Object.keys(ptrs).length < 2) gesto = null;
-      if (p && !p.moveu && !p.multi && Date.now() - p.t < 600) toque(e, p);
-    };
-    svg.addEventListener('pointerup', fim); svg.addEventListener('pointercancel', function(e) { delete ptrs[e.pointerId]; gesto = null; });
-    svg.addEventListener('wheel', function(e) { e.preventDefault(); const r = svg.getBoundingClientRect(); zoomEm(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.18 : 1 / 1.18); aplicar(); }, { passive: false });
-    ED.autoFit = true;
-    if (window.ResizeObserver) new ResizeObserver(function() { if (ED && ED.autoFit && $id('pl-svg')) ajustar(); }).observe(palco);
-    ajustar();
-  }
-
-  function ajustar() {
-    const svg = $id('pl-svg'); if (!svg) return;
-    const r = svg.getBoundingClientRect(); if (!r.width) return;
-    const s = Math.min(r.width / ED.W, r.height / ED.H);
-    ED.view = { s: s, tx: (r.width - ED.W * s) / 2, ty: (r.height - ED.H * s) / 2 };
-    ED.sMin = s * 0.5; ED.autoFit = true; aplicar();
-  }
-  function zoomEm(cx, cy, f) {
-    ED.autoFit = false;
-    const v = ED.view, ns = Math.min(14, Math.max(ED.sMin || 0.05, v.s * f)); f = ns / v.s;
-    v.tx = cx - (cx - v.tx) * f; v.ty = cy - (cy - v.ty) * f; v.s = ns;
-  }
-  function zoomCentro(f) { const r = $id('pl-svg').getBoundingClientRect(); zoomEm(r.width / 2, r.height / 2, f); aplicar(); }
-  let agendado = false;
-  function aplicar() {
-    const g = $id('pl-g'); if (!g) return;
-    g.setAttribute('transform', 'translate(' + ED.view.tx + ',' + ED.view.ty + ') scale(' + ED.view.s + ')');
-    if (!agendado) { agendado = true; requestAnimationFrame(function() { agendado = false; desenhar(); }); }
-  }
-  function coord(e) { const r = $id('pl-svg').getBoundingClientRect(); return { x: (e.clientX - r.left - ED.view.tx) / ED.view.s, y: (e.clientY - r.top - ED.view.ty) / ED.view.s }; }
-  function dentro(p) { return p.x >= 0 && p.y >= 0 && p.x <= ED.W && p.y <= ED.H; }
-
-  function toque(e, p) {
-    if (ED.movendo) {
-      const q = coord(e); if (!dentro(q)) return; const id = ED.movendo; ED.movendo = null;
-      gravar({ id: id, x: q.x / ED.W, y: q.y / ED.H }, function() { toast('Marcação movida.', 'success', 1500); }); pintaBarra(); return;
-    }
-    if (p.alvo && ED.ferramenta !== 'linha') { editarMarca(p.alvo.getAttribute('data-m')); return; }
-    const q = coord(e); if (!dentro(q)) return;
-    if (ED.ferramenta === 'ponto') {
-      gravar({ tipo: 'ponto', categoria: ED.cat, x: q.x / ED.W, y: q.y / ED.H, status: 'pendente' }, function() { toast(cat(ED.cat).nome + ' adicionado.', 'success', 1200); });
-    } else if (ED.ferramenta === 'linha') { ED.rascunho.push([q.x / ED.W, q.y / ED.H]); pintaBarra(); desenhar(); }
-    else if (ED.ferramenta === 'texto') {
-      const t = window.prompt('Texto da anotação:'); if (!t || !t.trim()) return;
-      gravar({ tipo: 'texto', categoria: 'outro', rotulo: t.trim().slice(0, 120), x: q.x / ED.W, y: q.y / ED.H, status: 'pendente' });
-    }
-  }
-
-  function concluirLinha() {
-    if (ED.rascunho.length < 2) { toast('Marque pelo menos 2 pontos.', 'warn'); return; }
-    const pts = ED.rascunho.slice(); ED.rascunho = [];
-    gravar({ tipo: 'linha', categoria: 'infra', x: pts[0][0], y: pts[0][1], pontos: pts, status: 'pendente' }, function() { toast('Linha adicionada.', 'success', 1200); });
-    pintaBarra();
-  }
-
-  // ── gravar / alternar ──
-  function gravar(m, depois) {
-    chamarBackend('salvarMarca', [APP.token, Object.assign({ plan_id: ED.id }, m)], function(r) {
-      const i = ED.marcas.findIndex(function(x) { return x.id === r.id; });
-      if (i > -1) ED.marcas[i] = r; else ED.marcas.push(r);
-      desenhar(); pintaLado(); pintaBarra(); if (depois) depois(r);
+  function alternar(pontoId, feito) {
+    const antes = EX.dados.feitos[pontoId];
+    if (feito) EX.dados.feitos[pontoId] = new Date().toISOString(); else delete EX.dados.feitos[pontoId];
+    pintaExec();
+    chamarBackend('alternarExecucao', [APP.token, EX.id, pontoId, feito], null, function(err) {
+      if (antes) EX.dados.feitos[pontoId] = antes; else delete EX.dados.feitos[pontoId]; pintaExec(); toast('Não salvou: ' + err, 'error', 6000);
     });
   }
-  function alternar(id) {
-    const m = ED.marcas.filter(function(x) { return x.id === id; })[0]; if (!m) return;
-    gravar({ id: id, status: m.status === 'executado' ? 'pendente' : 'executado' });
-  }
-  function irPara(id) {
-    const m = ED.marcas.filter(function(x) { return x.id === id; })[0]; if (!m) return;
-    ED.aba = 'planta'; $id('pl-corpo').setAttribute('data-aba', 'planta'); document.querySelectorAll('.pl-abas .pl-btn').forEach(function(b) { b.classList.toggle('ativo', b.getAttribute('data-aba') === 'planta'); });
-    setTimeout(function() {
-      const r = $id('pl-svg').getBoundingClientRect(); ED.view.s = Math.max(ED.view.s, Math.min(r.width / ED.W, r.height / ED.H) * 2.2);
-      ED.view.tx = r.width / 2 - m.x * ED.W * ED.view.s; ED.view.ty = r.height / 2 - m.y * ED.H * ED.view.s; ED.sel = id; aplicar();
-    }, 40);
-  }
 
-  function editarMarca(id) {
-    const m = ED.marcas.filter(function(x) { return x.id === id; })[0]; if (!m) return;
-    ED.sel = id; desenhar();
-    const feito = m.status === 'executado', ambientes = Array.from(new Set(ED.marcas.map(function(x) { return x.ambiente; }).filter(Boolean)));
-    abrirModal((m.tipo === 'linha' ? 'Fio / linha' : m.tipo === 'texto' ? 'Anotação' : cat(m.categoria).nome),
-      '<button class="btn ' + (feito ? 'btn-secondary' : 'btn-primary') + ' btn-full" id="pm-exec" style="font-size:16px;padding:14px;margin-bottom:12px">' + (feito ? '↩ Voltar para pendente' : '✔ Marcar como executado') + '</button>' +
-      (feito && m.executado_em ? '<div class="small" style="margin:-4px 0 10px">Executado em ' + escHtml(new Date(m.executado_em).toLocaleString('pt-BR')) + '</div>' : '') +
-      '<div class="form-grid">' +
-        (m.tipo === 'ponto' ? '<div class="form-group"><label class="form-label">Tipo</label><select id="pm-cat" class="form-input">' + CATEGORIAS.map(function(c) { return '<option value="' + c.id + '"' + (c.id === m.categoria ? ' selected' : '') + '>' + escHtml(c.nome) + '</option>'; }).join('') + '</select></div>' : '') +
-        '<div class="form-group"><label class="form-label">' + (m.tipo === 'texto' ? 'Texto' : 'Nome / identificação') + '</label><input id="pm-rotulo" class="form-input" placeholder="Ex.: Luz da sala" value="' + escHtml(m.rotulo || '') + '"></div>' +
-        '<div class="form-group"><label class="form-label">Ambiente</label><input id="pm-amb" class="form-input" list="pm-amb-lista" placeholder="Ex.: Sala" value="' + escHtml(m.ambiente || '') + '"><datalist id="pm-amb-lista">' + ambientes.map(function(a) { return '<option value="' + escHtml(a) + '">'; }).join('') + '</datalist></div>' +
-        (m.tipo === 'ponto' ? '<div class="form-group"><label class="form-label">Produto do catálogo</label><select id="pm-prod" class="form-input"><option value="">— nenhum —</option>' + ED.produtos.map(function(p) { return '<option value="' + escHtml(p.id) + '"' + (p.id === m.product_id ? ' selected' : '') + '>' + escHtml(p.nome.slice(0, 70)) + '</option>'; }).join('') + '</select></div>' : '') +
-        '<div class="form-group full"><label class="form-label">Observações</label><textarea id="pm-obs" class="form-input" rows="2">' + escHtml(m.observacoes || '') + '</textarea></div>' +
-      '</div>',
-      '<button class="btn btn-ghost" id="pm-del">Excluir</button>' + (m.tipo !== 'linha' ? '<button class="btn btn-secondary" id="pm-mover">Mover</button>' : '') + '<button class="btn btn-primary" id="pm-salvar">Salvar</button>');
-    const fechar = function() { ED.sel = null; fecharModal(); desenhar(); };
-    $id('pm-exec').addEventListener('click', function() { fecharModal(); ED.sel = null; alternar(id); });
-    $id('pm-salvar').addEventListener('click', function() {
-      const d = { id: id, rotulo: inputVal('pm-rotulo'), ambiente: inputVal('pm-amb'), observacoes: inputVal('pm-obs') };
-      if ($id('pm-cat')) d.categoria = $id('pm-cat').value; if ($id('pm-prod')) d.product_id = $id('pm-prod').value || null;
-      gravar(d, function() { fechar(); toast('Salvo.', 'success', 1200); });
-    });
-    $id('pm-del').addEventListener('click', function() {
-      chamarBackend('excluirMarca', [APP.token, id], function() { ED.marcas = ED.marcas.filter(function(x) { return x.id !== id; }); fechar(); pintaLado(); toast('Excluído.', 'success', 1200); });
-    });
-    if ($id('pm-mover')) $id('pm-mover').addEventListener('click', function() { fechar(); ED.movendo = id; pintaBarra(); });
-  }
-
-  function excluirPlanta() {
-    chamarBackend('excluirPlanta', [APP.token, ED.id], function() { ED = null; toast('Planta excluída.'); navegar('plantas'); });
-  }
-
-  // ── desenho das marcações ──
-  function desenhar() {
-    const gl = $id('pl-linhas'), gp = $id('pl-pontos'), gr = $id('pl-rasc'); if (!gl || !ED) return;
-    const s = ED.view.s, W = ED.W, H = ED.H, R = 15 / s;
-    let L = '', P = '';
-    ED.marcas.forEach(function(m) {
-      const feito = m.status === 'executado', cor = feito ? COR_FEITO : COR_PEND, sel = ED.sel === m.id || ED.movendo === m.id;
-      if (m.tipo === 'linha' && Array.isArray(m.pontos)) {
-        const pts = m.pontos.map(function(p) { return (p[0] * W) + ',' + (p[1] * H); }).join(' ');
-        L += '<g data-m="' + m.id + '" style="cursor:pointer"><polyline points="' + pts + '" fill="none" stroke="transparent" stroke-width="' + (22 / s) + '" stroke-linecap="round" stroke-linejoin="round"/>' +
-          '<polyline points="' + pts + '" fill="none" stroke="' + (sel ? COR_SEL : cor) + '" stroke-width="' + ((sel ? 6 : 4) / s) + '" stroke-linecap="round" stroke-linejoin="round"' + (feito ? '' : ' stroke-dasharray="' + (10 / s) + ' ' + (7 / s) + '"') + '/></g>';
-      } else if (m.tipo === 'texto') {
-        const fs = 14 / s, w = Math.max(30 / s, (m.rotulo || '').length * fs * 0.58 + 12 / s);
-        P += '<g data-m="' + m.id + '" transform="translate(' + (m.x * W) + ',' + (m.y * H) + ')" style="cursor:pointer"><rect x="' + (-w / 2) + '" y="' + (-fs) + '" width="' + w + '" height="' + (fs * 1.7) + '" rx="' + (4 / s) + '" fill="#fff" fill-opacity=".92" stroke="' + (sel ? COR_SEL : '#64748b') + '" stroke-width="' + (1.5 / s) + '"/><text text-anchor="middle" y="' + (fs * 0.2) + '" font-size="' + fs + '" fill="#0f172a" font-family="Inter,sans-serif">' + escHtml(m.rotulo || '') + '</text></g>';
-      } else {
-        const c = cat(m.categoria), rotulo = s > 0.5 && m.rotulo ? '<text y="' + (R + 14 / s) + '" text-anchor="middle" font-size="' + (12 / s) + '" fill="#0f172a" stroke="#fff" stroke-width="' + (3 / s) + '" paint-order="stroke" font-family="Inter,sans-serif">' + escHtml(m.rotulo.slice(0, 22)) + '</text>' : '';
-        P += '<g data-m="' + m.id + '" transform="translate(' + (m.x * W) + ',' + (m.y * H) + ')" style="cursor:pointer">' + (sel ? '<circle r="' + (R + 6 / s) + '" fill="none" stroke="' + COR_SEL + '" stroke-width="' + (3 / s) + '"/>' : '') +
-          '<circle r="' + R + '" fill="' + cor + '" stroke="#fff" stroke-width="' + (2.5 / s) + '"/><text y="' + (5 / s) + '" text-anchor="middle" font-size="' + (15 / s) + '" font-weight="700" fill="#fff" font-family="Inter,sans-serif">' + (feito ? '✓' : c.sigla) + '</text>' + rotulo + '</g>';
-      }
-    });
-    gl.innerHTML = L; gp.innerHTML = P;
-    gr.innerHTML = ED.rascunho.length ? '<polyline points="' + ED.rascunho.map(function(p) { return (p[0] * W) + ',' + (p[1] * H); }).join(' ') + '" fill="none" stroke="' + COR_SEL + '" stroke-width="' + (4 / s) + '" stroke-linecap="round" stroke-linejoin="round"/>' +
-      ED.rascunho.map(function(p) { return '<circle cx="' + (p[0] * W) + '" cy="' + (p[1] * H) + '" r="' + (6 / s) + '" fill="' + COR_SEL + '"/>'; }).join('') : '';
-  }
-
-  // ── painel de execução (lista) ──
-  function pintaLado() {
-    const box = $id('pl-lado'); if (!box || !ED) return;
-    const pontos = ED.marcas.filter(function(m) { return m.tipo !== 'texto'; });
-    const feitos = pontos.filter(function(m) { return m.status === 'executado'; }).length, total = pontos.length, pct = total ? Math.round(100 * feitos / total) : 0;
-    const pr = $id('pl-prog'); if (pr) pr.textContent = feitos + ' de ' + total + ' executados (' + pct + '%)';
-    const br = $id('pl-barra'); if (br) br.style.width = pct + '%';
-    const al = $id('pl-aba-lista'); if (al) al.textContent = 'Execução (' + (total - feitos) + ' faltam)';
-    const lista = pontos.filter(function(m) { return ED.filtro === 'todos' || (ED.filtro === 'pendentes' ? m.status !== 'executado' : m.status === 'executado'); });
+  function pintaExec() {
+    const box = $id('ex-lista'); if (!box || !EX || !EX.dados) return;
+    const d = EX.dados, nomeC = {}; d.comodos.forEach(function(c) { nomeC[c.id] = c; });
+    const feitos = d.pontos.filter(function(p) { return d.feitos[p.id]; }).length, total = d.pontos.length, pct = total ? Math.round(100 * feitos / total) : 0;
+    $id('ex-prog').textContent = feitos + ' de ' + total + ' pontos executados (' + pct + '%)'; $id('ex-barra').style.width = pct + '%';
+    const lista = d.pontos.filter(function(p) { return EX.filtro === 'todos' || (EX.filtro === 'pendentes' ? !d.feitos[p.id] : !!d.feitos[p.id]); });
     const grupos = {};
-    lista.forEach(function(m) { const a = m.ambiente || 'Sem ambiente'; (grupos[a] = grupos[a] || []).push(m); });
-    const fb = function(v, t) { return '<button class="pl-btn' + (ED.filtro === v ? ' ativo' : '') + '" data-acao="filtro" data-valor="' + v + '">' + t + '</button>'; };
-    box.innerHTML = '<div class="row-title" style="margin-bottom:8px">Execução</div><div class="pl-tools" style="padding-bottom:4px">' + fb('pendentes', 'Faltam (' + (total - feitos) + ')') + fb('executados', 'Feitos (' + feitos + ')') + fb('todos', 'Todos') + '</div>' +
-      (lista.length ? Object.keys(grupos).sort().map(function(a) {
-        return '<div class="pl-grupo">' + escHtml(a) + '</div>' + grupos[a].map(function(m) {
-          const feito = m.status === 'executado', c = m.tipo === 'linha' ? { sigla: '━', nome: 'Fio / linha' } : cat(m.categoria);
-          return '<div class="pl-item" data-ir="' + m.id + '"><input type="checkbox" data-toggle="' + m.id + '"' + (feito ? ' checked' : '') + '><span class="pl-sigla" style="background:' + (feito ? COR_FEITO : COR_PEND) + '">' + c.sigla + '</span>' +
-            '<div style="min-width:0"><div class="row-title" style="' + (feito ? 'text-decoration:line-through;opacity:.6' : '') + '">' + escHtml(m.rotulo || c.nome) + '</div><div class="small">' + escHtml(m.rotulo ? c.nome : '') + '</div></div></div>';
+    lista.forEach(function(p) { const k = p.comodo && nomeC[p.comodo] ? nomeC[p.comodo].nome : 'Fora de cômodo'; (grupos[k] = grupos[k] || []).push(p); });
+    const fb = function(v, t) { return '<button class="pl-btn' + (EX.filtro === v ? ' ativo' : '') + '" data-filtro="' + v + '">' + t + '</button>'; };
+    box.innerHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">' + fb('pendentes', 'Faltam (' + (total - feitos) + ')') + fb('feitos', 'Feitos (' + feitos + ')') + fb('todos', 'Todos (' + total + ')') + '</div>' +
+      (lista.length ? Object.keys(grupos).sort().map(function(g) {
+        const cm = d.comodos.filter(function(c) { return c.nome === g; })[0];
+        return '<div class="pl-grupo"><span>' + escHtml(g) + '</span>' + (cm && cm.feito ? '<span style="color:#16a34a">cômodo concluído ✓</span>' : '') + '</div>' + grupos[g].map(function(p) {
+          const f = !!d.feitos[p.id], t = TIPOS[p.tipo] || TIPOS.outro, sigla = p.tipo === 'outro' && (p.sigla || p.nome) ? String(p.sigla || p.nome).replace(/[^A-Za-zÀ-ÿ0-9]/g, '').slice(0, 3).toUpperCase() : t[1];
+          return '<div class="pl-item"><input type="checkbox" data-toggle="' + escHtml(p.id) + '"' + (f ? ' checked' : '') + '><span class="pl-sigla" style="background:' + (f ? COR_FEITO : COR_PEND) + '">' + escHtml(sigla) + '</span>' +
+            '<div style="min-width:0"><div class="row-title" style="' + (f ? 'text-decoration:line-through;opacity:.6' : '') + '">' + escHtml(p.nome || t[0]) + '</div><div class="small">' + escHtml(p.nome ? t[0] : '') + (f && d.feitos[p.id] ? ' · feito em ' + escHtml(new Date(d.feitos[p.id]).toLocaleString('pt-BR')) : '') + '</div></div></div>';
         }).join('');
-      }).join('') : '<div class="small" style="padding:14px 0">' + (total ? (ED.filtro === 'pendentes' ? 'Tudo executado. 🎉' : 'Nada por aqui.') : 'Nenhuma marcação ainda. Escolha um tipo e toque na planta.') + '</div>');
+      }).join('') : '<div class="small" style="padding:14px 0">' + (total ? (EX.filtro === 'pendentes' ? 'Tudo executado. 🎉' : 'Nada por aqui.') : 'Esta planta ainda não tem pontos. Abra o editor e marque os pontos.') + '</div>');
   }
 })();
 </script>
@@ -1831,57 +1629,40 @@ window.DOMOTICA_CFG = {
     listarPlantas: function() {
       return api(async function() {
         const c = await ctx();
-        const plans = must(await sb.from('plans').select('id, nome, created_at, clients(nome)').eq('org_id', c.orgId).order('created_at', { ascending: false }));
-        const marks = must(await sb.from('plan_marks').select('plan_id, status').eq('org_id', c.orgId).neq('tipo', 'texto').range(0, 9999));
-        const tot = {}, feitos = {};
-        marks.forEach(function(m) { tot[m.plan_id] = (tot[m.plan_id] || 0) + 1; if (m.status === 'executado') feitos[m.plan_id] = (feitos[m.plan_id] || 0) + 1; });
+        const plans = must(await sb.from('plans').select('id, nome, imovel, client_id, dados, clients(nome)').eq('org_id', c.orgId).not('dados', 'is', null).order('updated_at', { ascending: false }));
+        const ex = must(await sb.from('plan_exec').select('plan_id, ponto_id').eq('org_id', c.orgId).range(0, 19999));
+        const feitos = {}; ex.forEach(function(e) { (feitos[e.plan_id] = feitos[e.plan_id] || {})[e.ponto_id] = 1; });
         const clientes = (await listaClientes()).filter(function(x) { return x.status === 'ativo'; }).map(function(r) { return { ID_CLIENTE: r.id, NOME: r.nome }; });
-        return { clientes: clientes, plantas: plans.map(function(p) { return { ID_PLANTA: p.id, NOME: p.nome, CLIENTE: p.clients ? p.clients.nome : '', TOTAL: tot[p.id] || 0, FEITOS: feitos[p.id] || 0 }; }) };
+        return { clientes: clientes, plantas: plans.map(function(p) {
+          const d = p.dados || {}, pts = d.pontos || [], cs = d.comodos || [], f = feitos[p.id] || {};
+          return { ID_PLANTA: p.id, NOME: p.nome, IMOVEL: p.imovel || '', ID_CLIENTE: p.client_id || '', CLIENTE: p.clients ? p.clients.nome : '', COMODOS: cs.length, COMODOS_FEITOS: cs.filter(function(x) { return x.feito; }).length,
+            PONTOS: pts.length, EXECUTADOS: pts.filter(function(x) { return f[x.id]; }).length };
+        }) };
       });
     },
-    criarPlanta: function(t, d) {
+    obterExecucao: function(t, id) {
       return api(async function() {
-        const c = await ctx(); d = d || {};
-        if (!String(d.nome || '').trim()) throw new Error('Dê um nome ao projeto.');
-        let img = null;
-        if (d.arquivo) img = await prepararImagem(d.arquivo);
-        const row = must(await sb.from('plans').insert({ org_id: c.orgId, client_id: d.clienteId || null, nome: String(d.nome).trim(), largura: img ? img.w : 1600, altura: img ? img.h : 1200 }).select().single());
-        if (img) {
-          const caminho = c.orgId + '/' + row.id + '/planta.jpg';
-          const up = await sb.storage.from('plantas').upload(caminho, img.blob, { contentType: 'image/jpeg', upsert: true });
-          if (up.error) { await sb.from('plans').delete().eq('id', row.id); throw new Error('Não consegui enviar a imagem: ' + up.error.message); }
-          must(await sb.from('plans').update({ imagem_path: caminho }).eq('id', row.id));
-        }
-        return { ID_PLANTA: row.id };
+        const p = must(await sb.from('plans').select('id, nome, imovel, client_id, dados, clients(nome)').eq('id', id).single());
+        const ex = must(await sb.from('plan_exec').select('ponto_id, feito_em').eq('plan_id', id).range(0, 19999));
+        const d = p.dados || {}, feitos = {}; ex.forEach(function(e) { feitos[e.ponto_id] = e.feito_em; });
+        return { plano: { id: p.id, nome: p.nome, imovel: p.imovel || '', clienteId: p.client_id || '', cliente: p.clients ? p.clients.nome : '' },
+          comodos: (d.comodos || []).map(function(x) { return { id: x.id, nome: x.nome, feito: !!x.feito }; }),
+          pontos: (d.pontos || []).map(function(x) { return { id: x.id, tipo: x.tipo, nome: x.nome || '', comodo: x.comodo || '', sigla: x.sigla || '' }; }), feitos: feitos };
       });
     },
-    obterPlanta: function(t, id) {
+    alternarExecucao: function(t, planId, pontoId, feito) {
       return api(async function() {
         const c = await ctx();
-        const plano = must(await sb.from('plans').select('*, clients(nome)').eq('id', id).single());
-        const marcas = must(await sb.from('plan_marks').select('*').eq('plan_id', id).order('created_at').range(0, 4999));
-        const prods = must(await sb.from('catalog_products').select('id, nome').eq('org_id', c.orgId).eq('ativo', true).order('nome'));
-        let url = '';
-        if (plano.imagem_path) { const sg = await sb.storage.from('plantas').createSignedUrl(plano.imagem_path, 7200); if (sg.error) throw new Error('Não consegui abrir a imagem da planta: ' + sg.error.message); url = sg.data.signedUrl; }
-        return { plano: plano, cliente: plano.clients ? plano.clients.nome : '', marcas: marcas, produtos: prods, url: url };
+        if (feito) must(await sb.from('plan_exec').upsert({ org_id: c.orgId, plan_id: planId, ponto_id: pontoId, feito_em: new Date().toISOString(), feito_por: c.user.id }, { onConflict: 'plan_id,ponto_id' }));
+        else must(await sb.from('plan_exec').delete().eq('plan_id', planId).eq('ponto_id', pontoId));
+        return { ok: true };
       });
     },
-    salvarMarca: function(t, m) {
-      return api(async function() {
-        const c = await ctx(), row = {};
-        ['tipo', 'categoria', 'rotulo', 'ambiente', 'x', 'y', 'pontos', 'product_id', 'observacoes', 'status'].forEach(function(k) { if (m[k] !== undefined) row[k] = m[k]; });
-        ['rotulo', 'ambiente', 'observacoes'].forEach(function(k) { if (row[k] === '') row[k] = null; });
-        if (row.status === 'executado') { row.executado_em = new Date().toISOString(); row.executado_por = c.user.id; }
-        else if (row.status === 'pendente') { row.executado_em = null; row.executado_por = null; }
-        const q = m.id ? sb.from('plan_marks').update(row).eq('id', m.id) : sb.from('plan_marks').insert(Object.assign({ org_id: c.orgId, plan_id: m.plan_id }, row));
-        return must(await q.select().single());
-      });
-    },
-    excluirMarca: function(t, id) { return api(async function() { must(await sb.from('plan_marks').delete().eq('id', id)); return { ok: true }; }); },
     excluirPlanta: function(t, id) {
       return api(async function() {
-        const p = must(await sb.from('plans').select('imagem_path').eq('id', id).single());
-        if (p.imagem_path) await sb.storage.from('plantas').remove([p.imagem_path]);
+        const c = await ctx();
+        const arqs = await sb.storage.from('plantas').list(c.orgId + '/' + id);
+        if (!arqs.error && arqs.data && arqs.data.length) await sb.storage.from('plantas').remove(arqs.data.map(function(a) { return c.orgId + '/' + id + '/' + a.name; }));
         must(await sb.from('plans').delete().eq('id', id));
         return { ok: true };
       });
@@ -1999,7 +1780,7 @@ window.DOMOTICA_CFG = {
     prepararTelas();
     const s = (await sb.auth.getSession()).data.session;
     if (!s) { mostrarTela('login'); return; }
-    try { const c = await ctx(); APP.token = s.access_token; APP.usuario = { id: c.user.id, nome: c.nome, usuario: c.user.email, role: c.role === 'owner' ? 'admin' : c.role }; entrarNoApp(); }
+    try { const c = await ctx(); APP.token = s.access_token; APP.usuario = { id: c.user.id, nome: c.nome, usuario: c.user.email, role: c.role === 'owner' ? 'admin' : c.role }; entrarNoApp(); const h = (location.hash || '').replace('#', ''); if (h && VIEWS[h]) navegar(h); }
     catch (e) { await sb.auth.signOut(); CTX = null; mostrarTela('login'); mostrarAlerta('login-error', msgErro(e.message)); }
   };
   window.fazerLogin = async function() {
