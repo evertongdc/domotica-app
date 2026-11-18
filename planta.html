@@ -181,7 +181,17 @@ window.DOMOTICA_CFG = {
     Planta_compartilhar: async function(planId, dias) { await ctx(); return must(await sb.rpc('share_criar', { p_plan: planId, p_dias: dias })); },
     Planta_compartilhamentos: async function(planId) { await ctx(); return must(await sb.from('plan_shares').select('id, expira_em, revogado, status, respostas, acessos, ultimo_acesso, created_at').eq('plan_id', planId).order('created_at', { ascending: false })); },
     Planta_revogarCompartilhamento: async function(id) { await ctx(); must(await sb.from('plan_shares').update({ revogado: true }).eq('id', id)); return { ok: true }; },
-    Planta_lerFoto: async function() { throw new Error('A leitura por IA ainda não está ligada neste servidor. Marque a planta manualmente por cima da imagem.'); },
+    Planta_lerFoto: async function(dataUrl) {
+      await ctx();
+      var r = await sb.functions.invoke('ler-planta', { body: { imagem: dataUrl } });
+      if (r.error) {
+        var m = r.error.message || 'Falha ao ler com IA.';
+        try { var j = await r.error.context.json(); if (j && j.erro) m = j.erro; } catch (e) {}
+        throw new Error(m);
+      }
+      if (r.data && r.data.erro) throw new Error(r.data.erro);
+      return r.data;
+    },
   };
 
   function mk(okF, failF) {
@@ -482,8 +492,8 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
         alt: porta ? 210 : 120, peitoril: porta ? 0 : 100, lado: 1 });
     });
     // 4) pontos
-    const NAPAREDE = { interruptor: 1, tomada: 1, tv: 1, ar_condicionado: 1, camera: 0, caixa_som: 0, sensor: 0, echo: 1, ponto_luz: 0, outro: 0 };
-    const ALT = { interruptor: 110, tomada: 30, ponto_luz: 270, tv: 120, ar_condicionado: 220, camera: 250, caixa_som: 250, sensor: 250, echo: 100, outro: 100 };
+    const NAPAREDE = { interruptor: 1, tomada: 1, tv: 1, ar_condicionado: 1, camera: 0, caixa_som: 0, sensor: 0, echo: 1, ponto_luz: 0, spot: 0, arandela: 1, ventilador: 0, outro: 0 };
+    const ALT = { interruptor: 110, tomada: 30, ponto_luz: 270, spot: 270, arandela: 180, ventilador: 270, tv: 120, ar_condicionado: 220, camera: 250, caixa_som: 250, sensor: 250, echo: 100, outro: 100 };
     const pontos = [];
     (raw.pontos || []).forEach((p, i) => {
       const c0 = cm(p.x, p.y), c = rot(c0[0], c0[1]);
@@ -2106,15 +2116,24 @@ $('#fileIn').onchange = async e => {
     const dim = await new Promise(ok => { const im = new Image(); im.onload = () => ok({ w: im.width, h: im.height }); im.src = dataUrl; });
     snap(); S.fotoDataUrl = dataUrl; S.fotoSuja = true;
     P.fundo = { x: 0, y: 0, w: dim.w, h: dim.h, px: dim.w, py: dim.h, opac: .55, rot: 0, cx: 0, cy: 0 };
-    S.tool = 'cal'; S.cal = []; refresh(); fit(); toast('Planta importada. Toque em 2 pontos de uma medida conhecida para calibrar.', 5000);
+    S.tool = 'cal'; S.cal = []; refresh(); fit();
+    if (await confirmar('Arquivo anexado. Quer que o sistema leia o desenho com IA e crie paredes, portas, janelas, pontos e nomes dos cômodos no nosso padrão? Você confere e ajusta depois. (Se preferir, calibre e decalque na mão.)', 'Ler com IA')) lerComIA();
+    else toast('Toque em 2 pontos de uma medida conhecida para calibrar e decalque com a Pencil.', 6000);
   } catch (err) { toast('Não consegui importar: ' + (err && err.message || err), 5000); }
 };
 async function lerComIA() {
   if (!P.fundo || !S.fotoDataUrl) return;
-  if (!P.calibrada && !(await confirmar('A planta importada ainda não foi calibrada (ferramenta Calibrar fundo). Sem isso a escala será um chute. Continuar mesmo assim?', 'Continuar'))) return;
-  toast('Lendo com IA…', 8000);
+  if (P.paredes.length && !(await confirmar('Esta planta já tem desenho. A leitura da IA será ADICIONADA por cima do que existe (dá para desfazer com ↶). Continuar?', 'Adicionar'))) return;
+  toast('Lendo o desenho com IA… pode levar até 1 minuto.', 70000);
   try {
-    const raw = await gas('Planta_lerFoto', S.fotoDataUrl), F = P.fundo, f = F.w / F.px;
+    const raw = await gas('Planta_lerFoto', S.fotoDataUrl), F = P.fundo;
+    if (!P.calibrada) {
+      // sem calibrar: a escala sai das medidas (cotas) escritas no próprio desenho
+      const t = G.importar(raw, F.px, F.py, { ox: F.x, oy: F.y });
+      if (t.calibrada && t.escalaCmPorPx > 0) { snap(); F.w = F.px * t.escalaCmPorPx; F.h = F.py * t.escalaCmPorPx; P.calibrada = true; toast('Escala tirada das medidas escritas no desenho.', 3500); }
+      else if (!(await confirmar('Não achei medidas escritas legíveis para calcular a escala. Sem calibrar (ferramenta Calibrar fundo) o tamanho será um chute. Continuar mesmo assim?', 'Continuar'))) { toast('Calibre o fundo e tente de novo.', 4000); return; }
+    }
+    const f = F.w / F.px;
     const imp = G.importar(raw, F.px, F.py, { f, ox: F.x, oy: F.y });
     snap(); const mw = {}, ml = {};
     imp.planta.paredes.forEach(w => { const id = M.id(P, 'w'); mw[w.id] = id; w.id = id; w.esp = w.esp || S.esp; P.paredes.push(w); });
