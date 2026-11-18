@@ -1748,8 +1748,16 @@ window.DOMOTICA_CFG = {
     card.querySelector('p.muted').textContent = 'Use o e-mail que o administrador convidou.';
     $id('setup-nome').parentElement.insertAdjacentHTML('afterend', '<div class="form-group"><label class="form-label required">E-mail</label><input id="setup-email" type="email" class="form-input" autocomplete="email"></div>');
     $id('btn-setup').textContent = 'Criar conta';
+    $id('setup-senha').closest('.form-group').querySelector('label').textContent = 'Senha (mín. 12 caracteres, com maiúscula, minúscula, número e símbolo)';
     const p = card.querySelector('p.small'); if (p) p.innerHTML = 'Já tem conta? <a href="#" id="ir-entrar">Entrar</a>';
     $id('ir-entrar').addEventListener('click', function(e) { e.preventDefault(); mostrarTela('login'); });
+  }
+
+  // Mesmas regras configuradas no Supabase (12+ caracteres, maiúscula, minúscula, número e símbolo)
+  function senhaFraca(s) {
+    if (s.length < 12) return 'A senha precisa ter ao menos 12 caracteres.';
+    if (!/[a-z]/.test(s) || !/[A-Z]/.test(s) || !/[0-9]/.test(s) || !/[^A-Za-z0-9]/.test(s)) return 'A senha precisa ter letra maiúscula, minúscula, número e símbolo.';
+    return null;
   }
 
   // Link de "esqueci a senha": abre uma janela para definir a nova senha
@@ -1757,13 +1765,13 @@ window.DOMOTICA_CFG = {
     if (ev !== 'PASSWORD_RECOVERY') return;
     setTimeout(function() {
       abrirModal('Criar nova senha',
-        '<div class="form-group"><label class="form-label">Nova senha (mínimo 8 caracteres)</label><input id="ns-1" type="password" class="form-input" autocomplete="new-password"></div>' +
+        '<div class="form-group"><label class="form-label">Nova senha (mín. 12 caracteres, com maiúscula, minúscula, número e símbolo)</label><input id="ns-1" type="password" class="form-input" autocomplete="new-password"></div>' +
         '<div class="form-group"><label class="form-label">Repita a senha</label><input id="ns-2" type="password" class="form-input" autocomplete="new-password"></div>',
         '<button class="btn btn-primary" id="ns-salvar">Salvar nova senha</button>');
       olho($id('ns-1')); olho($id('ns-2'));
       $id('ns-salvar').addEventListener('click', async function() {
         const a = $id('ns-1').value, b = $id('ns-2').value;
-        if (a.length < 8) { toast('A senha precisa ter ao menos 8 caracteres.', 'warn'); return; }
+        const fraca = senhaFraca(a); if (fraca) { toast(fraca, 'warn', 8000); return; }
         if (a !== b) { toast('As senhas não conferem.', 'warn'); return; }
         const r = await sb.auth.updateUser({ password: a });
         if (r.error) { toast(msgErro(r.error.message), 'error', 8000); return; }
@@ -1788,9 +1796,16 @@ window.DOMOTICA_CFG = {
     mostrarAlerta('login-error', '');
     if (!email || !senha) { mostrarAlerta('login-error', 'Informe e-mail e senha.'); return; }
     const btn = $id('btn-login'); btn.disabled = true; btn.textContent = 'Entrando...';
-    const r = await sb.auth.signInWithPassword({ email: email, password: senha });
+    // O login passa por uma função no servidor que conta as falhas e bloqueia após 3 tentativas.
+    let resp = null, dados = {};
+    try {
+      resp = await fetch(window.DOMOTICA_CFG.url + '/functions/v1/login-seguro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, senha: senha }) });
+      dados = await resp.json().catch(function() { return {}; });
+    } catch (e) { btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', 'Sem conexão. Verifique a internet e tente de novo.'); return; }
+    if (!resp.ok || !dados.sessao) { btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', dados.erro || 'Não foi possível entrar agora.'); return; }
+    const ss = await sb.auth.setSession({ access_token: dados.sessao.access_token, refresh_token: dados.sessao.refresh_token });
     btn.disabled = false; btn.textContent = 'Entrar';
-    if (r.error) { mostrarAlerta('login-error', msgErro(r.error.message)); return; }
+    if (ss.error) { mostrarAlerta('login-error', msgErro(ss.error.message)); return; }
     $id('login-senha').value = ''; CTX = null;
     window.iniciarApp();
   };
@@ -1798,7 +1813,7 @@ window.DOMOTICA_CFG = {
     const nome = inputVal('setup-nome'), email = inputVal('setup-email'), s1 = $id('setup-senha').value, s2 = $id('setup-senha2').value;
     mostrarAlerta('setup-error', '');
     if (!nome || !email) { mostrarAlerta('setup-error', 'Informe seu nome e e-mail.'); return; }
-    if (s1.length < 8) { mostrarAlerta('setup-error', 'A senha precisa ter ao menos 8 caracteres.'); return; }
+    const fraca = senhaFraca(s1); if (fraca) { mostrarAlerta('setup-error', fraca); return; }
     if (s1 !== s2) { mostrarAlerta('setup-error', 'As senhas não conferem.'); return; }
     const btn = $id('btn-setup'); btn.disabled = true; btn.textContent = 'Criando...';
     const r = await sb.auth.signUp({ email: email, password: s1, options: { data: { nome: nome }, emailRedirectTo: location.origin + location.pathname } });
