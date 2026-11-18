@@ -1423,7 +1423,17 @@ window.DOMOTICA_CFG = {
 // Substitui google.script.run por chamadas ao banco (com RLS) e troca o login pelo Supabase Auth.
 (function() {
   const CFG = window.DOMOTICA_CFG;
-  const sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  // Onde guardar a sessão: "manter conectado" (padrão) = localStorage; desmarcado = sessionStorage (some ao fechar a aba).
+  const ARMAZ = (function() {
+    function lido(a, k) { try { return a.getItem(k); } catch (e) { return null; } }
+    function manter() { try { return localStorage.getItem('dom_manter') !== '0'; } catch (e) { return true; } }
+    return {
+      getItem: function(k) { const v = lido(sessionStorage, k); return v !== null ? v : lido(localStorage, k); },
+      setItem: function(k, v) { try { const d = manter() ? localStorage : sessionStorage, o = manter() ? sessionStorage : localStorage; d.setItem(k, v); o.removeItem(k); } catch (e) {} },
+      removeItem: function(k) { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (e) {} },
+    };
+  })();
+  const sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: ARMAZ } });
   window.SB = sb;
   let CTX = null;
 
@@ -1768,7 +1778,7 @@ window.DOMOTICA_CFG = {
     $id('btn-setup').insertAdjacentHTML('beforebegin', '<div id="cf-setup" style="margin-bottom:12px"></div>');
     cfMontar('cf-login'); cfMontar('cf-setup');
     $id('login-usuario').previousElementSibling.textContent = 'E-mail'; $id('login-usuario').type = 'email';
-    const manter = $id('login-manter'); if (manter) manter.closest('.form-group').style.display = 'none';
+    const manter = $id('login-manter'); if (manter) { try { manter.checked = localStorage.getItem('dom_manter') !== '0'; } catch (e) { manter.checked = true; } }
     $id('btn-login').insertAdjacentHTML('afterend',
       '<p class="small" style="margin-top:14px;text-align:center"><a href="#" id="ir-esqueci">Esqueci minha senha</a></p>' +
       '<p class="small" style="margin-top:8px;text-align:center">Primeira vez? <a href="#" id="ir-criar">Criar conta</a></p>');
@@ -2046,6 +2056,7 @@ window.DOMOTICA_CFG = {
       cfReset('cf-login');
     } catch (e) { cfReset('cf-login'); btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', 'Sem conexão. Verifique a internet e tente de novo.'); return; }
     if (!resp.ok || !dados.sessao) { btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', dados.erro || 'Não foi possível entrar agora.'); return; }
+    try { const mc = $id('login-manter'); localStorage.setItem('dom_manter', mc && !mc.checked ? '0' : '1'); } catch (e) {}
     const ss = await sb.auth.setSession({ access_token: dados.sessao.access_token, refresh_token: dados.sessao.refresh_token });
     btn.disabled = false; btn.textContent = 'Entrar';
     if (ss.error) { mostrarAlerta('login-error', msgErro(ss.error.message)); return; }
