@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-light-32.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-light-48.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2" media="(prefers-color-scheme: dark)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=2" media="(prefers-color-scheme: dark)"><link rel="apple-touch-icon" id="ati" href="apple-touch-icon.png?v=2"><script>try{if(!matchMedia("(prefers-color-scheme: dark)").matches)document.getElementById("ati").href="apple-touch-icon-light.png?v=2"}catch(e){}</script>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-light-32.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-light-48.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2" media="(prefers-color-scheme: dark)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=2" media="(prefers-color-scheme: dark)"><link rel="apple-touch-icon" id="ati" href="apple-touch-icon.png?v=2">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1957,6 +1957,9 @@ window.DOMOTICA_CFG = {
           '<div id="cf-config" style="margin-bottom:12px"></div>' +
           '<button class="btn btn-primary" data-cfg="senha">Alterar senha</button>') +
         cfgSecao('Verificação em duas etapas', 'Mesmo que alguém descubra sua senha, não entra sem o código do seu celular.', '<div id="cfg-2fa">Carregando...</div>') +
+        cfgSecao('Ícone do app no celular', 'O iPhone grava o ícone da página em que você toca em “Adicionar à Tela de Início”. Escolha a versão que combina com o seu celular:',
+          '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-secondary" href="./" target="_blank" rel="noopener" style="text-decoration:none">Abrir página do ícone escuro</a><a class="btn btn-secondary" href="claro.html" target="_blank" rel="noopener" style="text-decoration:none">Abrir página do ícone claro</a></div>' +
+          '<div class="small" style="margin-top:10px;line-height:1.5">No Safari: abra uma das páginas, toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>. Apague antes o ícone antigo, senão o iPhone mantém o anterior.</div>') +
         cfgSecao('Sessões', 'Se perdeu um aparelho ou acha que alguém usou sua conta, encerre todas as sessões.',
           '<button class="btn btn-danger" data-cfg="sair-todos">Sair de todos os aparelhos</button>');
       olho($id('cfg-atual')); olho($id('cfg-nova')); olho($id('cfg-nova2'));
