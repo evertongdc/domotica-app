@@ -178,6 +178,9 @@ window.DOMOTICA_CFG = {
       if (up.error) throw new Error('Não consegui guardar a imagem 3D: ' + up.error.message);
       return { fileId: caminho };
     },
+    Planta_compartilhar: async function(planId, dias) { await ctx(); return must(await sb.rpc('share_criar', { p_plan: planId, p_dias: dias })); },
+    Planta_compartilhamentos: async function(planId) { await ctx(); return must(await sb.from('plan_shares').select('id, expira_em, revogado, status, respostas, acessos, ultimo_acesso, created_at').eq('plan_id', planId).order('created_at', { ascending: false })); },
+    Planta_revogarCompartilhamento: async function(id) { await ctx(); must(await sb.from('plan_shares').update({ revogado: true }).eq('id', id)); return { ok: true }; },
     Planta_lerFoto: async function() { throw new Error('A leitura por IA ainda não está ligada neste servidor. Marque a planta manualmente por cima da imagem.'); },
   };
 
@@ -206,6 +209,7 @@ window.DOMOTICA_CFG = {
     <button id="bImp">Planta do cliente</button>
     <button id="bAbrir">Abrir</button>
     <button id="bExp">Exportar</button>
+    <button id="bShare">Compartilhar</button>
     <button id="bSalvar" class="pri">Salvar</button>
   </header>
   <nav id="tabs">
@@ -1278,7 +1282,7 @@ const confirmar = (msg, ok) => modal('Confirmar', [{ tipo: 'info', val: esc(msg)
 function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo.length = 0; S.dirty = true; }
 function desfazer() { if (!undo.length) return; redo.push(JSON.stringify(P)); P = JSON.parse(undo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
 function refazer() { if (!redo.length) return; undo.push(JSON.stringify(P)); P = JSON.parse(redo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
-let draftT; function rascunho() { clearTimeout(draftT); draftT = setTimeout(() => { try { localStorage.setItem('planta_rascunho', JSON.stringify({ P, planoId: S.planoId, ctx: CTX.clienteId || '' })); } catch (e) { } }, 700); }
+let draftT; function rascunho() { if (window.PLANTA_VIEW) return; clearTimeout(draftT); draftT = setTimeout(() => { try { localStorage.setItem('planta_rascunho', JSON.stringify({ P, planoId: S.planoId, ctx: CTX.clienteId || '' })); } catch (e) { } }, 700); }
 
 /* ===================== geometria de tela ===================== */
 const rectOf = () => svg.getBoundingClientRect();
@@ -1690,7 +1694,7 @@ svg.addEventListener('pointerdown', e => {
   if (ptrs.size >= 2) { const [a, b] = Array.from(ptrs.values()); gest = { mode: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; S.prev = null; renderSVG(); return; }
   const w = toWorld(e), el = e.target.closest ? e.target.closest('[data-k]') : null, tool = S.tool, desenha = e.pointerType !== 'touch' || S.dedo;
   gest = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, start: w, el, tool, pts: [w], moved: false, mode: 'tap' };
-  if (e.button === 1 || e.button === 2) gest.mode = 'pan';
+  if (e.button === 1 || e.button === 2 || window.PLANTA_VIEW) gest.mode = 'pan';
   else if (tool === 'rabisco' || tool === 'parede') gest.mode = desenha ? tool : 'pan';
   else if (tool === 'sel' && el && el.dataset.k === 'ponto') { gest.mode = 'dragPonto'; gest.pid = el.dataset.id; }
   else if (tool === 'sel' && el && el.dataset.k === 'handle') { gest.mode = 'dragHandle'; gest.wid = el.dataset.id; gest.hi = el.dataset.i; const ww = getById(P.paredes, gest.wid); gest.old = [ww['x' + gest.hi], ww['y' + gest.hi]]; }
@@ -1882,6 +1886,7 @@ $('#zOut').onclick = () => { const r = rectOf(); zoomAt(r.left + r.width / 2, r.
 $('#zFit').onclick = fit;
 $('#bUndo').onclick = desfazer; $('#bRedo').onclick = refazer;
 window.addEventListener('keydown', e => {
+  if (window.PLANTA_VIEW) return;
   if (/INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ''))) return;
   if ($('#modal').classList.contains('on')) return;
   if (S.ghost) { if (e.key === 'Escape') cancelarGhost(); else if (e.key.toLowerCase() === 'r') girarGhost(); else if (e.key === 'Enter') colocarGhost(); return; }
@@ -2209,6 +2214,36 @@ $('#bExp').onclick = async () => {
   } catch (e) { toast('Não consegui exportar: ' + (e && e.message || e), 6000); }
 };
 
+/* ===================== compartilhar com o cliente (link só de visualização) ===================== */
+const ST_LINK = { pendente: 'Aguardando resposta', aprovada: '✓ Aprovada pelo cliente', alteracoes: '✎ Cliente pediu alterações' };
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('[data-rev]'); if (!b) return;
+  if (!(await confirmar('Revogar este link? O cliente não conseguirá mais abrir.', 'Revogar'))) return;
+  try { await gas('Planta_revogarCompartilhamento', b.dataset.rev); b.parentElement.querySelector('b').textContent = 'Revogado'; b.remove(); toast('Link revogado.'); } catch (x) { toast('Não consegui revogar: ' + x.message, 5000); }
+});
+$('#bShare').onclick = async () => {
+  if (!P.paredes.length) return toast('Desenhe a planta antes de compartilhar.');
+  try { await salvar(true); } catch (e) { return toast('Salve a planta antes de compartilhar.', 4000); }
+  if (!S.planoId || /^local_/.test(S.planoId)) return toast('Salve a planta no sistema para compartilhar.', 4000);
+  let lista = []; try { lista = await gas('Planta_compartilhamentos', S.planoId); } catch (e) { return toast('Compartilhar: ' + e.message, 5000); }
+  const hoje = new Date();
+  const info = (lista.length ? lista.map(l => { const ex = new Date(l.expira_em), vivo = !l.revogado && ex > hoje;
+    return '<div style="margin:6px 0;padding:7px;border:1px solid rgba(255,255,255,.18);border-radius:9px"><b>' + (l.revogado ? 'Revogado' : vivo ? ST_LINK[l.status] : 'Expirado') + '</b> · vence ' + ex.toLocaleDateString('pt-BR') + ' · ' + l.acessos + ' acesso(s)' +
+      (l.respostas || []).slice(-3).map(r => '<div class="note">' + esc(r.nome || 'Cliente') + ' ' + (r.acao === 'aprovada' ? 'aprovou' : 'pediu alterações') + (r.comentario ? ': “' + esc(r.comentario) + '”' : '') + '</div>').join('') +
+      (vivo ? '<div style="margin-top:5px"><button data-rev="' + l.id + '">Revogar</button></div>' : '') + '</div>'; }).join('') : 'Nenhum link criado ainda.');
+  const r = await modal('Compartilhar com o cliente', [
+    { tipo: 'info', val: 'O cliente abre um link <b>só de visualização</b> (2D e 3D), sem login, e pode <b>aprovar</b> ou <b>pedir alterações</b>. Ele não vê notas internas, neutro, produtos nem preços.' },
+    { k: 'dias', rot: 'Validade do link', tipo: 'select', val: '15', opts: [['7', '7 dias'], ['15', '15 dias'], ['30', '30 dias'], ['60', '60 dias'], ['90', '90 dias']] },
+    { tipo: 'info', val: '<b>Links desta planta</b>' + info }], 'Criar link novo');
+  if (!r) return;
+  try {
+    const c = await gas('Planta_compartilhar', S.planoId, parseInt(r.dias, 10) || 15);
+    const link = new URL('ver.html', location.href).href.split('#')[0] + '#' + c.token;
+    copiar(link, 'Link copiado.');
+    await modal('Link criado', [{ tipo: 'info', val: 'Vale até <b>' + new Date(c.expira_em).toLocaleDateString('pt-BR') + '</b>. Já foi copiado — cole no WhatsApp.<br><input readonly value="' + esc(link) + '" onclick="this.select()" style="margin-top:8px">' }], 'Fechar');
+  } catch (e) { toast('Não consegui criar o link: ' + e.message, 6000); }
+};
+
 /* ===================== salvar / abrir ===================== */
 async function salvar(silencioso) {
   P.nome = $('#fNome').value || P.nome;
@@ -2240,7 +2275,7 @@ $('#bAbrir').onclick = async () => {
   } catch (e) { toast('Erro ao abrir: ' + e.message, 5000); }
 };
 function carregar(p, id, foto) {
-  P = p; S.planoId = id; S.fotoDataUrl = foto; S.fotoSuja = false; S.sel = null; S.tool = 'sel'; S.dirty = false; undo.length = 0; redo.length = 0; S.cal = [];
+  P = p; S.planoId = id; S.fotoDataUrl = foto; S.fotoSuja = false; S.sel = null; S.tool = window.PLANTA_VIEW ? 'ver' : 'sel'; S.dirty = false; undo.length = 0; redo.length = 0; S.cal = [];
   $('#fNome').value = P.nome || ''; if (!P.comodos.length && P.paredes.length) M.recalc(P);
   refresh(); fit();
 }
@@ -2473,7 +2508,7 @@ function iniciar() {
   $('#fNome').value = P.nome; renderTools(); renderPanel(); renderHint();
   const iniciaVazio = () => { try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
   if (CTX.plantaId) { gas('Planta_abrir', CTX.plantaId).then(pl => { const f = pl.fotoDataUrl || null; delete pl.fotoDataUrl; carregar(M.migrar(pl), CTX.plantaId, f); }).catch(e => { toast('Erro ao abrir: ' + e.message, 5000); }); }
-  else iniciaVazio();
+  else if (!window.PLANTA_VIEW) iniciaVazio();
   refresh(); setTimeout(fit, 60);
   window.Planta = { get: () => JSON.parse(JSON.stringify(P)), carregar: (p, id) => carregar(M.migrar(p), id || null, null), salvar, levantamento: () => M.levantamento(P), validar: () => M.validar(P), apps: () => M.resumoApps(P) };
 }
