@@ -205,6 +205,7 @@ window.DOMOTICA_CFG = {
     <button id="bUndo" title="Desfazer">↶</button><button id="bRedo" title="Refazer">↷</button>
     <button id="bImp">Planta do cliente</button>
     <button id="bAbrir">Abrir</button>
+    <button id="bExp">Exportar</button>
     <button id="bSalvar" class="pri">Salvar</button>
   </header>
   <nav id="tabs">
@@ -2120,6 +2121,69 @@ async function lerComIA() {
     refresh(); fit(); toast('IA leu: ' + imp.planta.paredes.length + ' paredes, ' + imp.planta.aberturas.length + ' aberturas, ' + imp.planta.pontos.length + ' pontos. Confira e ajuste.', 6000);
   } catch (e) { toast('IA: ' + e.message, 6000); }
 }
+
+/* ===================== exportar (PDF, JPG, PNG, SVG) ===================== */
+const nomeArquivo = () => (P.nome || 'planta').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '') || 'planta';
+const textoCamadas = () => S.camadas.size ? CAMADAS.filter(c => S.camadas.has(c[0])).map(c => c[1]).join(' + ') : 'todas as camadas';
+const dataBR = () => new Date().toLocaleDateString('pt-BR');
+const legendaExp = () => (P.nome || 'Planta') + ($('#fImovel').value ? ' · ' + $('#fImovel').value : '') + ' · ' + dataBR() + ' · ' + textoCamadas();
+function baixarBlob(nome, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 6000); }
+/* captura o desenho 2D enquadrado, limpo (sem seleção, alças nem grade) */
+async function svgParaExportar() {
+  if (S.tab !== 'v2d') { mostrar('v2d'); await new Promise(r => setTimeout(r, 160)); }
+  const sv = { sel: S.sel, prev: S.prev, live: S.live, ghost: S.ghost, ativo: S.ativo, tool: S.tool, lig: S.lig, view: Object.assign({}, S.view) };
+  S.sel = null; S.prev = null; S.live = null; S.ghost = null; S.ativo = null; S.tool = 'ver'; S.lig = { de: null, tecla: 1 };
+  fit(); const c = svg.cloneNode(true);
+  const vb = c.getAttribute('viewBox').split(' ').map(Number);
+  Object.assign(S, { sel: sv.sel, prev: sv.prev, live: sv.live, ghost: sv.ghost, ativo: sv.ativo, tool: sv.tool, lig: sv.lig }); S.view = sv.view; renderSVG();
+  c.querySelector('#gGrid').innerHTML = '<rect x="' + vb[0] + '" y="' + vb[1] + '" width="' + vb[2] + '" height="' + vb[3] + '" fill="#ffffff"/>';
+  c.querySelectorAll('[data-k]').forEach(e => { if (e.getAttribute('stroke') === 'transparent') e.remove(); });
+  c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', vb[2]); c.setAttribute('height', vb[3]);
+  return { svg: new XMLSerializer().serializeToString(c), w: vb[2], h: vb[3] };
+}
+async function rasterizar(exp, band) {
+  const img = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('Não consegui montar a imagem da planta.')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(exp.svg); });
+  const k = Math.min(3, 2600 / exp.w), W = Math.round(exp.w * k), H = Math.round(exp.h * k);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H + band; const x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(img, 0, band, W, H);
+  if (band) { x.fillStyle = '#0b1220'; x.fillRect(0, 0, W, band); x.fillStyle = '#ff7a00'; x.font = 'bold 34px Arial, sans-serif'; x.fillText('Domótica Automação Residencial', 30, 42); x.fillStyle = '#fff'; x.font = '24px Arial, sans-serif'; x.fillText(legendaExp(), 30, 74); }
+  return cv;
+}
+async function gerarPDF(exp, comLista) {
+  if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  const doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }), PW = 297, PH = 210;
+  const cab = tit => { doc.setFillColor(11, 18, 32); doc.rect(0, 0, PW, 16, 'F'); doc.setTextColor(255, 122, 0); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text('Domótica Automação Residencial', 10, 10.5); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(tit, PW - 10, 10.5, { align: 'right' }); doc.setTextColor(30, 41, 59); };
+  const imagem = (dataUrl, tipo, ratio) => { const w = Math.min(PW - 20, (PH - 32) * ratio), h = w / ratio; doc.addImage(dataUrl, tipo, (PW - w) / 2, 21, w, h); };
+  const cv = await rasterizar(exp, 0);
+  cab(legendaExp()); imagem(cv.toDataURL('image/jpeg', .9), 'JPEG', cv.width / cv.height);
+  if (comLista) {
+    doc.addPage(); cab('Pontos por cômodo · ' + textoCamadas()); let y = 26;
+    const linha = (txt, neg, tam) => { if (y > PH - 14) { doc.addPage(); cab('Pontos por cômodo (continuação)'); y = 26; } doc.setFont('helvetica', neg ? 'bold' : 'normal'); doc.setFontSize(tam || 9); doc.text(txt, 10, y); y += neg ? 5.5 : 4.6; };
+    const grupos = P.comodos.map(c => ({ t: c.nome + ' · ' + c.area.toFixed(1).replace('.', ',') + ' m2' + (c.forro ? ' · forro ' + c.forro + (c.rebaixo ? ' (rebaixo ' + c.rebaixo + ' cm)' : '') : '') + ' · pé-direito ' + ((c.pe || P.peDireito) / 100).toFixed(2).replace('.', ',') + ' m', pts: P.pontos.filter(p => p.comodo === c.id && visivel(p)) }));
+    const sem = P.pontos.filter(p => !getById(P.comodos, p.comodo) && visivel(p)); if (sem.length) grupos.push({ t: 'Fora de cômodos', pts: sem });
+    let algum = false;
+    grupos.forEach(g => { if (!g.pts.length) return; algum = true; linha(g.t, true, 11); g.pts.forEach(p => linha('   ' + M.siglaDe(p) + '   ' + M.nomeDe(p) + '   |   altura ' + (p.altura == null ? 100 : p.altura) + ' cm' + (ehTeto(p) ? ' (teto)' : '') + (p.produto ? '   |   ' + p.produto : ''))); y += 3; });
+    if (!algum) linha('Nenhum ponto nas camadas selecionadas.');
+  }
+  try { if (T3.ok && T3.ren) { const d = T3.ren.domElement; if (d.width > 10) { doc.addPage(); cab('Vista 3D'); imagem(d.toDataURL('image/jpeg', .9), 'JPEG', d.width / d.height); } } } catch (e) { }
+  const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120); doc.text('Gerado em ' + dataBR() + ' · página ' + i + ' de ' + n, PW - 10, PH - 6, { align: 'right' }); }
+  doc.save(nomeArquivo() + '.pdf');
+}
+$('#bExp').onclick = async () => {
+  if (!P.paredes.length) return toast('Desenhe alguma coisa antes de exportar.');
+  const r = await modal('Exportar planta', [
+    { k: 'fmt', rot: 'Formato', tipo: 'select', val: 'pdf', opts: [['pdf', 'PDF (planta + lista de pontos + vista 3D)'], ['jpg', 'Imagem JPG'], ['png', 'Imagem PNG'], ['svg', 'Vetor SVG (para CAD/Illustrator)']] },
+    { k: 'lista', rot: 'Lista de pontos por cômodo (só no PDF)', tipo: 'select', val: '1', opts: [['1', 'Incluir'], ['0', 'Não incluir']] },
+    { tipo: 'info', val: 'Sai exatamente o que está visível: <b>' + esc(textoCamadas()) + '</b>. Para exportar só o teto, marque "Teto" nas camadas antes.' }], 'Exportar');
+  if (!r) return; toast('Gerando arquivo…', 8000);
+  try {
+    const exp = await svgParaExportar();
+    if (r.fmt === 'svg') baixarBlob(nomeArquivo() + '.svg', new Blob([exp.svg], { type: 'image/svg+xml' }));
+    else if (r.fmt === 'pdf') await gerarPDF(exp, r.lista === '1');
+    else { const cv = await rasterizar(exp, 90), tipo = r.fmt === 'png' ? 'image/png' : 'image/jpeg'; const blob = await new Promise(ok => cv.toBlob(ok, tipo, .92)); baixarBlob(nomeArquivo() + '.' + (r.fmt === 'png' ? 'png' : 'jpg'), blob); }
+    toast('Arquivo gerado.', 3000);
+  } catch (e) { toast('Não consegui exportar: ' + (e && e.message || e), 6000); }
+};
 
 /* ===================== salvar / abrir ===================== */
 async function salvar(silencioso) {
