@@ -1879,10 +1879,12 @@ window.DOMOTICA_CFG = {
       const fid = e.data.id;
       abrirModal('Ativar duas etapas',
         '<ol style="padding-left:18px;line-height:1.6;margin-top:0"><li>No app autenticador, adicione uma conta e escaneie o QR code.</li><li>Digite abaixo o código de 6 dígitos que o app mostrar.</li></ol>' +
-        '<div style="text-align:center;margin:8px 0"><img alt="QR code" src="' + e.data.totp.qr_code + '" style="width:190px;height:190px;background:#fff;padding:8px;border-radius:12px"></div>' +
+        '<div style="text-align:center;margin:8px 0"><img id="mf-qr" alt="QR code" style="width:190px;height:190px;background:#fff;padding:8px;border-radius:12px"></div>' +
         '<p class="small muted" style="word-break:break-all">Sem câmera? Digite esta chave no app: <b>' + escHtml(e.data.totp.secret) + '</b><br>Guarde essa chave em um gerenciador de senhas: ela recupera o acesso se você trocar de celular.</p>' +
         '<div class="form-group"><input id="mf-cod" class="form-input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;font-size:22px;letter-spacing:6px"></div>',
         '<button class="btn btn-secondary" id="mf-c">Cancelar</button><button class="btn btn-primary" id="mf-v">Confirmar e ativar</button>');
+      // O QR vem como SVG com aspas no conteúdo: atribuir pela propriedade evita quebrar o HTML.
+      $id('mf-qr').src = e.data.totp.qr_code;
       $id('mf-c').addEventListener('click', async function() { await sb.auth.mfa.unenroll({ factorId: fid }); fecharModal(); });
       $id('mf-v').addEventListener('click', async function() {
         const code = $id('mf-cod').value.replace(/\D/g, ''); if (code.length !== 6) { toast('Digite os 6 dígitos.', 'warn'); return; }
