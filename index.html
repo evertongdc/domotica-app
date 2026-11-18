@@ -1780,14 +1780,103 @@ window.DOMOTICA_CFG = {
     }, 600);
   });
 
+  // ── Segurança: verificação em duas etapas (app autenticador, TOTP) ──
+  async function mfaFatores() { const r = await sb.auth.mfa.listFactors(); return (r.data && r.data.totp) || []; }
+
+  // Se a conta tem 2FA ativo e a sessão ainda não passou pelo código, pede o código antes de liberar o app.
+  async function exigirSegundoFator() {
+    const a = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (!a.data || a.data.nextLevel !== 'aal2' || a.data.currentLevel === 'aal2') return true;
+    const f = (await mfaFatores())[0]; if (!f) return true;
+    return new Promise(function(resolve) {
+      abrirModal('Verificação em duas etapas',
+        '<p class="muted" style="margin-top:0">Digite o código de 6 dígitos do seu app autenticador.</p>' +
+        '<div class="form-group"><input id="mf-cod" class="form-input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;font-size:22px;letter-spacing:6px"></div>' +
+        '<div class="alert alert-error" id="mf-err" style="display:none"></div>',
+        '<button class="btn btn-secondary" id="mf-sair">Cancelar</button><button class="btn btn-primary" id="mf-ok">Confirmar</button>');
+      const cod = $id('mf-cod'); setTimeout(function() { cod.focus(); }, 100);
+      const ok = async function() {
+        const code = cod.value.replace(/\D/g, ''); if (code.length !== 6) { $id('mf-err').textContent = 'Digite os 6 dígitos.'; $id('mf-err').style.display = 'block'; return; }
+        $id('mf-ok').disabled = true;
+        const ch = await sb.auth.mfa.challenge({ factorId: f.id });
+        const v = ch.error ? ch : await sb.auth.mfa.verify({ factorId: f.id, challengeId: ch.data.id, code: code });
+        $id('mf-ok').disabled = false;
+        if (v.error) { $id('mf-err').textContent = 'Código incorreto ou expirado. Tente o próximo código do app.'; $id('mf-err').style.display = 'block'; cod.value = ''; cod.focus(); return; }
+        fecharModal(); resolve(true);
+      };
+      $id('mf-ok').addEventListener('click', ok);
+      cod.addEventListener('keydown', function(e) { if (e.key === 'Enter') ok(); });
+      $id('mf-sair').addEventListener('click', function() { fecharModal(); resolve(false); });
+    });
+  }
+
+  window.abrirSeguranca = async function() {
+    const fs = await mfaFatores();
+    if (fs.length) {
+      abrirModal('Segurança da conta',
+        '<div class="alert alert-success">Verificação em duas etapas <b>ativada</b>. Além da senha, o app pede um código do seu autenticador a cada novo login.</div>' +
+        '<p class="muted small">Se perder o celular, peça ao administrador do sistema para remover o fator da sua conta.</p>',
+        '<button class="btn btn-secondary" onclick="fecharModal()">Fechar</button><button class="btn btn-danger" id="mf-off">Desativar</button>');
+      $id('mf-off').addEventListener('click', function() {
+        confirmarAcao('Desativar a verificação em duas etapas deixa a conta protegida só pela senha. Continuar?', async function() {
+          const r = await sb.auth.mfa.unenroll({ factorId: fs[0].id });
+          if (r.error) { toast(msgErro(r.error.message), 'error', 8000); return; }
+          toast('Verificação em duas etapas desativada.', 'success');
+        }, { perigo: true, textoConfirmar: 'Desativar', titulo: 'Desativar 2 etapas' });
+      });
+      return;
+    }
+    abrirModal('Segurança da conta',
+      '<p style="margin-top:0;line-height:1.5">Ative a <b>verificação em duas etapas</b>: mesmo que alguém descubra sua senha, não entra sem o código do seu celular.</p>' +
+      '<p class="muted small">Você vai precisar de um app autenticador (Google Authenticator, Microsoft Authenticator, Authy...).</p>',
+      '<button class="btn btn-secondary" onclick="fecharModal()">Agora não</button><button class="btn btn-primary" id="mf-on">Ativar</button>');
+    $id('mf-on').addEventListener('click', async function() {
+      // limpa tentativas anteriores que ficaram sem confirmar
+      const todos = await sb.auth.mfa.listFactors();
+      for (const x of ((todos.data && todos.data.all) || [])) if (x.status === 'unverified') await sb.auth.mfa.unenroll({ factorId: x.id });
+      const e = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Domótica ' + new Date().toISOString().slice(0, 16) });
+      if (e.error) { toast(msgErro(e.error.message), 'error', 8000); return; }
+      const fid = e.data.id;
+      abrirModal('Ativar duas etapas',
+        '<ol style="padding-left:18px;line-height:1.6;margin-top:0"><li>No app autenticador, adicione uma conta e escaneie o QR code.</li><li>Digite abaixo o código de 6 dígitos que o app mostrar.</li></ol>' +
+        '<div style="text-align:center;margin:8px 0"><img alt="QR code" src="' + e.data.totp.qr_code + '" style="width:190px;height:190px;background:#fff;padding:8px;border-radius:12px"></div>' +
+        '<p class="small muted" style="word-break:break-all">Sem câmera? Digite esta chave no app: <b>' + escHtml(e.data.totp.secret) + '</b><br>Guarde essa chave em um gerenciador de senhas: ela recupera o acesso se você trocar de celular.</p>' +
+        '<div class="form-group"><input id="mf-cod" class="form-input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" style="text-align:center;font-size:22px;letter-spacing:6px"></div>',
+        '<button class="btn btn-secondary" id="mf-c">Cancelar</button><button class="btn btn-primary" id="mf-v">Confirmar e ativar</button>');
+      $id('mf-c').addEventListener('click', async function() { await sb.auth.mfa.unenroll({ factorId: fid }); fecharModal(); });
+      $id('mf-v').addEventListener('click', async function() {
+        const code = $id('mf-cod').value.replace(/\D/g, ''); if (code.length !== 6) { toast('Digite os 6 dígitos.', 'warn'); return; }
+        const ch = await sb.auth.mfa.challenge({ factorId: fid });
+        const v = ch.error ? ch : await sb.auth.mfa.verify({ factorId: fid, challengeId: ch.data.id, code: code });
+        if (v.error) { toast('Código incorreto. Confira o app e tente de novo.', 'error', 6000); return; }
+        fecharModal(); toast('Verificação em duas etapas ativada.', 'success', 7000);
+      });
+    });
+  };
+  // Atalhos de acesso: menu lateral e a janela "Mais" do celular
+  let _atalhosOk = false;
+  function atalhosSeguranca() {
+    if (_atalhosOk) return; _atalhosOk = true;
+    const foot = document.querySelector('.sidebar-foot');
+    if (foot) foot.insertAdjacentHTML('beforeend', '<button class="btn btn-ghost btn-sm" style="padding-left:0" onclick="abrirSeguranca()">Segurança (2 etapas)</button>');
+    const maisOrig = window.abrirMais;
+    if (maisOrig) window.abrirMais = function() {
+      maisOrig();
+      const sair = [...document.querySelectorAll('#modal-body button')].find(function(b) { return b.textContent.trim() === 'Sair'; });
+      if (sair) sair.insertAdjacentHTML('beforebegin', '<button class="nav-item" onclick="fecharModal();abrirSeguranca()"><span>Segurança (2 etapas)</span></button>');
+    };
+  }
+
   window.iniciarApp = async function() {
     document.addEventListener('keydown', function(ev) {
       if (ev.key === 'Escape') fecharModal();
       if (ev.key === 'Enter' && $id('screen-login').style.display === 'flex') fazerLogin();
     });
-    prepararTelas();
-    const s = (await sb.auth.getSession()).data.session;
+    prepararTelas(); atalhosSeguranca();
+    let s =(await sb.auth.getSession()).data.session;
     if (!s) { mostrarTela('login'); return; }
+    if (!(await exigirSegundoFator())) { await sb.auth.signOut(); CTX = null; mostrarTela('login'); return; }
+    s = (await sb.auth.getSession()).data.session;
     try { const c = await ctx(); APP.token = s.access_token; APP.usuario = { id: c.user.id, nome: c.nome, usuario: c.user.email, role: c.role === 'owner' ? 'admin' : c.role }; entrarNoApp(); const h = (location.hash || '').replace('#', ''); if (h && VIEWS[h]) navegar(h); }
     catch (e) { await sb.auth.signOut(); CTX = null; mostrarTela('login'); mostrarAlerta('login-error', msgErro(e.message)); }
   };
