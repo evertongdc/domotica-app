@@ -1413,6 +1413,8 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
 window.DOMOTICA_CFG = {
   url: 'https://uscdtmynbksepdtwdvvq.supabase.co',
   key: 'sb_publishable_KO5FHrsYVt6iKo8VuXMLkw_Cc0ledzr',
+  // Chave PÚBLICA do Cloudflare Turnstile (CAPTCHA). A chave secreta fica só no Supabase.
+  turnstile: '0x4AAAAAAGGY7w8plV_6Xtly',
 };
 </script>
 <script>// Adaptador: faz as telas do ERP (feitas para o Apps Script) conversarem com o Supabase.
@@ -1726,8 +1728,43 @@ window.DOMOTICA_CFG = {
     w.appendChild(b);
   }
   window.olhoSenha = olho;
+  // ── CAPTCHA (Cloudflare Turnstile): um widget por tela; o token vale uma vez só ──
+  const CF = { ids: {}, tokens: {}, pronto: null };
+  function cfCarregar() {
+    if (CF.pronto) return CF.pronto;
+    CF.pronto = new Promise(function(res) {
+      if (window.turnstile) { res(true); return; }
+      const s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true;
+      s.onload = function() { res(true); }; s.onerror = function() { res(false); };
+      document.head.appendChild(s);
+    });
+    return CF.pronto;
+  }
+  async function cfMontar(id) {
+    if (!window.DOMOTICA_CFG.turnstile || CF.ids[id] !== undefined) return;
+    CF.ids[id] = null;
+    if (!(await cfCarregar())) { CF.ids[id] = undefined; return; }
+    CF.ids[id] = window.turnstile.render('#' + id, {
+      sitekey: window.DOMOTICA_CFG.turnstile, theme: 'dark', size: 'flexible', language: 'pt-br',
+      callback: function(t) { CF.tokens[id] = t; },
+      'expired-callback': function() { CF.tokens[id] = ''; },
+      'error-callback': function() { CF.tokens[id] = ''; },
+    });
+  }
+  // Espera o widget concluir a verificação (normalmente 1 a 3 segundos) e devolve o token.
+  async function cfToken(id) {
+    if (!window.DOMOTICA_CFG.turnstile) return undefined;
+    await cfMontar(id);
+    for (let i = 0; i < 100; i++) { if (CF.tokens[id]) return CF.tokens[id]; await new Promise(function(r) { setTimeout(r, 200); }); }
+    return '';
+  }
+  function cfReset(id) { CF.tokens[id] = ''; try { if (window.turnstile && CF.ids[id]) window.turnstile.reset(CF.ids[id]); } catch (e) {} }
+
   function prepararTelas() {
     if ($id('ir-criar')) return;
+    $id('btn-login').insertAdjacentHTML('beforebegin', '<div id="cf-login" style="margin-bottom:12px"></div>');
+    $id('btn-setup').insertAdjacentHTML('beforebegin', '<div id="cf-setup" style="margin-bottom:12px"></div>');
+    cfMontar('cf-login'); cfMontar('cf-setup');
     $id('login-usuario').previousElementSibling.textContent = 'E-mail'; $id('login-usuario').type = 'email';
     const manter = $id('login-manter'); if (manter) manter.closest('.form-group').style.display = 'none';
     $id('btn-login').insertAdjacentHTML('afterend',
@@ -1738,7 +1775,10 @@ window.DOMOTICA_CFG = {
       e.preventDefault();
       const email = inputVal('login-usuario'); if (!email) { mostrarAlerta('login-error', 'Digite seu e-mail no campo acima e toque de novo em “Esqueci minha senha”.'); return; }
       mostrarAlerta('login-error', '');
-      const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      const tk = await cfToken('cf-login');
+      if (tk === '') { mostrarAlerta('login-error', 'Não foi possível concluir a verificação de segurança. Recarregue a página e tente de novo.'); return; }
+      const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname, captchaToken: tk });
+      cfReset('cf-login');
       if (r.error) { mostrarAlerta('login-error', msgErro(r.error.message)); return; }
       toast('Se o e-mail tiver conta, enviamos um link para criar a nova senha.', 'success', 9000);
     });
@@ -1887,10 +1927,13 @@ window.DOMOTICA_CFG = {
     const btn = $id('btn-login'); btn.disabled = true; btn.textContent = 'Entrando...';
     // O login passa por uma função no servidor que conta as falhas e bloqueia após 3 tentativas.
     let resp = null, dados = {};
+    const tk = await cfToken('cf-login');
+    if (tk === '') { btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', 'Não foi possível concluir a verificação de segurança. Recarregue a página e tente de novo.'); return; }
     try {
-      resp = await fetch(window.DOMOTICA_CFG.url + '/functions/v1/login-seguro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, senha: senha }) });
+      resp = await fetch(window.DOMOTICA_CFG.url + '/functions/v1/login-seguro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, senha: senha, captcha: tk }) });
       dados = await resp.json().catch(function() { return {}; });
-    } catch (e) { btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', 'Sem conexão. Verifique a internet e tente de novo.'); return; }
+      cfReset('cf-login');
+    } catch (e) { cfReset('cf-login'); btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', 'Sem conexão. Verifique a internet e tente de novo.'); return; }
     if (!resp.ok || !dados.sessao) { btn.disabled = false; btn.textContent = 'Entrar'; mostrarAlerta('login-error', dados.erro || 'Não foi possível entrar agora.'); return; }
     const ss = await sb.auth.setSession({ access_token: dados.sessao.access_token, refresh_token: dados.sessao.refresh_token });
     btn.disabled = false; btn.textContent = 'Entrar';
@@ -1905,7 +1948,10 @@ window.DOMOTICA_CFG = {
     const fraca = senhaFraca(s1); if (fraca) { mostrarAlerta('setup-error', fraca); return; }
     if (s1 !== s2) { mostrarAlerta('setup-error', 'As senhas não conferem.'); return; }
     const btn = $id('btn-setup'); btn.disabled = true; btn.textContent = 'Criando...';
-    const r = await sb.auth.signUp({ email: email, password: s1, options: { data: { nome: nome }, emailRedirectTo: location.origin + location.pathname } });
+    const tk = await cfToken('cf-setup');
+    if (tk === '') { btn.disabled = false; btn.textContent = 'Criar conta'; mostrarAlerta('setup-error', 'Não foi possível concluir a verificação de segurança. Recarregue a página e tente de novo.'); return; }
+    const r = await sb.auth.signUp({ email: email, password: s1, options: { data: { nome: nome }, emailRedirectTo: location.origin + location.pathname, captchaToken: tk } });
+    cfReset('cf-setup');
     btn.disabled = false; btn.textContent = 'Criar conta';
     if (r.error) { mostrarAlerta('setup-error', msgErro(r.error.message)); return; }
     $id('login-usuario').value = email; mostrarTela('login');
