@@ -1479,7 +1479,7 @@ function renderPanel() {
     h += '<label><input type="checkbox" id="chDedo" style="width:auto" ' + (S.dedo ? 'checked' : '') + '> Desenhar também com o dedo</label>';
     h += '<label><input type="checkbox" id="chCadeia" style="width:auto" ' + (S.cadeia ? 'checked' : '') + '> Parede por clique: encadear (o fim vira o início da próxima)</label>';
     h += '<label><input type="checkbox" id="chRoda" style="width:auto" ' + (S.rodaZoom ? 'checked' : '') + '> Roda do mouse dá zoom (padrão: pinça dá zoom, roda/2 dedos movem)</label>';
-    if (P.fundo) h += '<label>Opacidade da planta importada</label><input type="range" id="rgOp" min="10" max="100" value="' + Math.round((P.fundo.opac == null ? .55 : P.fundo.opac) * 100) + '"><div class="row" style="margin-top:6px"><button id="bIA">Ler planta com IA</button><button id="bRmF" class="danger">Remover fundo</button></div>';
+    if (P.fundo) h += '<label>Opacidade da planta importada</label><input type="range" id="rgOp" min="10" max="100" value="' + Math.round((P.fundo.opac == null ? .55 : P.fundo.opac) * 100) + '"><div class="row" style="margin-top:6px"><button id="bIA">Ler planta com IA (Gemini)</button><button id="bRmF" class="danger">Remover fundo</button></div>';
     h += '<label>Observações gerais da obra</label><textarea data-t="planta" data-f="notas" placeholder="Texto livre">' + esc(P.notas) + '</textarea>';
     h += '<div class="note" style="margin-top:10px">Cômodos: ' + P.comodos.length + ' · Pontos: ' + P.pontos.length + ' · Ligações: ' + P.ligacoes.length + '</div>';
   } else if (sel.k === 'ponto') {
@@ -2062,6 +2062,7 @@ $('#bImgs').onclick = async () => {
 $('#bImp').onclick = () => $('#fileIn').click();
 $('#fileIn').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  let pdfPag = null, pdfPt = null, pdfSc = 1;
   try {
     let dataUrl;
     if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)) {
@@ -2070,7 +2071,7 @@ $('#fileIn').onchange = async e => {
       if (doc.numPages > 1) { const r = await modal('PDF com ' + doc.numPages + ' páginas', [{ k: 'p', rot: 'Qual página é a planta baixa?', tipo: 'number', val: 1 }], 'Importar'); if (!r) return; pg = clamp(parseInt(r.p, 10) || 1, 1, doc.numPages); }
       const page = await doc.getPage(pg), v1 = page.getViewport({ scale: 1 }), sc = Math.min(3, 2600 / Math.max(v1.width, v1.height)), vp = page.getViewport({ scale: sc });
       const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height; const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
-      await page.render({ canvasContext: cx, viewport: vp }).promise; dataUrl = cv.toDataURL('image/jpeg', .88);
+      await page.render({ canvasContext: cx, viewport: vp }).promise; dataUrl = cv.toDataURL('image/jpeg', .88); pdfPag = page; pdfPt = [v1.width, v1.height]; pdfSc = sc;
     } else {
       dataUrl = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => { const sc = Math.min(1, 2600 / Math.max(im.width, im.height)), cv = document.createElement('canvas'); cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); ok(cv.toDataURL('image/jpeg', .88)); }; im.onerror = no; im.src = fr.result; }; fr.onerror = no; fr.readAsDataURL(f); });
     }
@@ -2078,8 +2079,9 @@ $('#fileIn').onchange = async e => {
     snap(); S.fotoDataUrl = dataUrl; S.fotoSuja = true;
     P.fundo = { x: 0, y: 0, w: dim.w, h: dim.h, px: dim.w, py: dim.h, opac: .55, rot: 0, cx: 0, cy: 0 };
     S.tool = 'cal'; S.cal = []; refresh(); fit();
-    if (await confirmar('Arquivo anexado. Quer que o sistema leia o desenho com IA e crie paredes, portas, janelas, pontos e nomes dos cômodos no nosso padrão? Você confere e ajusta depois. (Se preferir, calibre e decalque na mão.)', 'Ler com IA')) lerComIA();
-    else toast('Toque em 2 pontos de uma medida conhecida para calibrar e decalque com a Pencil.', 6000);
+    if (pdfPag && await lerPdfVetorial(pdfPag, pdfPt, pdfSc)) return;
+    if (await confirmar((pdfPag ? 'Esse PDF não tem desenho em linhas (é imagem escaneada). ' : 'Esse arquivo é uma imagem. ') + 'Quer tentar ler com a IA gratuita do Gemini? Nessa leitura a imagem da planta é enviada ao Google (na faixa gratuita ele pode usá-la para melhorar os produtos dele). Você confere e ajusta depois.', 'Ler com Gemini')) return lerComIA();
+    toast('Toque em 2 pontos de uma medida conhecida para calibrar e decalque as paredes com a Pencil.', 7000);
   } catch (err) { toast('Não consegui importar: ' + (err && err.message || err), 5000); }
 };
 async function lerComIA() {
@@ -2223,6 +2225,102 @@ $('#bShare').onclick = async () => {
     await modal('Link criado', [{ tipo: 'info', val: 'Vale até <b>' + new Date(c.expira_em).toLocaleDateString('pt-BR') + '</b>. Já foi copiado — cole no WhatsApp.<br><input readonly value="' + esc(link) + '" onclick="this.select()" style="margin-top:8px">' }], 'Fechar');
   } catch (e) { toast('Não consegui criar o link: ' + e.message, 6000); }
 };
+
+/* ===================== ler PDF vetorial (grátis, sem IA): linhas do desenho → paredes e cômodos ===================== */
+async function segmentosPDF(page) {
+  const ol = await page.getOperatorList(), OPS = pdfjsLib.OPS, V = page.getViewport({ scale: 1 }).transform;
+  const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  let ctm = V.slice(), lw = 1; const pilha = [], segs = [], rects = []; let cam = [];
+  const ap = (x, y) => [ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]];
+  const esc = () => Math.sqrt(Math.abs(ctm[0] * ctm[3] - ctm[1] * ctm[2]));
+  for (let i = 0; i < ol.fnArray.length; i++) {
+    const fn = ol.fnArray[i], a = ol.argsArray[i];
+    if (fn === OPS.save) pilha.push([ctm.slice(), lw]);
+    else if (fn === OPS.restore) { const t = pilha.pop(); if (t) { ctm = t[0]; lw = t[1]; } }
+    else if (fn === OPS.transform) ctm = mul(ctm, a);
+    else if (fn === OPS.setLineWidth) lw = a[0];
+    else if (fn === OPS.constructPath) {
+      const ops = a[0], co = a[1]; let k = 0, cur = null, ini = null;
+      ops.forEach(op => {
+        if (op === OPS.moveTo) { cur = ap(co[k], co[k + 1]); ini = cur; k += 2; }
+        else if (op === OPS.lineTo) { const q = ap(co[k], co[k + 1]); if (cur) cam.push({ k: 'l', a: cur, b: q }); cur = q; k += 2; }
+        else if (op === OPS.curveTo) { cur = ap(co[k + 4], co[k + 5]); k += 6; }
+        else if (op === OPS.curveTo2 || op === OPS.curveTo3) { cur = ap(co[k + 2], co[k + 3]); k += 4; }
+        else if (op === OPS.closePath) { if (cur && ini) cam.push({ k: 'l', a: cur, b: ini }); cur = ini; }
+        else if (op === OPS.rectangle) { const x = co[k], y = co[k + 1], w = co[k + 2], h = co[k + 3]; k += 4; const p = [ap(x, y), ap(x + w, y), ap(x + w, y + h), ap(x, y + h)]; cam.push({ k: 'r', p }); }
+      });
+    }
+    else if (fn >= OPS.stroke && fn <= OPS.endPath) {
+      const pinta = fn === OPS.stroke || fn === OPS.closeStroke || fn === OPS.fillStroke || fn === OPS.eoFillStroke || fn === OPS.closeFillStroke || fn === OPS.closeEOFillStroke;
+      const enche = fn === OPS.fill || fn === OPS.eoFill || fn === OPS.fillStroke || fn === OPS.eoFillStroke || fn === OPS.closeFillStroke || fn === OPS.closeEOFillStroke;
+      const w = lw * esc();
+      cam.forEach(c => {
+        if (c.k === 'l') { if (pinta) segs.push({ x1: c.a[0], y1: c.a[1], x2: c.b[0], y2: c.b[1], w }); }
+        else { const xs = c.p.map(q => q[0]), ys = c.p.map(q => q[1]); if (enche) rects.push({ x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) }); if (pinta) for (let j = 0; j < 4; j++) { const A = c.p[j], B = c.p[(j + 1) % 4]; segs.push({ x1: A[0], y1: A[1], x2: B[0], y2: B[1], w }); } }
+      });
+      cam = [];
+    }
+  }
+  return { segs, rects };
+}
+/* acha paredes (eixo) em pontos do PDF: linhas paralelas = faces da parede; retângulo fino cheio; traço grosso */
+function paredesDeSegmentos(segs, rects, ptCm) {
+  const eps = .7, dmin = 8 * ptCm, dmax = 32 * ptCm, minL = 25 * ptCm;
+  const H = [], Vt = [], cand = [];
+  segs.forEach(s => {
+    const L = Math.hypot(s.x2 - s.x1, s.y2 - s.y1); if (L < minL * .6) return;
+    if (Math.abs(s.y1 - s.y2) < eps) H.push({ c: (s.y1 + s.y2) / 2, a: Math.min(s.x1, s.x2), b: Math.max(s.x1, s.x2), w: s.w });
+    else if (Math.abs(s.x1 - s.x2) < eps) Vt.push({ c: (s.x1 + s.x2) / 2, a: Math.min(s.y1, s.y2), b: Math.max(s.y1, s.y2), w: s.w });
+  });
+  const pares = (arr, hor) => arr.forEach((p, i) => { for (let j = i + 1; j < arr.length; j++) { const q = arr[j], d = Math.abs(p.c - q.c); if (d < dmin || d > dmax) continue; const a = Math.max(p.a, q.a), b = Math.min(p.b, q.b); if (b - a < minL) continue; const m = (p.c + q.c) / 2, ex = d / 2; cand.push(hor ? { x1: a - ex, y1: m, x2: b + ex, y2: m, esp: d } : { x1: m, y1: a - ex, x2: m, y2: b + ex, esp: d }); } });
+  pares(H, true); pares(Vt, false);
+  rects.forEach(r => { const w = r.x1 - r.x0, h = r.y1 - r.y0; if (Math.min(w, h) >= dmin && Math.min(w, h) <= dmax && Math.max(w, h) >= minL) cand.push(w >= h ? { x1: r.x0, y1: (r.y0 + r.y1) / 2, x2: r.x1, y2: (r.y0 + r.y1) / 2, esp: h } : { x1: (r.x0 + r.x1) / 2, y1: r.y0, x2: (r.x0 + r.x1) / 2, y2: r.y1, esp: w }); });
+  H.concat(Vt).forEach(s => { /* traço grosso = parede desenhada com a própria espessura */ });
+  segs.forEach(s => { if (s.w >= dmin * .8 && s.w <= dmax) { const L = Math.hypot(s.x2 - s.x1, s.y2 - s.y1); if (L >= minL && (Math.abs(s.y1 - s.y2) < eps || Math.abs(s.x1 - s.x2) < eps)) cand.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, esp: s.w }); } });
+  // junta paredes na mesma linha que se sobrepõem ou têm vão pequeno (porta/janela)
+  const gapMax = 160 * ptCm, tol = Math.max(eps * 2, 4 * ptCm), out = [];
+  [true, false].forEach(hor => {
+    const g = cand.filter(c => hor ? Math.abs(c.y1 - c.y2) < eps : Math.abs(c.x1 - c.x2) < eps).map(c => hor ? { c: c.y1, a: Math.min(c.x1, c.x2), b: Math.max(c.x1, c.x2), esp: c.esp } : { c: c.x1, a: Math.min(c.y1, c.y2), b: Math.max(c.y1, c.y2), esp: c.esp }).sort((p, q) => p.c - q.c || p.a - q.a);
+    const grupos = []; g.forEach(it => { const gr = grupos.find(x => Math.abs(x.c - it.c) <= tol); if (gr) gr.itens.push(it); else grupos.push({ c: it.c, itens: [it] }); });
+    grupos.forEach(gr => { gr.itens.sort((p, q) => p.a - q.a); let cur = null; gr.itens.forEach(it => { if (cur && it.a <= cur.b + gapMax) { cur.b = Math.max(cur.b, it.b); cur.es.push(it.esp); } else { if (cur) out.push(Object.assign({ hor }, cur, { c: gr.c })); cur = { a: it.a, b: it.b, es: [it.esp] }; } }); if (cur) out.push(Object.assign({ hor }, cur, { c: gr.c })); });
+  });
+  return out.map(o => ({ x1: o.hor ? o.a : o.c, y1: o.hor ? o.c : o.a, x2: o.hor ? o.b : o.c, y2: o.hor ? o.c : o.b, esp: o.es.sort((a, b) => a - b)[o.es.length >> 1] }));
+}
+async function lerPdfVetorial(page, pt, sc) {
+  let ex; try { ex = await segmentosPDF(page); } catch (e) { return false; }
+  if (ex.segs.length + ex.rects.length < 8) return false;
+  // texto do PDF: escala escrita (ex.: 1:50) e nomes dos cômodos
+  const V = page.getViewport({ scale: 1 }).transform; let escTxt = null; const rotulos = [];
+  try { const tc = await page.getTextContent(); tc.items.forEach(it => { const t = String(it.str || '').trim(); if (!t) return; const m = t.match(/\b1\s*[:/]\s*(20|25|30|40|50|60|75|100|125|150|200)\b/); if (m && !escTxt) escTxt = m[1];
+    if (/^(sala|quarto|su[ií]te|cozinha|banheiro|wc|lavabo|varanda|sacada|[aá]rea de servi[cç]o|lavanderia|garagem|escrit[oó]rio|closet|hall|corredor|despensa|jantar|estar|copa|[aá]rea gourmet|living|home)\b/i.test(t) && t.length <= 30) rotulos.push({ texto: t.replace(/\s+/g, ' '), x: V[0] * it.transform[4] + V[2] * it.transform[5] + V[4], y: V[1] * it.transform[4] + V[3] * it.transform[5] + V[5] }); }); } catch (e) { }
+  const cmDe = esc => 2.54 / 72 * esc;           // cm reais por ponto do PDF
+  const tent = esc => paredesDeSegmentos(ex.segs, ex.rects, 1 / cmDe(esc));
+  const ESC = ['20', '25', '30', '40', '50', '60', '75', '100', '125', '150', '200'], chute = escTxt || '50';
+  const base = tent(+chute); if (base.length < 4) return false;
+  const tam = esc => { const w = tent(esc); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; w.forEach(q => { x0 = Math.min(x0, q.x1, q.x2); x1 = Math.max(x1, q.x1, q.x2); y0 = Math.min(y0, q.y1, q.y2); y1 = Math.max(y1, q.y1, q.y2); }); return { n: w.length, l: (x1 - x0) * cmDe(esc) / 100, a: (y1 - y0) * cmDe(esc) / 100 }; };
+  const prev = ['50', '75', '100'].map(e => { const t = tam(+e); return '1:' + e + ' → ' + (t.n >= 3 && isFinite(t.l) ? t.l.toFixed(1).replace('.', ',') + ' × ' + t.a.toFixed(1).replace('.', ',') + ' m' : 'não bate'); }).join(' · ');
+  const r = await modal('Desenho vetorial detectado', [
+    { tipo: 'info', val: 'Este PDF tem o desenho em linhas (não é foto). Posso <b>criar as paredes e cômodos sozinho</b>, sem IA e sem custo. Porta e janela você marca depois.' },
+    { k: 'esc', rot: 'Escala do desenho' + (escTxt ? ' (achei “1:' + escTxt + '” escrito no PDF)' : ' (não achei escrita — escolha)'), tipo: 'select', val: chute, opts: ESC.map(e => [e, '1:' + e]) },
+    { tipo: 'info', val: 'Tamanho total da casa em cada escala: ' + esc(prev) + '. Escolha a que bate com o tamanho real.' }], 'Criar planta');
+  if (!r) return false;
+  const e = +r.esc, k = cmDe(e), W = paredesDeSegmentos(ex.segs, ex.rects, 1 / k);
+  if (W.length < 3) return false;
+  snap(); const mw = Math.round(((W.map(q => q.esp).sort((a, b) => a - b)[W.length >> 1]) || 15 / k) * k / 5) * 5, espCm = clamp(mw, 10, 25);
+  // pontos do PDF → cm, juntando cantos próximos
+  const pts = []; const junta = (x, y) => { const f = pts.find(q => Math.hypot(q[0] - x, q[1] - y) < 9 / k); if (f) return f; const n = [x, y]; pts.push(n); return n; };
+  const segsCm = W.map(q => { const A = junta(q.x1, q.y1), B = junta(q.x2, q.y2); return { x1: A[0] * k, y1: A[1] * k, x2: B[0] * k, y2: B[1] * k }; });
+  const bx = Math.min(...segsCm.flatMap(q => [q.x1, q.x2])), by = Math.min(...segsCm.flatMap(q => [q.y1, q.y2]));
+  const arr = G.arredondar(segsCm.map(q => ({ x1: q.x1 - bx, y1: q.y1 - by, x2: q.x2 - bx, y2: q.y2 - by })), 5);
+  arr.forEach(q => { P.paredes.push({ id: M.id(P, 'w'), x1: q.x1, y1: q.y1, x2: q.x2, y2: q.y2, esp: espCm }); });
+  // o fundo (PDF desenhado) fica alinhado com as paredes
+  if (P.fundo) { const F = P.fundo; F.w = pt[0] * k; F.h = pt[1] * k; F.x = -bx; F.y = -by; P.calibrada = true; }
+  M.recalc(P);
+  rotulos.forEach(rt => { const id = G.comodoDoPonto(P.comodos, rt.x * k - bx, rt.y * k - by), c = getById(P.comodos, id); if (c && /^Cômodo \d+$/.test(c.nome)) c.nome = rt.texto.slice(0, 40).replace(/^./, ch => ch.toUpperCase()); });
+  S.tool = 'sel'; refresh(); fit();
+  toast('Criei ' + arr.length + ' paredes e ' + P.comodos.length + ' cômodos a partir do PDF. Confira, marque portas e janelas e ajuste o que precisar.', 9000);
+  return true;
+}
 
 /* ===================== salvar / abrir ===================== */
 async function salvar(silencioso) {
