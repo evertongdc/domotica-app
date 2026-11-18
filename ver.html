@@ -75,11 +75,33 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
 #modal.on{display:flex}
 #mbox{width:min(440px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#16264a,#0f1a33);border:1px solid var(--gl2);border-radius:16px;padding:14px}
 #mbox h3{margin:0 0 6px}
+#fabs,#bDados{display:none}
 @media (max-width:900px){
-  #v2d{flex-direction:column;overflow:auto}
-  #tools,#panel{width:auto;max-height:34vh;flex:none}
-  #cwrap{flex:none;height:62vh}
-  header#top input{max-width:none}
+  /* cabeçalho de uma linha só (rola de lado); Salvar fica sempre à vista */
+  header#top{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:6px 8px;scrollbar-width:none}
+  header#top::-webkit-scrollbar{display:none}
+  header#top .brand,header#top #fCliente,header#top #fImovel,header#top .sp{display:none}
+  header#top button,header#top a{flex:none;white-space:nowrap;padding:6px 10px;font-size:13px}
+  header#top #fNome{flex:1 0 120px;min-width:120px;max-width:none}
+  header#top #bSalvar{position:sticky;right:0}
+  #bDados{display:inline-block}
+  nav#tabs{gap:4px;padding:4px 8px}
+  nav#tabs button{flex:none;white-space:nowrap;padding:5px 10px;font-size:13px}
+  /* o desenho ocupa a tela toda; ferramentas e detalhes sobem de baixo quando chamados */
+  #v2d{flex-direction:column;overflow:hidden;padding:0 6px 6px}
+  #cwrap{flex:1;height:auto;min-height:0}
+  #tools,#panel{position:fixed;left:8px;right:8px;bottom:8px;width:auto;max-height:64vh;z-index:40;display:none;background:#0f1a33;box-shadow:0 -10px 34px rgba(0,0,0,.55)}
+  body.sheet-tools #tools,body.sheet-panel #panel{display:block}
+  #fabs{display:flex;position:absolute;top:10px;right:10px;flex-direction:column;gap:6px;z-index:4}
+  #fabs button{padding:7px 10px;font-size:12.5px;background:rgba(11,18,32,.88);color:#fff;white-space:nowrap}
+  #fabs button.tem{outline:2px solid var(--or)}
+  #hint{right:128px;top:8px}
+  #hint span{font-size:11px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  #bar3d{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  #bar3d>*{flex:none}
+  #layerbar{right:56px;bottom:50px;gap:4px}
+  #layerbar button{padding:3px 8px;font-size:11.5px}
+  #roombar{right:56px;bottom:8px}
 }
 #layerbar{position:absolute;left:10px;right:60px;bottom:56px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;z-index:3}
 #layerbar button,#layerbar3 button{padding:4px 10px;border-radius:999px;font-size:12px;color:#fff;background:rgba(11,18,32,.85)}
@@ -166,7 +188,7 @@ window.DOMOTICA_CFG = {
   });
 })();
 </script>
-<style>html.ro #tools,html.ro #panel,html.ro #hint,html.ro #roombar,html.ro #top button,html.ro #top input,html.ro #bImgs,html.ro #bPng,html.ro #tabs button[data-tab=vpontos],html.ro #tabs button[data-tab=vapps],html.ro #tabs button[data-tab=vcenas],html.ro #tabs button[data-tab=vchecks]{display:none!important}html.ro #app{height:calc(100dvh - 64px)}html.ro #v2d{flex-direction:column}html.ro #cwrap{flex:1}#v-barra{position:fixed;left:0;right:0;bottom:0;height:64px;z-index:50;display:flex;gap:10px;align-items:center;justify-content:center;padding:8px 12px;background:#0b1220;border-top:1px solid rgba(255,255,255,.15)}#v-barra button{flex:1;max-width:260px;padding:12px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-weight:700;cursor:pointer}#v-barra button.ap{background:linear-gradient(135deg,#ff7a00,#ff9a3d);color:#1a1000;border:0}</style>
+<style>html.ro #fabs,html.ro #bDados,html.ro #tools,html.ro #panel,html.ro #hint,html.ro #roombar,html.ro #top button,html.ro #top input,html.ro #bImgs,html.ro #bPng,html.ro #tabs button[data-tab=vpontos],html.ro #tabs button[data-tab=vapps],html.ro #tabs button[data-tab=vcenas],html.ro #tabs button[data-tab=vchecks]{display:none!important}html.ro #app{height:calc(100dvh - 64px)}html.ro #v2d{flex-direction:column}html.ro #cwrap{flex:1}#v-barra{position:fixed;left:0;right:0;bottom:0;height:64px;z-index:50;display:flex;gap:10px;align-items:center;justify-content:center;padding:8px 12px;background:#0b1220;border-top:1px solid rgba(255,255,255,.15)}#v-barra button{flex:1;max-width:260px;padding:12px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-weight:700;cursor:pointer}#v-barra button.ap{background:linear-gradient(135deg,#ff7a00,#ff9a3d);color:#1a1000;border:0}</style>
 </head>
 <body>
 <div id="app">
@@ -179,6 +201,7 @@ window.DOMOTICA_CFG = {
     <button id="bUndo" title="Desfazer">↶</button><button id="bRedo" title="Refazer">↷</button>
     <button id="bImp">Planta do cliente</button>
     <button id="bAbrir">Abrir</button>
+    <button id="bDados">Dados</button>
     <button id="bExp">Exportar</button>
     <button id="bShare">Compartilhar</button>
     <button id="bSalvar" class="pri">Salvar</button>
@@ -197,6 +220,7 @@ window.DOMOTICA_CFG = {
       <div id="cwrap">
         <svg id="svg" xmlns="http://www.w3.org/2000/svg"><g id="gGrid"></g><g id="gFundo"><image id="imgF" preserveAspectRatio="none" style="display:none"/></g><g id="gMain"></g></svg>
         <div id="hint"></div>
+        <div id="fabs"><button id="fbTools">🛠 Ferramentas</button><button id="fbPanel">ⓘ Detalhes</button></div>
         <div id="layerbar"></div>
         <div id="roombar"></div>
         <div id="zoombtns"><button id="zIn">+</button><button id="zOut">−</button><button id="zFit" title="Enquadrar">⤢</button></div>
@@ -1260,7 +1284,7 @@ const rectOf = () => svg.getBoundingClientRect();
 const wpp = () => S.view.w / Math.max(1, rectOf().width);
 function toWorldXY(cx, cy) { const r = rectOf(); return { x: S.view.x + (cx - r.left) * S.view.w / r.width, y: S.view.y + (cy - r.top) * S.view.w / r.width }; }
 const toWorld = e => toWorldXY(e.clientX, e.clientY);
-function zoomAt(cx, cy, f) { const a = toWorldXY(cx, cy); S.view.w = clamp(S.view.w * f, 150, 60000); const b = toWorldXY(cx, cy); S.view.x += a.x - b.x; S.view.y += a.y - b.y; renderSVG(); }
+function zoomAt(cx, cy, f) { S.autoFit = false; const a = toWorldXY(cx, cy); S.view.w = clamp(S.view.w * f, 150, 60000); const b = toWorldXY(cx, cy); S.view.x += a.x - b.x; S.view.y += a.y - b.y; renderSVG(); }
 function fit() {
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   P.paredes.forEach(w => { x0 = Math.min(x0, w.x1, w.x2); x1 = Math.max(x1, w.x1, w.x2); y0 = Math.min(y0, w.y1, w.y2); y1 = Math.max(y1, w.y1, w.y2); });
@@ -1683,12 +1707,12 @@ svg.addEventListener('pointermove', e => {
   if (!gest) return;
   if (gest.mode === 'pinch') {
     if (ptrs.size < 2) return; const [a, b] = Array.from(ptrs.values()), d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
-    const k = wpp(); S.view.x -= (cx - gest.cx) * k; S.view.y -= (cy - gest.cy) * k; if (Math.abs(d - gest.d) >= 2) { zoomAt(cx, cy, gest.d / Math.max(1, d)); gest.d = d; } else renderSVG(); gest.cx = cx; gest.cy = cy; return;
+    S.autoFit = false; const k = wpp(); S.view.x -= (cx - gest.cx) * k; S.view.y -= (cy - gest.cy) * k; if (Math.abs(d - gest.d) >= 2) { zoomAt(cx, cy, gest.d / Math.max(1, d)); gest.d = d; } else renderSVG(); gest.cx = cx; gest.cy = cy; return;
   }
   if (e.pointerId !== gest.id) return;
   const mv = Math.hypot(e.clientX - gest.sx, e.clientY - gest.sy); if (mv > 6) gest.moved = true;
   const w = toWorld(e), m = gest.mode; S.mouse = w;
-  if (m === 'pan' || (m === 'tapOuPan' && gest.moved)) { const k = wpp(); S.view.x -= (e.clientX - gest.lx) * k; S.view.y -= (e.clientY - gest.ly) * k; gest.lx = e.clientX; gest.ly = e.clientY; renderSVG(); return; }
+  if (m === 'pan' || (m === 'tapOuPan' && gest.moved)) { S.autoFit = false; const k = wpp(); S.view.x -= (e.clientX - gest.lx) * k; S.view.y -= (e.clientY - gest.ly) * k; gest.lx = e.clientX; gest.ly = e.clientY; renderSVG(); return; }
   if (m === 'ghost') { ghostMover(w); renderSVG(); return; }
   if (m === 'dragComodo') {
     if (!gest.drag && mv > 6) { gest.drag = true; S.sel = { k: 'comodo', id: gest.cid }; prepararMoverComodo(gest); } if (!gest.drag) return;
@@ -1854,7 +1878,7 @@ $('#tools').addEventListener('click', async e => {
 $('#hint').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.lt) { S.lig.tecla = +b.dataset.lt; renderHint(); } });
 $('#zIn').onclick = () => { const r = rectOf(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 0.75); };
 $('#zOut').onclick = () => { const r = rectOf(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.33); };
-$('#zFit').onclick = fit;
+$('#zFit').onclick = () => { S.autoFit = true; fit(); };
 $('#bUndo').onclick = desfazer; $('#bRedo').onclick = refazer;
 window.addEventListener('keydown', e => {
   if (window.PLANTA_VIEW) return;
@@ -1877,20 +1901,36 @@ window.addEventListener('keydown', e => {
 window.addEventListener('resize', () => { renderSVG(); if (T3.on) resize3d(); });
 $('#fNome').addEventListener('change', e => { P.nome = e.target.value; });
 
+/* ===================== celular: folhas de baixo, enquadramento automático, dados ===================== */
+const ehCel = () => window.matchMedia('(max-width:900px)').matches;
+const fechaFolhas = () => document.body.classList.remove('sheet-tools', 'sheet-panel');
+$('#fbTools').onclick = () => { const a = !document.body.classList.contains('sheet-tools'); fechaFolhas(); if (a) document.body.classList.add('sheet-tools'); };
+$('#fbPanel').onclick = () => { const a = !document.body.classList.contains('sheet-panel'); fechaFolhas(); if (a) document.body.classList.add('sheet-panel'); };
+$('#tools').addEventListener('click', e => { const b = e.target.closest('button'); if (b && ehCel() && (b.dataset.tool || b.dataset.room || b.dataset.teclas)) setTimeout(fechaFolhas, 0); });
+svg.addEventListener('pointerdown', () => { if (document.body.classList.contains('sheet-tools')) fechaFolhas(); }, true);
+$('#bDados').onclick = async () => {
+  const r = await modal('Dados da planta', [{ k: 'cli', rot: 'Cliente (ID)', tipo: 'text', val: $('#fCliente').value }, { k: 'imo', rot: 'Imóvel / obra', tipo: 'text', val: $('#fImovel').value }], 'OK');
+  if (!r) return; if (!$('#fCliente').readOnly) $('#fCliente').value = r.cli; $('#fImovel').value = r.imo; S.dirty = true;
+};
+/* enquadra a planta inteira sozinho (e de novo se a tela girar/mudar de tamanho) até a pessoa mexer no zoom */
+S.autoFit = true;
+if (window.ResizeObserver) new ResizeObserver(() => { if (S.autoFit && S.tab === 'v2d') fit(); }).observe($('#cwrap'));
+
 /* ===================== abas ===================== */
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.tab)));
 function mostrar(id) {
   S.tab = id; document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === id));
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id));
   T3.on = id === 'v3d';
-  if (id === 'v2d') setTimeout(() => { if (S.fitPend) { S.fitPend = false; fit(); } else renderSVG(); }, 30); if (id === 'v3d') abrir3d(); if (id === 'vpontos') renderPontos(); if (id === 'vapps') renderApps(); if (id === 'vcenas') renderCenas(); if (id === 'vchecks') renderChecks();
+  if (id === 'v2d') setTimeout(() => { if (S.fitPend) { S.fitPend = false; fit(); } else if (S.autoFit) fit(); else renderSVG(); }, 30); if (id === 'v3d') abrir3d(); if (id === 'vpontos') renderPontos(); if (id === 'vapps') renderApps(); if (id === 'vcenas') renderCenas(); if (id === 'vchecks') renderChecks();
 }
 function updateBadge() {
   const v = M.validar(P), er = v.filter(x => x.nivel === 'erro').length, b = $('#badge');
   b.textContent = er || '✓'; b.className = 'badge' + (er ? '' : ' ok'); updBadgeApps();
 }
 function refresh(o) {
-  o = o || {}; renderCamadas(); if (S.ativo && !getById(P.comodos, S.ativo)) S.ativo = null; renderSVG(); renderTools(); renderHint(); if (o.panel !== false) renderPanel(); updateBadge(); renderRoombar(); rascunho();
+  o = o || {}; renderCamadas();
+  if (ehCel()) { const k = S.sel ? JSON.stringify(S.sel) : ''; if (!S.sel) document.body.classList.remove('sheet-panel'); else if (k !== S.selKey && S.tool === 'sel') { fechaFolhas(); document.body.classList.add('sheet-panel'); } S.selKey = k; $('#fbPanel').classList.toggle('tem', !!S.sel); } if (S.ativo && !getById(P.comodos, S.ativo)) S.ativo = null; renderSVG(); renderTools(); renderHint(); if (o.panel !== false) renderPanel(); updateBadge(); renderRoombar(); rascunho();
   if (S.tab === 'vapps') renderApps();
   if (S.tab === 'vpontos') renderPontos(); if (S.tab === 'vchecks') renderChecks(); if (S.tab === 'vcenas' && o.cenas !== false) renderCenas(); if (S.tab === 'v3d') build3d();
 }
@@ -2355,7 +2395,7 @@ $('#bAbrir').onclick = async () => {
 function carregar(p, id, foto) {
   P = p; S.planoId = id; S.fotoDataUrl = foto; S.fotoSuja = false; S.sel = null; S.tool = window.PLANTA_VIEW ? 'ver' : 'sel'; S.dirty = false; undo.length = 0; redo.length = 0; S.cal = [];
   $('#fNome').value = P.nome || ''; if (!P.comodos.length && P.paredes.length) M.recalc(P);
-  refresh(); fit();
+  S.autoFit = true; refresh(); fit();
 }
 
 /* ===================== v2: filtro da paleta ===================== */

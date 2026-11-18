@@ -934,7 +934,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
     }).join('');
     const cards = l.map(function(p) {
       return '<div class="glass item-card ' + (ehAtivo(p) ? '' : 'ghost') + '" data-acao="editar" data-id="' + escHtml(p.ID_PRODUTO) + '"><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div class="row-title">' + escHtml(p.NOME) + '</div></div>' +
-        '<div>' + origemBadge(p.ORIGEM) + (lojaDe(p) ? ' <span class="badge">' + escHtml(lojaDe(p)) + '</span>' : '') + ' <span class="small">' + escHtml(p.CATEGORIA || '') + '</span></div><div class="small">Instalação ' + fmtMoeda(p.PRECO_INSTALACAO) + '</div>' + (p.LINK_COMISSAO ? '<div style="margin-top:6px">' + botaoCompartilhar(p) + '</div>' : '') + '</div>';
+        '<div>' + origemBadge(p.ORIGEM) + (lojaDe(p) ? ' <span class="badge">' + escHtml(lojaDe(p)) + '</span>' : '') + ' <span class="small">' + escHtml(p.CATEGORIA || '') + '</span></div><div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:4px"><div><span class="small">Aparelho</span> <b style="font-size:1.2em">' + fmtMoeda(p.PRECO_APARELHO) + '</b>' + avisoPreco(p) + '</div><div class="small">Instalação ' + fmtMoeda(p.PRECO_INSTALACAO) + '</div></div>' + (p.LINK_COMISSAO ? '<div style="margin-top:6px">' + botaoCompartilhar(p) + '</div>' : '') + '</div>';
     }).join('');
     box.innerHTML = '<div class="glass card table-wrap"><table class="table"><thead><tr><th>Produto</th><th>Categoria</th><th>Origem</th><th>Instalação</th><th>Aparelho</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div><div class="lista-cards">' + cards + '</div>';
   }
