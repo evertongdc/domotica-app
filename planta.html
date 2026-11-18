@@ -1230,7 +1230,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ===================== estado ===================== */
 let P = M.novaPlanta('Nova planta');
-const S = { tool: 'rabisco', sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
+const S = { tool: 'sel', sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
   dedo: false, interna: true, cotas: true, ligs: true, fotoDataUrl: null, fotoSuja: false, planoId: CTX.plantaId || null, cal: [], prev: null, tab: 'v2d', filtro: '', cadeia: false, rodaZoom: false, p1: null, dig: '', live: null, ultima: null, ativo: null, ghost: null, mouse: null };
 const undo = [], redo = [];
 const ptrs = new Map(); let gest = null;
@@ -1416,11 +1416,11 @@ function updateFundo() {
 }
 
 /* ===================== ferramentas / paleta ===================== */
-const FERR = [['rabisco', '✎ Rabiscar parede', 'Desenhe com a Pencil: o traço vira parede reta e fecha nos cantos. Dedo = mover/zoom.'],
+const FERR = [['sel', '☝ Selecionar / mover', 'Toque para editar. Arraste qualquer objeto (cômodo, parede, porta, janela, símbolo) para mover. Clique duplo numa parede cria um canto para mudar a forma. Arraste as bolinhas da parede para mudar os cantos.'],
+  ['rabisco', '✎ Rabiscar parede', 'Desenhe com a Pencil: o traço vira parede reta e fecha nos cantos. Dedo = mover/zoom.'],
   ['parede', '▭ Parede reta', 'Clique para iniciar e clique de novo para terminar (a medida cresce junto do cursor). Também dá para arrastar, ou digitar a medida e Enter. Esc cancela.'],
   ['porta', '⌂ Porta', 'Toque em cima de uma parede.'], ['janela', '▥ Janela', 'Toque em cima de uma parede.'],
   ['medir', '⇔ Medir trecho', 'Toque num trecho de parede e digite a medida do app Medidas. Os cantos se ajustam.'],
-  ['sel', '☝ Selecionar / mover', 'Toque para editar. Arraste um símbolo para mover. Arraste as bolinhas da parede para mudar os cantos.'],
   ['ligar', '⟿ Ligar pontos', 'Toque na origem (interruptor/botão) e depois nos destinos. Escolha a tecla.'],
   ['del', '✕ Apagar', 'Toque no que quer apagar (símbolo, parede, porta/janela ou ligação).'],
   ['cal', '⌖ Calibrar fundo', 'Toque em 2 pontos de uma medida conhecida da planta importada.']];
@@ -1508,7 +1508,10 @@ function renderPanel() {
     const w = getById(P.paredes, sel.id); if (!w) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Parede</div><div class="note">Comprimento total (eixo): ' + fmtM(M.comprimento(w)) + ' m. Para medir por cômodo use "Medir trecho" ou toque no número da medida.</div>';
     h += '<label>Espessura (cm)</label><input data-f="esp" data-n="1" type="number" value="' + (w.esp || 15) + '">';
-    h += '<div class="row" style="margin-top:8px"><button data-act="medirw">Medir trechos</button><button class="danger" data-act="delsel">Excluir</button></div>';
+    const tw = M.trechos(P).filter(t => t.parede === w.id && t.len >= 20);
+    h += '<div class="sec">Medidas</div>' + tw.map((t, i) => '<div class="row" style="margin:3px 0"><span style="flex:3">Trecho ' + (i + 1) + ' · ' + fmtM(S.interna ? Math.max(0, t.len - t.esp) : t.len) + ' m</span><button data-act="medirlado" data-p="' + t.parede + '" data-t0="' + t.t0 + '" data-t1="' + t.t1 + '" style="flex:none">✎ Editar</button></div>').join('');
+    h += '<div class="note">Arraste a parede para movê-la (ela anda para os lados). Arraste as bolinhas para mudar os cantos.</div>';
+    h += '<div class="row" style="margin-top:8px"><button data-act="dividir">＋ Criar canto</button><button class="danger" data-act="delsel">Excluir</button></div>';
   } else if (sel.k === 'trecho') {
     const w = getById(P.paredes, sel.parede); if (!w) { S.sel = null; return renderPanel(); }
     const t = M.trechos(P).find(x => x.parede === sel.parede && Math.abs(x.t0 - sel.t0) < 1e-3);
@@ -1523,6 +1526,8 @@ function renderPanel() {
     const c = getById(P.comodos, sel.id); if (!c) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Cômodo · ' + c.area.toFixed(1).replace('.', ',') + ' m²</div>' + fld('Nome', 'nome', c.nome);
     h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
+    const lados = M.trechos(P).filter(t => t.len >= 40 && bordaDe(c.pontos, [(t.x1 + t.x2) / 2, (t.y1 + t.y2) / 2]));
+    h += '<div class="sec">Medidas dos lados</div>' + (lados.length ? lados.map((t, i) => '<div class="row" style="margin:3px 0"><span style="flex:3">Lado ' + (i + 1) + ' · ' + fmtM(S.interna ? Math.max(0, t.len - t.esp) : t.len) + ' m</span><button data-act="medirlado" data-p="' + t.parede + '" data-t0="' + t.t0 + '" data-t1="' + t.t1 + '" style="flex:none">✎ Editar</button></div>').join('') : '<div class="note">Sem paredes ao redor.</div>') + '<div class="note">Para mudar a forma: clique numa parede do cômodo, depois clique duplo nela para criar um canto e arraste as bolinhas.</div>';
     h += '<div class="sec">Fluxo</div><div class="row"><button data-act="ativar">' + (S.ativo === c.id ? 'Sair do cômodo' : 'Trabalhar aqui') + '</button>' + (c.feito ? '<button data-act="reabrir">Reabrir</button>' : '<button class="pri" data-act="finalizar">Finalizar ✓</button>') + '</div><button data-act="moverc" style="margin-top:6px;width:100%">↔ Mover cômodo (arraste na planta)</button><div class="note">Com o cômodo selecionado, arraste-o: ele gruda nos vizinhos, leva os pontos junto e cria a porta.</div>';
   } else if (sel.k === 'ligacao') {
     const l = getById(P.ligacoes, sel.id); if (!l) { S.sel = null; return renderPanel(); }
@@ -1574,6 +1579,8 @@ $('#panel').addEventListener('click', e => {
   if (a === 'flip') { snap(); const o = getById(P.aberturas, S.sel.id); o.lado = -(o.lado || 1); return refresh({ panel: false }); }
   if (a === 'dup') { snap(); const o = getById(P.pontos, S.sel.id), n = JSON.parse(JSON.stringify(o)); n.id = M.id(P, 'p'); n.x += 30; n.y += 30; n.parede = null; P.pontos.push(n); n.comodo = G.comodoDoPonto(P.comodos, n.x, n.y); S.sel = { k: 'ponto', id: n.id }; return refresh(); }
   if (a === 'medirw') { S.tool = 'medir'; S.sel = null; return refresh(); }
+  if (a === 'dividir') return dividirParede(S.sel.id, null);
+  if (a === 'medirlado') return pedirMedida(b.dataset.p, parseFloat(b.dataset.t0), parseFloat(b.dataset.t1));
   if (a === 'medirt') return pedirMedida(S.sel.parede, S.sel.t0, S.sel.t1);
 });
 function apagarSel() {
@@ -1654,6 +1661,9 @@ svg.addEventListener('pointerdown', e => {
   else if (tool === 'rabisco' || tool === 'parede') gest.mode = desenha ? tool : 'pan';
   else if (tool === 'sel' && el && el.dataset.k === 'ponto') { gest.mode = 'dragPonto'; gest.pid = el.dataset.id; }
   else if (tool === 'sel' && el && el.dataset.k === 'handle') { gest.mode = 'dragHandle'; gest.wid = el.dataset.id; gest.hi = el.dataset.i; const ww = getById(P.paredes, gest.wid); gest.old = [ww['x' + gest.hi], ww['y' + gest.hi]]; }
+  else if (tool === 'sel' && el && el.dataset.k === 'abertura') { gest.mode = 'dragAbertura'; gest.aid = el.dataset.id; }
+  else if (tool === 'sel' && el && el.dataset.k === 'parede' && (e.pointerType !== 'touch' || (S.sel && S.sel.k === 'parede' && S.sel.id === el.dataset.id))) { gest.mode = 'dragParede'; gest.wid = el.dataset.id; gest.orig = JSON.parse(JSON.stringify(P.paredes)); gest.origP = {}; P.pontos.forEach(p => { gest.origP[p.id] = { x: p.x, y: p.y }; }); }
+  else if (tool === 'sel' && el && el.dataset.k === 'comodo' && e.pointerType !== 'touch') { gest.mode = 'dragComodo'; gest.cid = el.dataset.id; }
   else if (tool === 'sel' || e.pointerType === 'touch') gest.mode = 'tapOuPan';
   if (gest.mode === 'parede') { const q = snapPt(w, Math.max(15, wpp() * 12)); gest.a = S.p1 || q; }
   if (e.button === 2 && S.p1) cancelarParede();
@@ -1673,7 +1683,7 @@ svg.addEventListener('pointermove', e => {
   if (m === 'pan' || (m === 'tapOuPan' && gest.moved)) { const k = wpp(); S.view.x -= (e.clientX - gest.lx) * k; S.view.y -= (e.clientY - gest.ly) * k; gest.lx = e.clientX; gest.ly = e.clientY; renderSVG(); return; }
   if (m === 'ghost') { ghostMover(w); renderSVG(); return; }
   if (m === 'dragComodo') {
-    if (!gest.drag && mv > 6) { gest.drag = true; prepararMoverComodo(gest); } if (!gest.drag) return;
+    if (!gest.drag && mv > 6) { gest.drag = true; S.sel = { k: 'comodo', id: gest.cid }; prepararMoverComodo(gest); } if (!gest.drag) return;
     const e2 = M.encaixar(gest.fake, gest.poly, w.x - gest.start.x, w.y - gest.start.y, Math.max(25, wpp() * 22)), poly = deslocarPoly(gest.poly, e2.dx, e2.dy), inv = M.sobrepoe(P, poly, gest.cid);
     gest.dx = e2.dx; gest.dy = e2.dy; S.prev = { k: 'mover', poly, valid: !inv, enc: e2.x || e2.y, motivo: inv ? 'sobrepõe "' + inv.nome + '"' : '' }; renderSVG(); return;
   }
@@ -1685,6 +1695,24 @@ svg.addEventListener('pointermove', e => {
     const p = getById(P.pontos, gest.pid), T = M.TIPOS[p.tipo] || M.TIPOS.outro; let x = w.x, y = w.y, par = null;
     if (T.parede) { const c = G.colar({ x, y }, P.paredes, Math.max(60, wpp() * 30)); if (c) { x = c.x; y = c.y; par = c.parede; } }
     p.x = Math.round(x); p.y = Math.round(y); p.parede = par; renderSVG(); return;
+  }
+  if (m === 'dragAbertura') {
+    if (!gest.drag && mv > 4) { snap(); gest.drag = true; S.sel = { k: 'abertura', id: gest.aid }; }
+    if (!gest.drag) return;
+    const a = getById(P.aberturas, gest.aid), ww = a && getById(P.paredes, a.parede); if (!ww) return;
+    const q = wallGeo(ww), r = G.projT(ww, w.x, w.y), mh = a.larg / 2 / q.L;
+    a.t = clamp(Math.round(r.tc * q.L / 5) * 5 / q.L, mh, 1 - mh); renderSVG(); return;
+  }
+  if (m === 'dragParede') {
+    if (!gest.drag && mv > 4) { snap(); gest.drag = true; S.sel = { k: 'parede', id: gest.wid }; }
+    if (!gest.drag) return;
+    // a parede anda só para os lados (perpendicular), de 5 em 5 cm; as paredes ligadas nas pontas esticam junto
+    const o = gest.orig.find(x => x.id === gest.wid), q = wallGeo(o);
+    let d = (w.x - gest.start.x) * q.nx + (w.y - gest.start.y) * q.ny; d = Math.round(d / 5) * 5; const dx = q.nx * d, dy = q.ny * d;
+    P.paredes.forEach(ww => { const og = gest.orig.find(x => x.id === ww.id); ww.x1 = og.x1; ww.y1 = og.y1; ww.x2 = og.x2; ww.y2 = og.y2; });
+    [1, 2].forEach(i => { const ox = o['x' + i], oy = o['y' + i]; P.paredes.forEach(ww => ['1', '2'].forEach(j => { const og = gest.orig.find(x => x.id === ww.id); if (Math.hypot(og['x' + j] - ox, og['y' + j] - oy) < 1.5) { ww['x' + j] = ox + dx; ww['y' + j] = oy + dy; } })); });
+    P.pontos.forEach(p => { if (p.parede === gest.wid && gest.origP[p.id]) { p.x = gest.origP[p.id].x + dx; p.y = gest.origP[p.id].y + dy; } });
+    gest.dist = d; renderSVG(); return;
   }
   if (m === 'dragHandle') {
     if (!gest.drag && mv > 4) { snap(); gest.drag = true; }
@@ -1717,10 +1745,30 @@ function fimGesto(e, cancel) {
   }
   if (g.mode === 'dragPonto' && g.drag) { const p = getById(P.pontos, g.pid); p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); return refresh(); }
   if (g.mode === 'dragHandle' && g.drag) { M.recalc(P); return refresh(); }
+  if (g.mode === 'dragParede' && g.drag) { M.recalc(P); P.pontos.forEach(p => { p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); }); return refresh(); }
+  if (g.mode === 'dragAbertura' && g.drag) return refresh();
   if (g.moved) return renderSVG();
   tocar(g, w);
 }
 svg.addEventListener('pointerup', e => fimGesto(e, false));
+svg.addEventListener('dblclick', e => {
+  if (S.tool !== 'sel') return; const el = e.target.closest && e.target.closest('[data-k]'); if (!el || el.dataset.k !== 'parede') return;
+  dividirParede(el.dataset.id, toWorld(e));
+});
+/* divide uma parede em duas (cria um canto que dá para arrastar para mudar a forma) */
+function dividirParede(id, pt) {
+  const w = getById(P.paredes, id); if (!w) return; const q = wallGeo(w);
+  if (q.L < 60) return toast('Parede curta demais para dividir.');
+  const r = G.projT(w, pt ? pt.x : (w.x1 + w.x2) / 2, pt ? pt.y : (w.y1 + w.y2) / 2), t = clamp(r.tc, .12, .88);
+  const trava = P.aberturas.find(a => a.parede === id && Math.abs(a.t - t) * q.L < a.larg / 2 + 5);
+  if (trava) return toast('Tem uma ' + (trava.tipo === 'porta' ? 'porta' : 'janela') + ' nesse ponto. Escolha outro lugar da parede.', 4000);
+  snap();
+  const orig = { x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 }, mx = Math.round(w.x1 + (w.x2 - w.x1) * t), my = Math.round(w.y1 + (w.y2 - w.y1) * t);
+  const n = { id: M.id(P, 'w'), x1: mx, y1: my, x2: orig.x2, y2: orig.y2, esp: w.esp }; w.x2 = mx; w.y2 = my; P.paredes.push(n);
+  P.aberturas.forEach(a => { if (a.parede !== id) return; if (a.t <= t) a.t = a.t / t; else { a.parede = n.id; a.t = (a.t - t) / (1 - t); } });
+  P.pontos.forEach(p => { if (p.parede === id && G.projT(orig, p.x, p.y).tc > t) p.parede = n.id; });
+  M.recalc(P); S.sel = { k: 'parede', id }; refresh(); toast('Canto criado. Selecione a parede e arraste as bolinhas para mudar a forma.', 5000);
+}
 svg.addEventListener('pointercancel', e => fimGesto(e, true));
 
 /* toque simples conforme a ferramenta */
