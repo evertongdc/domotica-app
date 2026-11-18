@@ -1989,7 +1989,7 @@ window.DOMOTICA_CFG = {
             if (nova !== nova2) { toast('As senhas novas não conferem.', 'warn'); return; }
             if (nova === atual) { toast('A nova senha precisa ser diferente da atual.', 'warn'); return; }
             const erro = await cfgConferirSenha(x.user.email, atual); if (erro) { toast(erro, 'error', 8000); return; }
-            let r = await sb.auth.updateUser({ password: nova });
+            let r = await sb.auth.updateUser({ password: nova, current_password: atual });
             if (r.error && /reauth|nonce/i.test(r.error.message)) {
               // Login antigo: o Supabase pede um código enviado ao e-mail antes de trocar a senha.
               const env = await sb.auth.reauthenticate(); if (env.error) { toast(msgErro(env.error.message), 'error', 8000); return; }
@@ -2000,7 +2000,7 @@ window.DOMOTICA_CFG = {
                 $id('cfg-n-c').addEventListener('click', function() { fecharModal(); res(''); });
               });
               if (!cod) return;
-              r = await sb.auth.updateUser({ password: nova, nonce: cod });
+              r = await sb.auth.updateUser({ password: nova, current_password: atual, nonce: cod });
             }
             if (r.error) { toast(msgErro(r.error.message), 'error', 9000); return; }
             await sb.auth.signOut({ scope: 'others' });
