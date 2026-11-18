@@ -2141,6 +2141,22 @@ async function svgParaExportar() {
   c.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); c.setAttribute('width', vb[2]); c.setAttribute('height', vb[3]);
   return { svg: new XMLSerializer().serializeToString(c), w: vb[2], h: vb[3] };
 }
+async function capturar3d() {
+  const antes = S.tab; mostrar('v3d');
+  for (let i = 0; i < 60 && !T3.ok; i++) await new Promise(r => setTimeout(r, 200));
+  if (!T3.ok) { mostrar(antes); throw new Error('O 3D não carregou (sem internet?).'); }
+  build3d(true); await new Promise(r => setTimeout(r, 600));
+  T3.ctl.update(); T3.ren.render(T3.scene, T3.cam);
+  const d = T3.ren.domElement, cap = { url: d.toDataURL('image/jpeg', .92), w: d.width, h: d.height };
+  mostrar(antes); return cap;
+}
+async function compor3d(cap, band) {
+  const img = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('Falha ao montar a vista 3D.')); im.src = cap.url; });
+  const cv = document.createElement('canvas'); cv.width = cap.w; cv.height = cap.h + band; const x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(img, 0, band);
+  if (band) { x.fillStyle = '#0b1220'; x.fillRect(0, 0, cap.w, band); x.fillStyle = '#ff7a00'; x.font = 'bold 34px Arial, sans-serif'; x.fillText('Domótica Automação Residencial', 30, 42); x.fillStyle = '#fff'; x.font = '24px Arial, sans-serif'; x.fillText('Vista 3D · ' + legendaExp(), 30, 74); }
+  return cv;
+}
 async function rasterizar(exp, band) {
   const img = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('Não consegui montar a imagem da planta.')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(exp.svg); });
   const k = Math.min(3, 2600 / exp.w), W = Math.round(exp.w * k), H = Math.round(exp.h * k);
@@ -2149,15 +2165,16 @@ async function rasterizar(exp, band) {
   if (band) { x.fillStyle = '#0b1220'; x.fillRect(0, 0, W, band); x.fillStyle = '#ff7a00'; x.font = 'bold 34px Arial, sans-serif'; x.fillText('Domótica Automação Residencial', 30, 42); x.fillStyle = '#fff'; x.font = '24px Arial, sans-serif'; x.fillText(legendaExp(), 30, 74); }
   return cv;
 }
-async function gerarPDF(exp, comLista) {
+async function gerarPDF(exp, comLista, cap3d) {
   if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
   const doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }), PW = 297, PH = 210;
   const cab = tit => { doc.setFillColor(11, 18, 32); doc.rect(0, 0, PW, 16, 'F'); doc.setTextColor(255, 122, 0); doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.text('Domótica Automação Residencial', 10, 10.5); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(tit, PW - 10, 10.5, { align: 'right' }); doc.setTextColor(30, 41, 59); };
   const imagem = (dataUrl, tipo, ratio) => { const w = Math.min(PW - 20, (PH - 32) * ratio), h = w / ratio; doc.addImage(dataUrl, tipo, (PW - w) / 2, 21, w, h); };
-  const cv = await rasterizar(exp, 0);
-  cab(legendaExp()); imagem(cv.toDataURL('image/jpeg', .9), 'JPEG', cv.width / cv.height);
+  let primeira = true;
+  if (exp) { const cv = await rasterizar(exp, 0); cab(legendaExp()); imagem(cv.toDataURL('image/jpeg', .9), 'JPEG', cv.width / cv.height); primeira = false; }
+  if (cap3d) { if (!primeira) doc.addPage(); cab('Vista 3D · ' + legendaExp()); imagem(cap3d.url, 'JPEG', cap3d.w / cap3d.h); primeira = false; }
   if (comLista) {
-    doc.addPage(); cab('Pontos por cômodo · ' + textoCamadas()); let y = 26;
+    if (!primeira) doc.addPage(); cab('Pontos por cômodo · ' + textoCamadas()); let y = 26;
     const linha = (txt, neg, tam) => { if (y > PH - 14) { doc.addPage(); cab('Pontos por cômodo (continuação)'); y = 26; } doc.setFont('helvetica', neg ? 'bold' : 'normal'); doc.setFontSize(tam || 9); doc.text(txt, 10, y); y += neg ? 5.5 : 4.6; };
     const grupos = P.comodos.map(c => ({ t: c.nome + ' · ' + c.area.toFixed(1).replace('.', ',') + ' m2' + (c.forro ? ' · forro ' + c.forro + (c.rebaixo ? ' (rebaixo ' + c.rebaixo + ' cm)' : '') : '') + ' · pé-direito ' + ((c.pe || P.peDireito) / 100).toFixed(2).replace('.', ',') + ' m', pts: P.pontos.filter(p => p.comodo === c.id && visivel(p)) }));
     const sem = P.pontos.filter(p => !getById(P.comodos, p.comodo) && visivel(p)); if (sem.length) grupos.push({ t: 'Fora de cômodos', pts: sem });
@@ -2165,22 +2182,29 @@ async function gerarPDF(exp, comLista) {
     grupos.forEach(g => { if (!g.pts.length) return; algum = true; linha(g.t, true, 11); g.pts.forEach(p => linha('   ' + M.siglaDe(p) + '   ' + M.nomeDe(p) + '   |   altura ' + (p.altura == null ? 100 : p.altura) + ' cm' + (ehTeto(p) ? ' (teto)' : '') + (p.produto ? '   |   ' + p.produto : ''))); y += 3; });
     if (!algum) linha('Nenhum ponto nas camadas selecionadas.');
   }
-  try { if (T3.ok && T3.ren) { const d = T3.ren.domElement; if (d.width > 10) { doc.addPage(); cab('Vista 3D'); imagem(d.toDataURL('image/jpeg', .9), 'JPEG', d.width / d.height); } } } catch (e) { }
   const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120); doc.text('Gerado em ' + dataBR() + ' · página ' + i + ' de ' + n, PW - 10, PH - 6, { align: 'right' }); }
   doc.save(nomeArquivo() + '.pdf');
 }
 $('#bExp').onclick = async () => {
   if (!P.paredes.length) return toast('Desenhe alguma coisa antes de exportar.');
   const r = await modal('Exportar planta', [
-    { k: 'fmt', rot: 'Formato', tipo: 'select', val: 'pdf', opts: [['pdf', 'PDF (planta + lista de pontos + vista 3D)'], ['jpg', 'Imagem JPG'], ['png', 'Imagem PNG'], ['svg', 'Vetor SVG (para CAD/Illustrator)']] },
+    { k: 'fmt', rot: 'Formato', tipo: 'select', val: 'pdf', opts: [['pdf', 'PDF'], ['jpg', 'Imagem JPG'], ['png', 'Imagem PNG'], ['svg', 'Vetor SVG (só 2D, para CAD/Illustrator)']] },
+    { k: 'vis', rot: 'O que exportar', tipo: 'select', val: 'ambos', opts: [['ambos', 'Planta 2D e vista 3D'], ['2d', 'Só planta 2D'], ['3d', 'Só vista 3D']] },
     { k: 'lista', rot: 'Lista de pontos por cômodo (só no PDF)', tipo: 'select', val: '1', opts: [['1', 'Incluir'], ['0', 'Não incluir']] },
     { tipo: 'info', val: 'Sai exatamente o que está visível: <b>' + esc(textoCamadas()) + '</b>. Para exportar só o teto, marque "Teto" nas camadas antes.' }], 'Exportar');
-  if (!r) return; toast('Gerando arquivo…', 8000);
+  if (!r) return;
+  if (r.fmt === 'svg' && r.vis === '3d') return toast('O SVG é só da planta 2D. Escolha PDF, JPG ou PNG para a vista 3D.', 5000);
+  toast('Gerando arquivo…', 12000);
   try {
-    const exp = await svgParaExportar();
+    const q2 = r.vis !== '3d', q3 = r.vis !== '2d' && r.fmt !== 'svg';
+    const exp = q2 ? await svgParaExportar() : null, cap = q3 ? await capturar3d() : null;
     if (r.fmt === 'svg') baixarBlob(nomeArquivo() + '.svg', new Blob([exp.svg], { type: 'image/svg+xml' }));
-    else if (r.fmt === 'pdf') await gerarPDF(exp, r.lista === '1');
-    else { const cv = await rasterizar(exp, 90), tipo = r.fmt === 'png' ? 'image/png' : 'image/jpeg'; const blob = await new Promise(ok => cv.toBlob(ok, tipo, .92)); baixarBlob(nomeArquivo() + '.' + (r.fmt === 'png' ? 'png' : 'jpg'), blob); }
+    else if (r.fmt === 'pdf') await gerarPDF(exp, r.lista === '1', cap);
+    else {
+      const tipo = r.fmt === 'png' ? 'image/png' : 'image/jpeg', ext = r.fmt === 'png' ? 'png' : 'jpg', blobDe = cv => new Promise(ok => cv.toBlob(ok, tipo, .92));
+      if (exp) baixarBlob(nomeArquivo() + '_planta2d.' + ext, await blobDe(await rasterizar(exp, 90)));
+      if (cap) { if (exp) await new Promise(ok => setTimeout(ok, 500)); baixarBlob(nomeArquivo() + '_vista3d.' + ext, await blobDe(await compor3d(cap, 90))); }
+    }
     toast('Arquivo gerado.', 3000);
   } catch (e) { toast('Não consegui exportar: ' + (e && e.message || e), 6000); }
 };
