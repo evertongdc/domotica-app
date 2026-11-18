@@ -290,6 +290,7 @@ const ICONES = {
   obras: '<path d="M14.7 6.3a4 4 0 00-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 005.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
   dispositivos: '<path d="M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/>',
   agenda: '<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v3M16 3v3"/>',
+  configuracoes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>',
   codigos: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/>',
   plantas: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h8M11 3v8M11 15v6M15 13h6"/>',
   mais: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
@@ -306,6 +307,7 @@ const NAV = [
   { id: 'dispositivos', label: 'Dispositivos' },
   { id: 'agenda', label: 'Agenda' },
   { id: 'codigos', label: 'Códigos' },
+  { id: 'configuracoes', label: 'Configurações' },
 ];
 const NAV_TAB = ['inicio', 'plantas', 'clientes', 'catalogo'];
 
@@ -1239,7 +1241,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
       c.innerHTML =
         '<div class="glass card" style="padding:16px;margin-bottom:14px">' +
           '<div class="row-title">Link para o cliente liberar a leitura dos códigos</div>' +
-          '<div class="small" style="margin:4px 0 10px">O cliente abre o link, clica em “Autorizar e ativar” e, por 14 dias, os códigos de ativação dos apps de automação aparecem aqui.</div>' +
+          '<div class="small" style="margin:4px 0 10px">O cliente abre o link, clica em “Autorizar e ativar” e, por 6 meses, os códigos de ativação dos apps de automação aparecem aqui.</div>' +
           '<div class="toolbar"><select id="cod-cliente" class="form-input"><option value="">Escolha o cliente...</option></select>' +
           '<input id="cod-url" class="form-input grow" placeholder="Endereço do app de autorização (Apps Script do cliente)" value="' + escHtml(guardado()) + '">' +
           '<button class="btn btn-primary" data-acao="copiar">Copiar link</button></div>' +
@@ -1803,7 +1805,9 @@ window.DOMOTICA_CFG = {
   // Link de "esqueci a senha": abre uma janela para definir a nova senha
   sb.auth.onAuthStateChange(function(ev) {
     if (ev !== 'PASSWORD_RECOVERY') return;
-    setTimeout(function() {
+    setTimeout(async function() {
+      // Conta com 2 etapas: o Supabase só deixa trocar a senha com o código confirmado.
+      if (!(await exigirSegundoFator())) { await sb.auth.signOut(); CTX = null; mostrarTela('login'); return; }
       abrirModal('Criar nova senha',
         '<div class="form-group"><label class="form-label">Nova senha (mín. 12 caracteres, com maiúscula, minúscula, número e símbolo)</label><input id="ns-1" type="password" class="form-input" autocomplete="new-password"></div>' +
         '<div class="form-group"><label class="form-label">Repita a senha</label><input id="ns-2" type="password" class="form-input" autocomplete="new-password"></div>',
@@ -1861,7 +1865,7 @@ window.DOMOTICA_CFG = {
         confirmarAcao('Desativar a verificação em duas etapas deixa a conta protegida só pela senha. Continuar?', async function() {
           const r = await sb.auth.mfa.unenroll({ factorId: fs[0].id });
           if (r.error) { toast(msgErro(r.error.message), 'error', 8000); return; }
-          toast('Verificação em duas etapas desativada.', 'success');
+          toast('Verificação em duas etapas desativada.', 'success'); document.dispatchEvent(new Event('mfa-mudou'));
         }, { perigo: true, textoConfirmar: 'Desativar', titulo: 'Desativar 2 etapas' });
       });
       return;
@@ -1891,30 +1895,135 @@ window.DOMOTICA_CFG = {
         const ch = await sb.auth.mfa.challenge({ factorId: fid });
         const v = ch.error ? ch : await sb.auth.mfa.verify({ factorId: fid, challengeId: ch.data.id, code: code });
         if (v.error) { toast('Código incorreto. Confira o app e tente de novo.', 'error', 6000); return; }
-        fecharModal(); toast('Verificação em duas etapas ativada.', 'success', 7000);
+        fecharModal(); toast('Verificação em duas etapas ativada.', 'success', 7000); document.dispatchEvent(new Event('mfa-mudou'));
       });
     });
   };
-  // Atalhos de acesso: menu lateral e a janela "Mais" do celular
-  let _atalhosOk = false;
-  function atalhosSeguranca() {
-    if (_atalhosOk) return; _atalhosOk = true;
-    const foot = document.querySelector('.sidebar-foot');
-    if (foot) foot.insertAdjacentHTML('beforeend', '<button class="btn btn-ghost btn-sm" style="padding-left:0" onclick="abrirSeguranca()">Segurança (2 etapas)</button>');
-    const maisOrig = window.abrirMais;
-    if (maisOrig) window.abrirMais = function() {
-      maisOrig();
-      const sair = [...document.querySelectorAll('#modal-body button')].find(function(b) { return b.textContent.trim() === 'Sair'; });
-      if (sair) sair.insertAdjacentHTML('beforebegin', '<button class="nav-item" onclick="fecharModal();abrirSeguranca()"><span>Segurança (2 etapas)</span></button>');
-    };
+  // ── Aba Configurações: perfil, empresa, senha e segurança ──
+  function cfgSecao(titulo, sub, corpo) {
+    return '<div class="glass card" style="padding:18px;margin-bottom:14px;max-width:640px"><div class="row-title">' + titulo + '</div><div class="small" style="margin:4px 0 14px">' + sub + '</div>' + corpo + '</div>';
   }
+  function cfgCampo(id, rotulo, extra) { return '<div class="form-group"><label class="form-label">' + rotulo + '</label><input id="' + id + '" class="form-input" ' + (extra || '') + '></div>'; }
+
+  async function cfgPintarDuasEtapas() {
+    const el = $id('cfg-2fa'); if (!el) return;
+    const fs = await mfaFatores();
+    el.innerHTML = fs.length
+      ? '<div class="alert alert-success" style="margin-bottom:10px">Verificação em duas etapas <b>ativada</b>. A cada novo login o app pede o código do seu autenticador.</div><button class="btn btn-secondary" data-cfg="2fa">Gerenciar</button>'
+      : '<div class="alert alert-error" style="margin-bottom:10px">Desativada. Hoje a conta é protegida só pela senha.</div><button class="btn btn-primary" data-cfg="2fa">Ativar verificação em duas etapas</button>';
+  }
+
+  // Confere a senha atual pela mesma função do login (com CAPTCHA e contagem de tentativas).
+  async function cfgConferirSenha(email, senha) {
+    const tk = await cfToken('cf-config');
+    if (tk === '') return 'Não foi possível concluir a verificação de segurança. Recarregue a página e tente de novo.';
+    let r, d = {};
+    try {
+      r = await fetch(window.DOMOTICA_CFG.url + '/functions/v1/login-seguro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, senha: senha, captcha: tk }) });
+      d = await r.json().catch(function() { return {}; });
+    } catch (e) { cfReset('cf-config'); return 'Sem conexão. Tente de novo.'; }
+    cfReset('cf-config');
+    return (r.ok && d.sessao) ? null : (d.erro || 'Senha atual incorreta.');
+  }
+
+  VIEWS.configuracoes = {
+    titulo: 'Configurações',
+    render: async function(c) {
+      $id('topbar-actions').innerHTML = '';
+      let x; try { x = await ctx(); } catch (e) { c.innerHTML = '<div class="alert alert-error">' + escHtml(e.message) + '</div>'; return; }
+      const admin = APP.usuario.role === 'admin';
+      const papel = admin ? 'Administrador' : APP.usuario.role;
+      c.innerHTML =
+        cfgSecao('Perfil', 'Seus dados de acesso.',
+          cfgCampo('cfg-nome', 'Nome', 'value="' + escHtml(x.nome) + '" maxlength="80" autocomplete="name"') +
+          cfgCampo('cfg-email', 'E-mail', 'value="' + escHtml(x.user.email) + '" disabled') +
+          '<div class="small" style="margin-bottom:12px">Função: <b>' + escHtml(papel) + '</b></div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" data-cfg="perfil">Salvar perfil</button><button class="btn btn-secondary" data-cfg="email">Alterar e-mail</button></div>') +
+        (admin ? cfgSecao('Empresa', 'Nome que aparece nos orçamentos e documentos.',
+          cfgCampo('cfg-org', 'Nome da empresa', 'value="' + escHtml((x.org && x.org.nome) || '') + '" maxlength="120"') +
+          '<button class="btn btn-primary" data-cfg="org">Salvar empresa</button>') : '') +
+        cfgSecao('Senha', 'Mínimo de 12 caracteres, com letra maiúscula, minúscula, número e símbolo.',
+          cfgCampo('cfg-atual', 'Senha atual', 'type="password" autocomplete="current-password"') +
+          cfgCampo('cfg-nova', 'Nova senha', 'type="password" autocomplete="new-password"') +
+          cfgCampo('cfg-nova2', 'Repita a nova senha', 'type="password" autocomplete="new-password"') +
+          '<div id="cf-config" style="margin-bottom:12px"></div>' +
+          '<button class="btn btn-primary" data-cfg="senha">Alterar senha</button>') +
+        cfgSecao('Verificação em duas etapas', 'Mesmo que alguém descubra sua senha, não entra sem o código do seu celular.', '<div id="cfg-2fa">Carregando...</div>') +
+        cfgSecao('Sessões', 'Se perdeu um aparelho ou acha que alguém usou sua conta, encerre todas as sessões.',
+          '<button class="btn btn-danger" data-cfg="sair-todos">Sair de todos os aparelhos</button>');
+      olho($id('cfg-atual')); olho($id('cfg-nova')); olho($id('cfg-nova2'));
+      cfMontar('cf-config'); cfgPintarDuasEtapas();
+      if (!window._cfgMfaOuvinte) { window._cfgMfaOuvinte = true; document.addEventListener('mfa-mudou', cfgPintarDuasEtapas); }
+
+      const tratar = async function(e) {
+        const b = e.target.closest('[data-cfg]'); if (!b) return;
+        const a = b.getAttribute('data-cfg');
+        if (a === '2fa') { window.abrirSeguranca(); return; }
+        b.disabled = true;
+        try {
+          if (a === 'perfil') {
+            const nome = $id('cfg-nome').value.trim(); if (nome.length < 2) { toast('Informe seu nome.', 'warn'); return; }
+            const r = await sb.auth.updateUser({ data: { nome: nome } });
+            if (r.error) { toast(msgErro(r.error.message), 'error', 8000); return; }
+            CTX = null; APP.usuario.nome = nome; $id('user-nome').textContent = nome; toast('Perfil salvo.', 'success');
+          } else if (a === 'org') {
+            const nome = $id('cfg-org').value.trim(); if (nome.length < 2) { toast('Informe o nome da empresa.', 'warn'); return; }
+            const r = await sb.from('organizations').update({ nome: nome }).eq('id', x.orgId);
+            if (r.error) { toast('Não foi possível salvar: ' + msgErro(r.error.message), 'error', 8000); return; }
+            CTX = null; toast('Empresa salva.', 'success');
+          } else if (a === 'email') {
+            abrirModal('Alterar e-mail',
+              '<p class="muted small" style="margin-top:0">Vamos enviar um link de confirmação para o e-mail atual e para o novo. A troca só vale depois de confirmar os dois.</p><div class="form-group"><label class="form-label">Novo e-mail</label><input id="cfg-novo-email" type="email" class="form-input" autocomplete="email"></div>',
+              '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="cfg-email-ok">Enviar confirmação</button>');
+            $id('cfg-email-ok').addEventListener('click', async function() {
+              const novo = $id('cfg-novo-email').value.trim().toLowerCase();
+              if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(novo)) { toast('Informe um e-mail válido.', 'warn'); return; }
+              const r = await sb.auth.updateUser({ email: novo }, { emailRedirectTo: location.origin + location.pathname });
+              if (r.error) { toast(msgErro(r.error.message), 'error', 8000); return; }
+              fecharModal(); toast('Enviamos a confirmação para os dois e-mails. Confirme nos dois para concluir a troca.', 'success', 9000);
+            });
+          } else if (a === 'senha') {
+            const atual = $id('cfg-atual').value, nova = $id('cfg-nova').value, nova2 = $id('cfg-nova2').value;
+            if (!atual) { toast('Informe a senha atual.', 'warn'); return; }
+            const fraca = senhaFraca(nova); if (fraca) { toast(fraca, 'warn', 8000); return; }
+            if (nova !== nova2) { toast('As senhas novas não conferem.', 'warn'); return; }
+            if (nova === atual) { toast('A nova senha precisa ser diferente da atual.', 'warn'); return; }
+            const erro = await cfgConferirSenha(x.user.email, atual); if (erro) { toast(erro, 'error', 8000); return; }
+            let r = await sb.auth.updateUser({ password: nova });
+            if (r.error && /reauth|nonce/i.test(r.error.message)) {
+              // Login antigo: o Supabase pede um código enviado ao e-mail antes de trocar a senha.
+              const env = await sb.auth.reauthenticate(); if (env.error) { toast(msgErro(env.error.message), 'error', 8000); return; }
+              const cod = await new Promise(function(res) {
+                abrirModal('Confirme por e-mail', '<p class="muted small" style="margin-top:0">Enviamos um código para o seu e-mail. Digite-o abaixo.</p><div class="form-group"><input id="cfg-nonce" class="form-input" autocomplete="one-time-code" inputmode="numeric" placeholder="Código"></div>',
+                  '<button class="btn btn-secondary" id="cfg-n-c">Cancelar</button><button class="btn btn-primary" id="cfg-n-ok">Confirmar</button>');
+                $id('cfg-n-ok').addEventListener('click', function() { const v = $id('cfg-nonce').value.trim(); fecharModal(); res(v); });
+                $id('cfg-n-c').addEventListener('click', function() { fecharModal(); res(''); });
+              });
+              if (!cod) return;
+              r = await sb.auth.updateUser({ password: nova, nonce: cod });
+            }
+            if (r.error) { toast(msgErro(r.error.message), 'error', 9000); return; }
+            await sb.auth.signOut({ scope: 'others' });
+            $id('cfg-atual').value = ''; $id('cfg-nova').value = ''; $id('cfg-nova2').value = '';
+            toast('Senha alterada. Os outros aparelhos foram desconectados.', 'success', 8000);
+          } else if (a === 'sair-todos') {
+            confirmarAcao('Isso desconecta você e todos os outros aparelhos. Você vai precisar entrar de novo.', async function() {
+              await sb.auth.signOut({ scope: 'global' }); CTX = null; APP.token = null; APP.usuario = null; mostrarTela('login');
+            }, { perigo: true, textoConfirmar: 'Sair de todos', titulo: 'Encerrar todas as sessões' });
+          }
+        } finally { b.disabled = false; }
+      };
+      if (c._cfgH) c.removeEventListener('click', c._cfgH);
+      c._cfgH = tratar; c.addEventListener('click', tratar);
+    },
+  };
 
   window.iniciarApp = async function() {
     document.addEventListener('keydown', function(ev) {
       if (ev.key === 'Escape') fecharModal();
       if (ev.key === 'Enter' && $id('screen-login').style.display === 'flex') fazerLogin();
     });
-    prepararTelas(); atalhosSeguranca();
+    prepararTelas();
     let s =(await sb.auth.getSession()).data.session;
     if (!s) { mostrarTela('login'); return; }
     if (!(await exigirSegundoFator())) { await sb.auth.signOut(); CTX = null; mostrarTela('login'); return; }
