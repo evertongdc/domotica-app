@@ -2322,12 +2322,12 @@ function texMarmore() {
   for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(' + (50 + Math.random() * 30 | 0) + ',' + (52 + Math.random() * 30 | 0) + ',' + (58 + Math.random() * 30 | 0) + ',.10)'; x.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 40, 2 + Math.random() * 40); }
   for (let v = 0; v < 14; v++) { x.beginPath(); let px = Math.random() * 512, py = Math.random() * 512; x.moveTo(px, py); for (let k = 0; k < 7; k++) { px += (Math.random() - .5) * 150; py += (Math.random() - .5) * 150; x.lineTo(px, py); } x.strokeStyle = 'rgba(200,205,215,' + (.05 + Math.random() * .12) + ')'; x.lineWidth = .6 + Math.random() * 1.6; x.stroke(); }
   x.strokeStyle = 'rgba(0,0,0,.55)'; x.lineWidth = 3; x.strokeRect(0, 0, 512, 512);
-  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 90, 1 / 90); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; return (T3.texM = t);
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 160, 1 / 160); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; return (T3.texM = t);
 }
 function aplicarVisual() {
   const n = visual3() === 'noite'; T3.noite = n;
-  T3.scene.background.set(n ? 0x15181e : 0xe9eef5); T3.ren.toneMapping = n ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; T3.ren.toneMappingExposure = n ? 1.15 : 1;
-  T3.amb.intensity = n ? .22 : .5; T3.hemi.intensity = n ? .35 : 0; T3.sun.intensity = n ? .55 : .5; T3.sun.color.set(n ? 0xffe2c0 : 0xffffff);
+  T3.scene.background.set(n ? 0x050608 : 0xe9eef5); T3.ren.toneMapping = n ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; T3.ren.toneMappingExposure = n ? 1.15 : 1;
+  T3.amb.intensity = n ? .10 : .5; T3.hemi.intensity = n ? .16 : 0; T3.sun.intensity = n ? .32 : .5; T3.sun.color.set(n ? 0xffe2c0 : 0xffffff);
   const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, r = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300), sc = T3.sun.shadow.camera;
   T3.sun.position.set(cx + r * .5, r * 1.6, cy + r * .35); T3.sun.target.position.set(cx, 0, cy); sc.left = sc.bottom = -r * .85; sc.right = sc.top = r * .85; sc.near = 10; sc.far = r * 4; sc.updateProjectionMatrix();
   if ($('#vis3')) $('#vis3').value = visual3();
@@ -2340,9 +2340,9 @@ function build3d(reenquadrar) {
   const altW = w => { const m = [(w.x1 + w.x2) / 2, (w.y1 + w.y2) / 2], tol = (w.esp || 15) / 2 + 4; let h = 0; P.comodos.forEach(c => { if (G.dentro(c.pontos, m[0], m[1]) || distPoly(c.pontos, m) <= tol) h = Math.max(h, peDe(c)); }); return h || Hn; };
   const tetoDe = c => peDe(c) - ((c && c.rebaixo) || 0);
   const yPonto = p => { const c = getById(P.comodos, p.comodo), lim = ehTeto(p) ? tetoDe(c) - 2 : peDe(c); return clamp(alturaDe(p), 5, Math.max(10, lim)); };
-  const mWall = new THREE.MeshStandardMaterial({ color: NT ? 0x30343c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: NT ? .7 : .9 });
-  const mTop = new THREE.MeshStandardMaterial({ color: NT ? 0x4a505b : 0xd5dbe5 });
-  const mLed = new THREE.MeshStandardMaterial({ color: 0xffb35c, emissive: 0xffa040, emissiveIntensity: 1.6 });
+  const mWall = new THREE.MeshStandardMaterial({ color: NT ? 0x14171c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: NT ? .7 : .9 });
+  const mTop = new THREE.MeshStandardMaterial({ color: NT ? 0x262b33 : 0xd5dbe5 });
+  const mLed = new THREE.MeshStandardMaterial({ color: 0xffb35c, emissive: 0xffa040, emissiveIntensity: 2.2 });
   const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = m.receiveShadow = true; g.add(m); };
   P.paredes.forEach(w => {
     const Hw = modo === 'corte' ? Math.min(110, altW(w)) : altW(w);
@@ -2357,9 +2357,9 @@ function build3d(reenquadrar) {
       cur = o.u1;
     });
     box(cur, q.L + (w.esp || 15) / 2, 0, Hw, w, q, mWall);
-    if (NT && modo !== 'vidro') { const led = new THREE.Mesh(new THREE.BoxGeometry(q.L, 2.5, (w.esp || 15) + 1.4), mLed); led.position.set(w.x1 + q.ux * q.L / 2, 3, w.y1 + q.uy * q.L / 2); led.rotation.y = -Math.atan2(q.uy, q.ux); g.add(led); }
+    if (NT && modo !== 'vidro') [1, -1].forEach(sd => { const off = sd * ((w.esp || 15) / 2 + 3), led = new THREE.Mesh(new THREE.BoxGeometry(q.L, 1.5, 2.2), mLed); led.position.set(w.x1 + q.ux * q.L / 2 - q.uy * off, 1.4, w.y1 + q.uy * q.L / 2 + q.ux * off); led.rotation.y = -Math.atan2(q.uy, q.ux); g.add(led); });
   });
-  if (NT) { const b0 = bbox(), gp = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x1b1f26, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.set((b0.x0 + b0.x1) / 2, -.5, (b0.y0 + b0.y1) / 2); gp.receiveShadow = true; g.add(gp); }
+  if (NT) { const b0 = bbox(), gp = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x0a0b0e, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.set((b0.x0 + b0.x1) / 2, -.5, (b0.y0 + b0.y1) / 2); gp.receiveShadow = true; g.add(gp); }
   const cores = [0xb9d3f0, 0xf0d2a8, 0xb8e0c6, 0xd6bfee, 0xf2dc8c, 0xa9dde6];
   P.comodos.forEach((c, i) => {
     const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
