@@ -288,6 +288,7 @@ const ICONES = {
   obras: '<path d="M14.7 6.3a4 4 0 00-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 005.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
   dispositivos: '<path d="M12 3l8 3v6c0 5-3.4 8.2-8 9-4.6-.8-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/>',
   agenda: '<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v3M16 3v3"/>',
+  sugestoes: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
   configuracoes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>',
   codigos: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/>',
   plantas: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h8M11 3v8M11 15v6M15 13h6"/>',
@@ -304,6 +305,7 @@ const NAV = [
   { id: 'obras', label: 'Obras' },
   { id: 'dispositivos', label: 'Dispositivos' },
   { id: 'agenda', label: 'Agenda' },
+  { id: 'sugestoes', label: 'Sugestões do bot' },
   { id: 'codigos', label: 'Códigos' },
   { id: 'configuracoes', label: 'Configurações' },
 ];
@@ -2035,6 +2037,60 @@ window.DOMOTICA_CFG = {
       };
       if (c._cfgH) c.removeEventListener('click', c._cfgH);
       c._cfgH = tratar; c.addEventListener('click', tratar);
+    },
+  };
+
+  // ── Sugestões do bot de produtos: o bot procura sozinho; nada entra no catálogo sem a sua aprovação ──
+  const SG_TIPO = { interruptor: 'Interruptor', botao: 'Keypad', tomada: 'Tomada', tomada_20a: 'Tomada 20 A', tomada_dupla: 'Tomada dupla', tomada_usb: 'Tomada com USB', tomada_dedicada: 'Tomada dedicada', tomada_alta: 'Tomada alta', echo: 'Echo', echo_dot: 'Echo Dot', echo_pop: 'Echo Pop', echo_show: 'Echo Show', echo_hub: 'Echo Hub', echo_studio: 'Echo Studio', hub: 'Hub', spot: 'Spot', ponto_luz: 'Lâmpada', plafon: 'Plafon', fita_led: 'Fita LED', arandela: 'Arandela', camera: 'Câmera', sensor: 'Sensor', sensor_presenca: 'Sensor de presença', detector: 'Detector de fumaça', fechadura: 'Fechadura', ar_condicionado: 'Controle de ar-condicionado', cortina: 'Motor de cortina', roteador: 'Roteador', ventilador: 'Ventilador' };
+  const sgReais = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+  async function sgPintar(c) {
+    const x = await ctx();
+    const [est, lista] = await Promise.all([sb.from('bot_produtos_estado').select('ativo, ultima_execucao, resumo').eq('org_id', x.orgId).maybeSingle(), sb.from('product_suggestions').select('*').eq('org_id', x.orgId).eq('status', 'pendente').order('req_tipo').order('preco')]);
+    const e = est.data || { ativo: true, ultima_execucao: null, resumo: null }, itens = lista.data || [];
+    const quando = e.ultima_execucao ? new Date(e.ultima_execucao).toLocaleString('pt-BR') : 'ainda não rodou';
+    const res = e.resumo || {}, erros = (res.erros || []).filter(function(v, i, a) { return a.indexOf(v) === i; });
+    let h = '<div class="glass card" style="padding:16px;margin-bottom:14px"><div class="row-title">Bot de produtos</div><div class="small" style="margin:4px 0 10px;line-height:1.5">Todo dia, de madrugada, o bot lê as suas plantas e procura no Mercado Livre produtos com o <b>padrão que você marcou</b> (ex.: interruptor de 4 teclas) e com o melhor valor. Os links já saem com o seu ID de afiliado. <b>Nada entra no catálogo sem a sua aprovação.</b></div>' +
+      '<label class="form-check"><input type="checkbox" id="sg-ativo" ' + (e.ativo ? 'checked' : '') + '> Bot ligado (roda sozinho, mesmo sem você usar o sistema)</label>' +
+      '<div class="small" style="margin-top:8px">Última busca: <b>' + escHtml(quando) + '</b>' + (res.buscados != null ? ' · ' + res.buscados + ' busca(s), ' + (res.novas || 0) + ' sugestão(ões) nova(s)' : '') + '</div>' +
+      (erros.length ? '<div class="alert alert-error" style="margin-top:10px">' + erros.map(escHtml).join('<br>') + '</div>' : '') +
+      '<details style="margin-top:10px"><summary class="small" style="cursor:pointer">Como liberar a busca no Mercado Livre (uma vez só)</summary><ol class="small" style="line-height:1.6;padding-left:18px">' +
+      '<li>Entre em <b>developers.mercadolivre.com.br</b> com a sua conta e crie uma aplicação (gratuito).</li><li>Copie o <b>Client ID</b> e o <b>Client Secret</b> dela.</li><li>No Supabase (Edge Functions → Secrets) crie os segredos <b>ML_CLIENT_ID</b> e <b>ML_CLIENT_SECRET</b> com esses valores.</li><li>Volte aqui e toque em “Buscar agora”.</li></ol></details></div>';
+    if (!itens.length) h += '<div class="glass card empty">Nenhuma sugestão aguardando aprovação.</div>';
+    const grupos = {}; itens.forEach(function(i) { const k = i.req_tipo + '|' + i.req_teclas; (grupos[k] = grupos[k] || []).push(i); });
+    Object.keys(grupos).forEach(function(k) {
+      const g = grupos[k], r0 = g[0], rot = (SG_TIPO[r0.req_tipo] || r0.req_tipo) + (r0.req_teclas ? ' · ' + r0.req_teclas + (r0.req_tipo === 'botao' ? ' botões' : ' teclas') : '');
+      h += '<div class="row-title" style="margin:16px 2px 8px">' + escHtml(rot) + '</div>' + g.map(function(i) {
+        return '<div class="glass item-card" style="border:1px dashed rgba(167,139,250,.7)"><div style="display:flex;gap:12px;align-items:center">' + (i.imagem_url ? '<img src="' + escHtml(i.imagem_url) + '" alt="" style="width:64px;height:64px;object-fit:contain;background:#fff;border-radius:10px">' : '') +
+          '<div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal">' + escHtml(i.titulo) + '</div><div class="small">' + escHtml(i.motivo || '') + '</div><div style="margin-top:4px"><b style="font-size:1.15em">' + sgReais(i.preco) + '</b> <span class="badge">' + escHtml(i.loja) + '</span> ' + (i.marca ? '<span class="small">' + escHtml(i.marca) + '</span>' : '') + '</div></div></div>' +
+          '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-secondary btn-sm" href="' + escHtml(i.link) + '" target="_blank" rel="noopener" style="text-decoration:none">Ver no Mercado Livre</a><button class="btn btn-primary btn-sm" data-sg="aprovar" data-id="' + escHtml(i.id) + '">Aprovar e colocar no catálogo</button><button class="btn btn-ghost btn-sm" data-sg="rejeitar" data-id="' + escHtml(i.id) + '">Rejeitar</button></div></div>';
+      }).join('');
+    });
+    c.innerHTML = h;
+  }
+  VIEWS.sugestoes = {
+    titulo: 'Sugestões do bot',
+    render: async function(c) {
+      $id('topbar-actions').innerHTML = '<button class="btn btn-primary" data-sg="buscar">Buscar agora</button>';
+      try { await sgPintar(c); } catch (e) { c.innerHTML = '<div class="alert alert-error">' + escHtml(msgErro(e.message)) + '</div>'; return; }
+      const tratar = async function(ev) {
+        const b = ev.target.closest('[data-sg]'); if (!b) return; const a = b.getAttribute('data-sg'); b.disabled = true;
+        try {
+          if (a === 'buscar') {
+            b.textContent = 'Buscando… (até 1 minuto)';
+            const r = await sb.functions.invoke('buscar-produtos', { body: { acao: 'buscar' } }); let d = r.data;
+            if (r.error) { try { d = await r.error.context.json(); } catch (x) { d = { ok: false, erro: r.error.message }; } }
+            if (d && d.ok === false) toast(d.erro || 'O bot não conseguiu buscar agora.', 'warn', 9000); else toast('Busca concluída: ' + ((d && d.novas) || 0) + ' sugestão(ões) nova(s).', 'success', 6000);
+          } else if (a === 'aprovar' || a === 'rejeitar') {
+            const r = await sb.rpc('sugestao_decidir', { p_id: b.getAttribute('data-id'), p_acao: a }); if (r.error) throw new Error(r.error.message);
+            toast(a === 'aprovar' ? 'Aprovado: já está no seu catálogo.' : 'Rejeitado. O bot não sugere de novo.', 'success');
+          }
+        } catch (x) { toast(msgErro(x.message), 'error', 8000); }
+        await sgPintar(c);
+      };
+      if (c._sgH) { c.removeEventListener('click', c._sgH); $id('topbar-actions').removeEventListener('click', c._sgH); c.removeEventListener('change', c._sgC); }
+      c._sgH = tratar; c.addEventListener('click', tratar); $id('topbar-actions').addEventListener('click', tratar);
+      c._sgC = async function(ev) { if (ev.target.id !== 'sg-ativo') return; const x = await ctx(); const r = await sb.from('bot_produtos_estado').upsert({ org_id: x.orgId, ativo: ev.target.checked }, { onConflict: 'org_id' }); if (r.error) toast(msgErro(r.error.message), 'error'); else toast(ev.target.checked ? 'Bot ligado.' : 'Bot desligado: não vai mais buscar sozinho.', 'success'); };
+      c.addEventListener('change', c._sgC);
     },
   };
 

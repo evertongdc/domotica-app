@@ -201,6 +201,8 @@ window.DOMOTICA_CFG = {
       return { fileId: caminho };
     },
     Planta_catalogo: async function() { var c = await ctx(); return must(await sb.from('catalog_products').select('id, nome, categoria, marca, imagem_url, preco_aparelho, exige_neutro, ativo').eq('org_id', c.orgId).order('nome')); },
+    Planta_sugestoes: async function() { var c = await ctx(); return must(await sb.from('product_suggestions').select('id, req_tipo, req_teclas, titulo, marca, preco, link, imagem_url, motivo, loja').eq('org_id', c.orgId).eq('status', 'pendente').order('preco')); },
+    Planta_decidirSugestao: async function(id, acao) { await ctx(); return must(await sb.rpc('sugestao_decidir', { p_id: id, p_acao: acao })); },
     Planta_compartilhar: async function(planId, dias) { await ctx(); return must(await sb.rpc('share_criar', { p_plan: planId, p_dias: dias })); },
     Planta_compartilhamentos: async function(planId) { await ctx(); return must(await sb.from('plan_shares').select('id, expira_em, revogado, status, respostas, acessos, ultimo_acesso, created_at').eq('plan_id', planId).order('created_at', { ascending: false })); },
     Planta_revogarCompartilhamento: async function(id) { await ctx(); must(await sb.from('plan_shares').update({ revogado: true }).eq('id', id)); return { ok: true }; },
@@ -1311,7 +1313,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ===================== estado ===================== */
 let P = M.novaPlanta('Nova planta');
-const S = { tool: 'sel', camadas: new Set(), projeto: 'atual', estilo: 'arq', catalogo: undefined, sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
+const S = { tool: 'sel', camadas: new Set(), projeto: 'atual', estilo: (() => { try { return localStorage.getItem('planta_estilo') === 'real' ? 'real' : 'arq'; } catch (e) { return 'arq'; } })(), catalogo: undefined, sugestoes: undefined, sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
   dedo: false, interna: true, cotas: true, ligs: true, fotoDataUrl: null, fotoSuja: false, planoId: CTX.plantaId || null, cal: [], prev: null, tab: 'v2d', filtro: '', cadeia: false, rodaZoom: false, p1: null, dig: '', live: null, ultima: null, ativo: null, ghost: null, mouse: null };
 const undo = [], redo = [];
 const ptrs = new Map(); let gest = null;
@@ -1519,11 +1521,12 @@ function visivel(p) {
   return false;
 }
 function renderCamadas() {
-  const h = '<button data-cam="*"' + (S.camadas.size ? '' : ' class="on"') + '>Tudo</button>' + CAMADAS.map(c => '<button data-cam="' + c[0] + '"' + (S.camadas.has(c[0]) ? ' class="on"' : '') + '>' + c[1] + '</button>').join('');
+  const h = '<button data-cam="*"' + (S.camadas.size ? '' : ' class="on"') + '>Tudo</button><button data-cam="__vinc"' + (S.ligs ? ' class="on"' : '') + ' title="Mostrar ou ocultar os vínculos entre interruptores e pontos">⟿ Vínculos</button>' + CAMADAS.map(c => '<button data-cam="' + c[0] + '"' + (S.camadas.has(c[0]) ? ' class="on"' : '') + '>' + c[1] + '</button>').join('');
   ['layerbar', 'layerbar3'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = h; });
 }
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('[data-cam]'); if (!b) return; const c = b.dataset.cam;
+  if (c === '__vinc') { S.ligs = !S.ligs; const lg = $('#lig3'); if (lg) lg.checked = S.ligs; renderCamadas(); renderSVG(); if (S.tab === 'v3d') build3d(); if (!S.sel) renderPanel(); return; }
   if (c === '*') S.camadas.clear(); else if (S.camadas.has(c)) S.camadas.delete(c); else S.camadas.add(c);
   renderCamadas(); renderSVG(); if (S.tab === 'v3d') build3d();
 });
@@ -1656,14 +1659,20 @@ const PALAVRAS = { interruptor: ['interruptor', 'modulo', 'tecla'], botao: ['bot
   tv: ['tv', 'televisao'], roteador: ['roteador', 'wifi', 'mesh'], caixa_som: ['caixa de som', 'som'], amplificador: ['amplificador', 'som'], qdc: ['disjuntor', 'quadro', 'dps'], quadro_automacao: ['quadro', 'automacao'], quadro_rede: ['rack', 'switch', 'rede'] };
 function sugerirProdutos(p) {
   const cat = S.catalogo; if (!Array.isArray(cat)) return []; const ks = PALAVRAS[p.tipo] || [];
-  return cat.filter(x => x.ativo !== false).map(x => { const t = semAcento(x.nome + ' ' + (x.categoria || '') + ' ' + (x.marca || '')); let n = 0; ks.forEach(k => { if (t.indexOf(k) >= 0) n += 2; }); if (ehInterrP(p) && /(2|3|4) ?(teclas|botoes)/.test(t) && t.indexOf(String(p.teclas || 1)) >= 0) n += 1; return { x, n }; })
+  return cat.filter(x => x.ativo !== false).map(x => { const t = semAcento(x.nome + ' ' + (x.categoria || '') + ' ' + (x.marca || '')); let n = 0; ks.forEach(k => { if (t.indexOf(k) >= 0) n += 2; });
+    if (ehInterrP(p)) { const nt = nTeclasTxt(x.nome); if (nt !== null && nt !== reqTeclas(p)) return { x, n: 0 }; if (nt === reqTeclas(p)) n += 3; }   // 4 teclas pede 4 teclas
+    return { x, n }; })
     .filter(o => o.n > 0).sort((a, b) => b.n - a.n).slice(0, 3).map(o => o.x);
 }
 const ehInterrP = p => p.tipo === 'interruptor' || p.tipo === 'botao';
+const reqTeclas = p => ehInterrP(p) ? Math.max(1, Math.min(4, p.teclas || (p.tipo === 'botao' ? 4 : 1))) : 0;
+const PNUM = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4 };
+function nTeclasTxt(t) { const x = semAcento(t), m = x.match(/\b(\d)\s*(teclas?|botoes|botao|canais|canal|gang|modulos?)\b/); if (m) return +m[1]; const w = x.match(/\b(um|uma|dois|duas|tres|quatro)\s*(teclas?|botoes|botao|canais|canal)\b/); return w ? PNUM[w[1]] : null; }
 const reais = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
 function carregarCatalogo() {
   if (S.catLoading) return; S.catLoading = true;
-  gas('Planta_catalogo').then(l => { S.catalogo = Array.isArray(l) ? l : []; }).catch(() => { S.catalogo = null; }).then(() => { S.catLoading = false; if (S.sel && S.sel.k === 'ponto') renderPanel(); });
+  const sug = gas('Planta_sugestoes').then(l => { S.sugestoes = Array.isArray(l) ? l : []; }).catch(() => { S.sugestoes = []; });
+  gas('Planta_catalogo').then(l => { S.catalogo = Array.isArray(l) ? l : []; }).catch(() => { S.catalogo = null; }).then(() => sug).then(() => { S.catLoading = false; if (S.sel && S.sel.k === 'ponto') renderPanel(); });
 }
 function htmlInstalacao(p) {
   const T = M.TIPOS[p.tipo] || M.TIPOS.outro; let h = '<div class="sec">Instalação' + (ehInterrP(p) ? ' do interruptor' : '') + '</div>';
@@ -1676,6 +1685,10 @@ function htmlInstalacao(p) {
   const atual = cat.find(x => x.id === p.produtoId), sug = sugerirProdutos(p);
   h += '<select data-f="produtoId"><option value="">— nenhum escolhido —</option>' + cat.filter(x => x.ativo !== false || x.id === p.produtoId).map(x => '<option value="' + x.id + '"' + (x.id === p.produtoId ? ' selected' : '') + '>' + esc(String(x.nome).slice(0, 58)) + (x.preco_aparelho ? ' — ' + reais(x.preco_aparelho) : '') + '</option>').join('') + '</select>';
   if (atual && atual.exige_neutro && !fiosDe(p, 'final').neutro && ehInterrP(p)) h += '<div class="note" style="color:#fbbf24;margin-top:5px">Este produto exige neutro, e o projeto final não tem o fio neutro (azul). Marque “Neutro” nos fios finais.</div>';
+  const exato = ehInterrP(p) ? cat.some(x => x.ativo !== false && nTeclasTxt(x.nome) === reqTeclas(p) && PALAVRAS[p.tipo].some(k => semAcento(x.nome).indexOf(k) >= 0)) : true;
+  const fant = (Array.isArray(S.sugestoes) ? S.sugestoes : []).filter(x => x.req_tipo === p.tipo && (x.req_teclas || 0) === reqTeclas(p));
+  if (!atual && ehInterrP(p) && !exato) h += '<div class="note" style="margin-top:6px;color:#fbbf24">Seu catálogo não tem ' + (p.tipo === 'botao' ? 'keypad' : 'interruptor') + ' de ' + reqTeclas(p) + ' ' + (p.tipo === 'botao' ? 'botões' : 'teclas') + '.</div>';
+  if (!atual && fant.length) h += '<div class="note" style="margin-top:6px">👻 Opções do bot — só entram no catálogo se você aprovar:</div>' + fant.map(x => '<div class="card" style="margin:5px 0;padding:8px;border:1px dashed #a78bfa;opacity:.92"><div style="font-size:12.5px">' + esc(String(x.titulo).slice(0, 80)) + '</div><div class="note">' + esc(x.motivo || '') + '</div><div class="row" style="margin-top:5px"><b style="flex:none">' + reais(x.preco) + '</b><a href="' + esc(x.link) + '" target="_blank" rel="noopener" style="color:#7dd3fc;flex:none">ver no Mercado Livre</a></div><div class="row" style="margin-top:6px"><button data-act="aprovarsug" data-id="' + x.id + '">Aprovar e usar</button><button data-act="dispensarsug" data-id="' + x.id + '">Dispensar</button></div></div>').join('');
   if (!atual) h += sug.length ? '<div class="note" style="margin-top:6px">Sugestões do seu catálogo para este item:</div>' + sug.map(x => '<div class="row" style="margin:3px 0"><span style="flex:3">' + esc(String(x.nome).slice(0, 52)) + (x.preco_aparelho ? ' <b>' + reais(x.preco_aparelho) + '</b>' : '') + '</span><button data-act="usarprod" data-id="' + x.id + '" style="flex:none">Usar</button></div>').join('')
     : '<div class="note" style="margin-top:6px">Nenhum produto do catálogo combina com “' + esc(T.nome) + '”. <a href="index.html#catalogo" target="_blank" style="color:#7dd3fc">Cadastrar um produto novo no catálogo</a>.</div>';
   return h;
@@ -1834,7 +1847,7 @@ $('#panel').addEventListener('change', e => {
   const t = e.target; if (t.id === 'espSel') { S.esp = +t.value; return; }
   if (t.id === 'chInt') { S.interna = t.checked; return renderSVG(); }
   if (t.id === 'chCotas') { S.cotas = t.checked; return renderSVG(); }
-  if (t.id === 'chLigs') { S.ligs = t.checked; return renderSVG(); }
+  if (t.id === 'chLigs') { S.ligs = t.checked; const lg = $('#lig3'); if (lg) lg.checked = S.ligs; renderCamadas(); return renderSVG(); }
   if (t.id === 'chDedo') { S.dedo = t.checked; return; }
   if (t.id === 'chCadeia') { S.cadeia = t.checked; return; }
   if (t.id === 'chRoda') { S.rodaZoom = t.checked; return; }
@@ -1868,6 +1881,14 @@ $('#panel').addEventListener('click', e => {
   if (a === 'moverc') { toast('Arraste o cômodo na planta para movê-lo.', 5000); return; }
   if (a === 'dellig') { snap(); P.ligacoes = P.ligacoes.filter(l => l.id !== b.dataset.id); M.normalizarVinculos(P); return refresh(); }
   if (a === 'vinc') return abrirVinculo(S.sel.id, +b.dataset.t);
+  if (a === 'aprovarsug' || a === 'dispensarsug') {
+    const id = b.dataset.id, o = getById(P.pontos, S.sel.id); b.disabled = true;
+    gas('Planta_decidirSugestao', id, a === 'aprovarsug' ? 'aprovar' : 'rejeitar').then(r => {
+      S.sugestoes = (S.sugestoes || []).filter(x => x.id !== id);
+      if (a === 'aprovarsug' && r && r.product_id) { snap(); o.produtoId = r.product_id; S.catalogo = undefined; toast('Aprovado: entrou no seu catálogo e foi usado neste ponto.', 4500); refresh(); } else { toast('Opção dispensada. O bot não vai sugerir de novo.', 3500); renderPanel(); }
+    }).catch(e => { b.disabled = false; toast('Não consegui: ' + e.message, 6000); });
+    return;
+  }
   if (a === 'usarprod') { snap(); const o = getById(P.pontos, S.sel.id); o.produtoId = b.dataset.id; const x = (S.catalogo || []).find(c => c.id === o.produtoId); if (x && !o.produto) o.produto = x.nome; return refresh(); }
   if (a === 'princ') { snap(); tornarPrincipal(b.dataset.id); return refresh(); }
   if (a === 'ligar') { S.tool = 'ligar'; S.lig = { de: S.sel.id, tecla: 1 }; return refresh(); }
@@ -2356,7 +2377,7 @@ function focarComodo(c) {
   const xs = c.pontos.map(p => p[0]), ys = c.pontos.map(p => p[1]), w = Math.max.apply(null, xs) - Math.min.apply(null, xs), h = Math.max.apply(null, ys) - Math.min.apply(null, ys), d = Math.max(w, h) * 1.05 + 180;
   T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
 }
-$('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => build3d(false); $('#forro3').onchange = () => build3d(false);
+$('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
 $('#bIso').onclick = iso; $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
 $('#bPng').onclick = () => { T3.ren.render(T3.scene, T3.cam); const a = document.createElement('a'); a.href = T3.ren.domElement.toDataURL('image/png'); a.download = (P.nome || 'planta') + '_3d.png'; a.click(); };
@@ -2636,7 +2657,7 @@ async function lerPdfVetorial(page, pt, sc) {
 }
 
 $('#bEstilo').onclick = () => {
-  S.estilo = S.estilo === 'real' ? 'arq' : 'real'; $('#bEstilo').textContent = S.estilo === 'real' ? 'Ícones: aparelho real' : 'Ícones: projeto'; $('#bEstilo').classList.toggle('on', S.estilo === 'real');
+  S.estilo = S.estilo === 'real' ? 'arq' : 'real'; try { localStorage.setItem('planta_estilo', S.estilo); } catch (e) { } $('#bEstilo').textContent = S.estilo === 'real' ? 'Ícones: aparelho real' : 'Ícones: projeto'; $('#bEstilo').classList.toggle('on', S.estilo === 'real');
   refresh(); if (S.tab === 'v3d') build3d(); toast(S.estilo === 'real' ? 'Ícones no desenho do aparelho real (2D e 3D).' : 'Ícones no padrão de projeto arquitetônico.', 3500);
 };
 $('#bModo').onclick = () => {
@@ -2646,7 +2667,7 @@ $('#bModo').onclick = () => {
 
 /* ===================== salvar / abrir ===================== */
 async function salvar(silencioso) {
-  P.nome = $('#fNome').value || P.nome;
+  P.nome = $('#fNome').value || P.nome; P.estiloIcones = S.estilo;
   // bloco de exportação: é o que o orçamento / prompt 3D / PDF leem no servidor (mesma regra do navegador, sem duplicar código)
   P.export = { atualizado: new Date().toISOString(), pendencias: M.validar(P).filter(x => x.nivel === 'erro').length, levantamento: M.levantamento(P),
     comodos: P.comodos.map(c => ({ id: c.id, nome: c.nome, area: +c.area.toFixed(2), resumo: M.resumoComodo(P, c.id), feito: !!c.feito })), apps: M.resumoApps(P), emailCodigos: P.emailCodigos || '' };
@@ -2675,7 +2696,7 @@ $('#bAbrir').onclick = async () => {
   } catch (e) { toast('Erro ao abrir: ' + e.message, 5000); }
 };
 function carregar(p, id, foto) {
-  P = p; S.planoId = id; S.fotoDataUrl = foto; S.fotoSuja = false; S.sel = null; S.tool = window.PLANTA_VIEW ? 'ver' : 'sel'; S.dirty = false; undo.length = 0; redo.length = 0; S.cal = [];
+  P = p; S.planoId = id; S.fotoDataUrl = foto; S.fotoSuja = false; S.sel = null; if (window.PLANTA_VIEW && P.estiloIcones) S.estilo = P.estiloIcones; S.tool = window.PLANTA_VIEW ? 'ver' : 'sel'; S.dirty = false; undo.length = 0; redo.length = 0; S.cal = [];
   $('#fNome').value = P.nome || ''; if (!P.comodos.length && P.paredes.length) M.recalc(P);
   S.autoFit = true; refresh(); fit();
 }
@@ -2906,7 +2927,7 @@ $('#hint').addEventListener('click', e => {
 /* ===================== início ===================== */
 function iniciar() {
   if (CTX.clienteId) { $('#fCliente').value = CTX.clienteId; $('#fCliente').readOnly = true; } if (CTX.imovel) $('#fImovel').value = CTX.imovel;
-  $('#fNome').value = P.nome; renderTools(); renderPanel(); renderHint();
+  $('#fNome').value = P.nome; if (S.estilo === 'real') { $('#bEstilo').textContent = 'Ícones: aparelho real'; $('#bEstilo').classList.add('on'); } renderTools(); renderPanel(); renderHint();
   const iniciaVazio = () => { try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
   if (CTX.plantaId) { gas('Planta_abrir', CTX.plantaId).then(pl => { const f = pl.fotoDataUrl || null; delete pl.fotoDataUrl; carregar(M.migrar(pl), CTX.plantaId, f); }).catch(e => { toast('Erro ao abrir: ' + e.message, 5000); }); }
   else if (!window.PLANTA_VIEW) iniciaVazio();
