@@ -2321,7 +2321,7 @@ function texMarmore() {
   x.fillStyle = '#2b2e34'; x.fillRect(0, 0, 512, 512);
   for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(' + (50 + Math.random() * 30 | 0) + ',' + (52 + Math.random() * 30 | 0) + ',' + (58 + Math.random() * 30 | 0) + ',.10)'; x.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 40, 2 + Math.random() * 40); }
   for (let v = 0; v < 14; v++) { x.beginPath(); let px = Math.random() * 512, py = Math.random() * 512; x.moveTo(px, py); for (let k = 0; k < 7; k++) { px += (Math.random() - .5) * 150; py += (Math.random() - .5) * 150; x.lineTo(px, py); } x.strokeStyle = 'rgba(200,205,215,' + (.05 + Math.random() * .12) + ')'; x.lineWidth = .6 + Math.random() * 1.6; x.stroke(); }
-  x.strokeStyle = 'rgba(0,0,0,.55)'; x.lineWidth = 3; x.strokeRect(0, 0, 512, 512);
+  x.strokeStyle = 'rgba(0,0,0,.22)'; x.lineWidth = 2; x.strokeRect(0, 0, 512, 512);
   const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 160, 1 / 160); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; return (T3.texM = t);
 }
 function aplicarVisual() {
@@ -2342,7 +2342,7 @@ function build3d(reenquadrar) {
   const yPonto = p => { const c = getById(P.comodos, p.comodo), lim = ehTeto(p) ? tetoDe(c) - 2 : peDe(c); return clamp(alturaDe(p), 5, Math.max(10, lim)); };
   const mWall = new THREE.MeshStandardMaterial({ color: NT ? 0x14171c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: NT ? .7 : .9 });
   const mTop = new THREE.MeshStandardMaterial({ color: NT ? 0x262b33 : 0xd5dbe5 });
-  const mLed = new THREE.MeshStandardMaterial({ color: 0xffb35c, emissive: 0xffa040, emissiveIntensity: 2.2 });
+  const mLed = new THREE.MeshStandardMaterial({ color: 0xff8a2a, emissive: 0xff7a14, emissiveIntensity: 1.0 });
   const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = m.receiveShadow = true; g.add(m); };
   P.paredes.forEach(w => {
     const Hw = modo === 'corte' ? Math.min(110, altW(w)) : altW(w);
@@ -2399,7 +2399,7 @@ function build3d(reenquadrar) {
   if (reenquadrar) iso();
 }
 function bbox() { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; P.paredes.forEach(w => { x0 = Math.min(x0, w.x1, w.x2); x1 = Math.max(x1, w.x1, w.x2); y0 = Math.min(y0, w.y1, w.y2); y1 = Math.max(y1, w.y1, w.y2); }); if (x0 > x1) { x0 = y0 = 0; x1 = y1 = 800; } return { x0, y0, x1, y1 }; }
-function iso() { if (!T3.ok) return; const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, s = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300); if (T3.noite) T3.cam.position.set(cx + s * .18, s * 1.45 + P.peDireito, cy + s * .62); else T3.cam.position.set(cx + s * .85, s * .95 + P.peDireito, cy + s * .85); T3.ctl.target.set(cx, P.peDireito * .3, cy); T3.cam.lookAt(T3.ctl.target); T3.ctl.update(); }
+function iso() { if (!T3.ok) return; const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, s = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300); if (T3.noite) T3.cam.position.set(cx + s * .1, s * 1.75 + P.peDireito, cy + s * .5); else T3.cam.position.set(cx + s * .85, s * .95 + P.peDireito, cy + s * .85); T3.ctl.target.set(cx, P.peDireito * .3, cy); T3.cam.lookAt(T3.ctl.target); T3.ctl.update(); }
 function focarComodo(c) {
   const xs = c.pontos.map(p => p[0]), ys = c.pontos.map(p => p[1]), w = Math.max.apply(null, xs) - Math.min.apply(null, xs), h = Math.max.apply(null, ys) - Math.min.apply(null, ys), d = Math.max(w, h) * 1.05 + 180;
   T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
