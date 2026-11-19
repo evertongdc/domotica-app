@@ -217,7 +217,7 @@ table.table { width: 100%; border-collapse: collapse; }
 @media (min-width: 861px) { .so-mobile { display: none !important; } }
 </style>
 
-</head>
+<style>.modal-box{overflow:hidden}#modal-body{min-width:0;overflow-wrap:anywhere;word-break:break-word;padding:20px 22px}#modal-body *{box-sizing:border-box;max-width:100%}#modal-body pre,#modal-body code{white-space:pre-wrap}#modal-body img{height:auto}#modal-footer{flex-wrap:wrap;padding:14px 22px}.modal-header{padding:16px 22px}.form-grid>*{min-width:0}.form-input{max-width:100%}</style></head>
 <body>
 <div id="loading-bar-global" class="loading-bar-global"></div>
 <div id="toast-container" class="toast-container"></div>
@@ -732,7 +732,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
     box.innerHTML = l.length ? l.map(function(p) {
       const img = p.IMAGEM_URL ? '<img src="' + escHtml(p.IMAGEM_URL) + '" alt="" referrerpolicy="no-referrer" loading="lazy" style="width:36px;height:36px;flex:none;object-fit:contain;border-radius:6px;background:#fff">' : '<span style="width:36px;height:36px;flex:none"></span>';
       return '<label style="display:flex;gap:10px;align-items:center;padding:6px 0;cursor:pointer"><input type="checkbox" data-p="' + escHtml(p.ID_PRODUTO) + '"' + (SEL[p.ID_PRODUTO] ? ' checked' : '') + '>' + img +
-        '<span><span class="row-title" style="display:block">' + escHtml(p.NOME) + '</span><span class="small">' + escHtml([nomeLoja(p.LINK_COMISSAO), fmtMoeda(p.PRECO_APARELHO)].filter(Boolean).join(' · ')) + '</span></span></label>';
+        '<span><span class="row-title" style="display:block">' + escHtml(p.NOME_CURTO || p.NOME) + '</span><span class="small">' + escHtml([nomeLoja(p.LINK_COMISSAO), fmtMoeda(p.PRECO_APARELHO)].filter(Boolean).join(' · ')) + '</span></span></label>';
     }).join('') : '<div class="small">' + (elegiveis().length ? 'Nenhum produto com essa busca.' : 'Nenhum produto com link de comissão no catálogo.') + '</div>';
     const c = $id('fc-pconta'); if (c) c.textContent = selecionados().length + ' produto(s) marcado(s) para este cliente.';
   }
@@ -753,6 +753,8 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
   function renderLista() {
     const box = $id('cli-lista'); if (!box) return;
     const l = principais(filtrados());
+    const q0 = norm(CAT.busca), arq = CAT.lista.filter(function(p) { return p.SEM_ESTOQUE === true && (!CAT.categoria || p.CATEGORIA === CAT.categoria) && (!q0 || norm([p.NOME, p.NOME_CURTO, p.MARCA].join(' ')).indexOf(q0) > -1); });
+    const secArq = arq.length ? '<div class="row-title" style="margin:22px 2px 8px">Arquivados sem estoque (' + arq.length + ')</div><div class="glass card table-wrap"><table class="table"><tbody>' + arq.map(function(p) { return '<tr class="ghost"><td><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div><div class="row-title">' + escHtml(nomeP(p)) + '</div><div class="small">Sem estoque' + (p.SEM_ESTOQUE_DESDE ? ' desde ' + fmtData(p.SEM_ESTOQUE_DESDE) : '') + ' · volta sozinho quando o estoque voltar</div></div></div></td><td>' + lojaHtml(p) + '</td><td>' + fmtMoeda(p.PRECO_APARELHO) + '</td><td class="acoes"><button class="btn btn-secondary btn-sm" data-acao="editar" data-id="' + escHtml(p.ID_PRODUTO) + '">Editar</button> <button class="btn btn-ghost btn-sm" data-acao="ativar" data-id="' + escHtml(p.ID_PRODUTO) + '">Reativar</button></td></tr>'; }).join('') + '</tbody></table></div>' : '';
     if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (CLI.lista.length ? 'Nenhum cliente com esses filtros.' : 'Nenhum cliente cadastrado ainda. Use “+ Novo cliente”.') + '</div>'; return; }
     const linhas = l.map(function(c) {
       const arq = (c.STATUS || 'ativo') === 'arquivado';
@@ -884,6 +886,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
       c.addEventListener('click', acao);
       $id('topbar-actions').addEventListener('click', acao);
       if (CAT.carregado) renderLista();
+      chamarBackend('listarCatalogo', [APP.token], function(l0) { if ((l0 || []).some(function(p) { return !p.NOME_CURTO; })) chamarBackend('gerarNomesCurtos', [APP.token], function(n) { if (n) chamarBackend('listarCatalogo', [APP.token], function(l1) { CAT.lista = l1; renderLista(); }); }, function() {}); }, function() {});
       chamarBackend('produtosEmUso', [APP.token], function(ids) { CAT.emUso = {}; (ids || []).forEach(function(i) { CAT.emUso[i] = true; }); renderLista(); }, function() {});
       chamarBackend('listarCatalogo', [APP.token], function(lista) { CAT.lista = lista; CAT.carregado = true; renderLista(); });
     },
@@ -894,6 +897,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
   function filtrados() {
     const q = norm(CAT.busca);
     return CAT.lista.filter(function(p) {
+      if (p.SEM_ESTOQUE === true) return false;
       if (CAT.ativo === 'ativos' && !ehAtivo(p)) return false;
       if (CAT.ativo === 'inativos' && ehAtivo(p)) return false;
       if (CAT.categoria && p.CATEGORIA !== CAT.categoria) return false;
@@ -908,7 +912,6 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
       const subiu = Number(p.PRECO_APARELHO) > Number(p.PRECO_ANTERIOR);
       h += '<div class="small" style="color:' + (subiu ? '#dc2626' : '#16a34a') + '">' + (subiu ? '▲' : '▼') + ' antes ' + fmtMoeda(p.PRECO_ANTERIOR) + (p.PRECO_ATUALIZADO_EM ? ' · ' + fmtData(p.PRECO_ATUALIZADO_EM) : '') + '</div>';
     }
-    if (p.FORA_DA_LISTA === true || p.FORA_DA_LISTA === 'TRUE') h += '<div class="small" style="color:#b45309">⚠ saiu da lista</div>';
     return h;
   }
 
@@ -934,10 +937,12 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
     return p.IMAGEM_URL ? '<img src="' + escHtml(p.IMAGEM_URL) + '" alt="" referrerpolicy="no-referrer" loading="lazy" style="width:44px;height:44px;flex:none;object-fit:contain;border-radius:8px;background:#fff">' : '<div style="width:44px;height:44px;flex:none;border-radius:8px;background:rgba(255,255,255,.06)"></div>';
   }
 
-  function origemBadge(o) { return o === 'indicado' ? '<span class="badge badge-blue">Indicado</span>' : '<span class="badge badge-orange">Fornecido</span>'; }
+  function origemBadge(o) { return o === 'indicado' ? '' : '<span class="badge badge-orange">Fornecido</span>'; }
+  function nomeP(p) { return p.NOME_CURTO || p.NOME; }
+  function logoLoja(p) { const l = lojaDe(p); if (!l) return ''; return l === 'Mercado Livre' ? '<img src="ml-logo.png" alt="Mercado Livre" title="Mercado Livre" style="height:18px;width:auto;vertical-align:middle">' : escHtml(l); }
 
   function lojaDe(p) { return p.LINK_COMISSAO ? nomeLoja(p.LINK_COMISSAO) : ''; }
-  function lojaHtml(p) { const l = lojaDe(p); return l ? '<div class="small">' + escHtml(l) + '</div>' : ''; }
+  function lojaHtml(p) { const l = logoLoja(p); return l ? '<div class="small" style="margin-top:4px">' + l + '</div>' : ''; }
   function botaoCompartilhar(p) {
     if (!p.LINK_COMISSAO) return '';
     return '<a class="btn btn-primary btn-sm" data-acao="comprar" href="' + escHtml(p.LINK_COMISSAO) + '" target="_blank" rel="noopener" style="text-decoration:none" title="Abrir no ' + escHtml(nomeLoja(p.LINK_COMISSAO) || 'site') + '">Comprar</a> ' +
@@ -962,10 +967,10 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
         '<button class="btn btn-ghost btn-sm" data-acao="' + (ativo ? 'desativar' : 'ativar') + '" data-id="' + escHtml(p.ID_PRODUTO) + '">' + (ativo ? 'Desativar' : 'Ativar') + '</button></td></tr>';
     }).join('');
     const cards = l.map(function(p) {
-      return '<div class="glass item-card ' + (ehAtivo(p) ? '' : 'ghost') + '" data-acao="editar" data-id="' + escHtml(p.ID_PRODUTO) + '"><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div class="row-title">' + escHtml(p.NOME) + '</div></div>' +
-        '<div>' + origemBadge(p.ORIGEM) + (lojaDe(p) ? ' <span class="badge">' + escHtml(lojaDe(p)) + '</span>' : '') + ' <span class="small">' + escHtml(p.CATEGORIA || '') + (p._iguais ? ' · +' + p._iguais + ' igual(is)' : '') + '</span></div><div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:4px"><div><span class="small">Aparelho</span> <b style="font-size:1.2em">' + fmtMoeda(p.PRECO_APARELHO) + '</b>' + avisoPreco(p) + '</div><div class="small">Instalação ' + fmtMoeda(p.PRECO_INSTALACAO) + '</div></div>' + (p.LINK_COMISSAO ? '<div style="margin-top:6px">' + botaoCompartilhar(p) + '</div>' : '') + '</div>';
+      return '<div class="glass item-card ' + (ehAtivo(p) ? '' : 'ghost') + '" data-acao="editar" data-id="' + escHtml(p.ID_PRODUTO) + '"><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div class="row-title">' + escHtml(nomeP(p)) + '</div></div>' +
+        '<div>' + origemBadge(p.ORIGEM) + (lojaDe(p) ? ' ' + logoLoja(p) : '') + ' <span class="small">' + escHtml(p.CATEGORIA || '') + (p._iguais ? ' · +' + p._iguais + ' igual(is)' : '') + '</span></div><div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-top:4px"><div><span class="small">Aparelho</span> <b style="font-size:1.2em">' + fmtMoeda(p.PRECO_APARELHO) + '</b>' + avisoPreco(p) + '</div><div class="small">Instalação ' + fmtMoeda(p.PRECO_INSTALACAO) + '</div></div>' + (p.LINK_COMISSAO ? '<div style="margin-top:6px">' + botaoCompartilhar(p) + '</div>' : '') + '</div>';
     }).join('');
-    box.innerHTML = '<div class="glass card table-wrap"><table class="table"><thead><tr><th>Produto</th><th>Categoria</th><th>Origem</th><th>Instalação</th><th>Aparelho</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div><div class="lista-cards">' + cards + '</div>';
+    box.innerHTML = '<div class="glass card table-wrap"><table class="table"><thead><tr><th>Produto</th><th>Categoria</th><th>Origem</th><th>Instalação</th><th>Aparelho</th><th></th></tr></thead><tbody>' + linhas + '</tbody></table></div><div class="lista-cards">' + cards + '</div>' + secArq;
   }
 
   function abrirForm(id) {
@@ -976,6 +981,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
     abrirModal(p ? 'Editar produto' : 'Novo produto',
       '<div class="form-grid">' +
         '<div class="form-group full"><label class="form-label required">Nome</label><input id="fp-nome" class="form-input" placeholder="Ex.: Interruptor touch 3 teclas" value="' + v('NOME') + '"></div>' +
+        '<div class="form-group full"><label class="form-label">Nome curto (aparece nas listas)</label><input id="fp-nomecurto" class="form-input" placeholder="Ex.: Amazon Echo Dot 5a - Preto" value="' + v('NOME_CURTO') + '"></div>' +
         '<div class="form-group"><label class="form-label">Categoria</label><select id="fp-categoria" class="form-input">' + CATEGORIAS.map(function(x) { return '<option>' + x + '</option>'; }).join('') + '</select></div>' +
         '<div class="form-group"><label class="form-label">Marca</label><input id="fp-marca" class="form-input" value="' + v('MARCA') + '"></div>' +
         '<div class="form-group"><label class="form-label">App / ecossistema</label><input id="fp-app" class="form-input" placeholder="eWeLink, Smart Life..." value="' + v('APP_CONTROLE') + '"></div>' +
@@ -1006,7 +1012,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
 
   function salvar(id) {
     const dados = {
-      ID_PRODUTO: id || '', NOME: inputVal('fp-nome'), CATEGORIA: $id('fp-categoria').value, MARCA: inputVal('fp-marca'), APP_CONTROLE: inputVal('fp-app'),
+      ID_PRODUTO: id || '', NOME: inputVal('fp-nome'), NOME_CURTO: inputVal('fp-nomecurto'), CATEGORIA: $id('fp-categoria').value, MARCA: inputVal('fp-marca'), APP_CONTROLE: inputVal('fp-app'),
       FORMATO_CAIXA: $id('fp-caixa').value, EXIGE_NEUTRO: checkVal('fp-neutro'), ALEXA: checkVal('fp-alexa'), ORIGEM: $id('fp-origem').value,
       LINK_COMISSAO: inputVal('fp-link'), PRECO_INSTALACAO: inputVal('fp-pinst'), PRECO_APARELHO: inputVal('fp-papar'), CUSTO: inputVal('fp-custo'),
       IMAGEM_URL: inputVal('fp-imagem'), BENEFICIO_1: inputVal('fp-b1'), BENEFICIO_2: inputVal('fp-b2'), BENEFICIO_3: inputVal('fp-b3'),
@@ -1497,11 +1503,11 @@ window.DOMOTICA_CFG = {
 
   // ---- mapeamento entre colunas do banco (minúsculas) e os nomes usados pelas telas (MAIÚSCULAS) ----
   const CLI = ['NOME', 'TIPO', 'TELEFONE', 'WHATSAPP', 'EMAIL', 'ENDERECO', 'BAIRRO', 'CIDADE', 'ESTADO', 'CEP', 'OBSERVACOES', 'STATUS'];
-  const PROD = ['NOME', 'CATEGORIA', 'MARCA', 'APP_CONTROLE', 'FORMATO_CAIXA', 'EXIGE_NEUTRO', 'ALEXA', 'ORIGEM', 'LINK_COMISSAO', 'PRECO_APARELHO', 'PRECO_INSTALACAO', 'CUSTO', 'IMAGEM_URL', 'BENEFICIO_1', 'BENEFICIO_2', 'BENEFICIO_3', 'ATIVO', 'PRECO_ANTERIOR', 'PRECO_ATUALIZADO_EM', 'FORA_DA_LISTA'];
+  const PROD = ['NOME', 'CATEGORIA', 'MARCA', 'APP_CONTROLE', 'FORMATO_CAIXA', 'EXIGE_NEUTRO', 'ALEXA', 'ORIGEM', 'LINK_COMISSAO', 'PRECO_APARELHO', 'PRECO_INSTALACAO', 'CUSTO', 'IMAGEM_URL', 'BENEFICIO_1', 'BENEFICIO_2', 'BENEFICIO_3', 'ATIVO', 'PRECO_ANTERIOR', 'PRECO_ATUALIZADO_EM', 'FORA_DA_LISTA', 'NOME_CURTO', 'SEM_ESTOQUE', 'SEM_ESTOQUE_DESDE'];
   const NUM = { PRECO_APARELHO: 1, PRECO_INSTALACAO: 1, CUSTO: 1 }, BOOL = { EXIGE_NEUTRO: 1, ALEXA: 1, ATIVO: 1 };
   function de(row, campos, idCol) {
     const o = {}; o[idCol] = row.id;
-    campos.forEach(function(c) { let v = row[c.toLowerCase()]; if (v === null || v === undefined) v = ''; if (c === 'PRECO_ATUALIZADO_EM' && v) v = String(v).slice(0, 10); o[c] = v; });
+    campos.forEach(function(c) { let v = row[c.toLowerCase()]; if (v === null || v === undefined) v = ''; if ((c === 'PRECO_ATUALIZADO_EM' || c === 'SEM_ESTOQUE_DESDE') && v) v = String(v).slice(0, 10); o[c] = v; });
     return o;
   }
   function para(d, campos) {
@@ -1618,6 +1624,7 @@ window.DOMOTICA_CFG = {
     },
     arquivarCliente: function(t, id, arq) { return api(async function() { return de(must(await sb.from('clients').update({ status: arq ? 'arquivado' : 'ativo' }).eq('id', id).select().single()), CLI, 'ID_CLIENTE'); }); },
     produtosEmUso: function() { return api(async function() { const c = await ctx(); const r = must(await sb.from('plans').select('dados').eq('org_id', c.orgId)); const ids = {}; (r || []).forEach(function(pl) { ((pl.dados && pl.dados.pontos) || []).forEach(function(p) { if (p.produtoId) ids[p.produtoId] = 1; }); }); return Object.keys(ids); }); },
+    gerarNomesCurtos: function() { return api(async function() { const r = await sb.functions.invoke('nomes-curtos', { body: {} }); return (r.data && r.data.feitos) || 0; }); },
     listarCatalogo: function() { return api(async function() { return (await listaCatalogo()).map(function(r) { return de(r, PROD, 'ID_PRODUTO'); }); }); },
     salvarProduto: function(t, d) {
       return api(async function() {
@@ -1631,7 +1638,7 @@ window.DOMOTICA_CFG = {
         return de(must(await q.select().single()), PROD, 'ID_PRODUTO');
       });
     },
-    alternarProdutoAtivo: function(t, id, ativo) { return api(async function() { return de(must(await sb.from('catalog_products').update({ ativo: !!ativo }).eq('id', id).select().single()), PROD, 'ID_PRODUTO'); }); },
+    alternarProdutoAtivo: function(t, id, ativo) { return api(async function() { return de(must(await sb.from('catalog_products').update(ativo ? { ativo: true, sem_estoque: false, sem_estoque_desde: null } : { ativo: false }).eq('id', id).select().single()), PROD, 'ID_PRODUTO'); }); },
     importarProdutos: function(t, itens) {
       return api(async function() {
         const c = await ctx();
@@ -2092,7 +2099,7 @@ window.DOMOTICA_CFG = {
       const g = grupos[k], r0 = g[0], rot = (SG_TIPO[r0.req_tipo] || r0.req_tipo) + (r0.req_teclas ? ' · ' + r0.req_teclas + (r0.req_tipo === 'botao' ? ' botões' : ' teclas') : '');
       h += '<div class="row-title" style="margin:16px 2px 8px">' + escHtml(rot) + '</div>' + g.map(function(i) {
         return '<div class="glass item-card" style="border:1px dashed rgba(167,139,250,.7)"><div style="display:flex;gap:12px;align-items:center">' + (i.imagem_url ? '<img src="' + escHtml(i.imagem_url) + '" alt="" style="width:64px;height:64px;object-fit:contain;background:#fff;border-radius:10px">' : '') +
-          '<div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal">' + escHtml(i.titulo) + '</div><div class="small">' + escHtml(i.motivo || '') + '</div><div style="margin-top:4px"><b style="font-size:1.15em">' + sgReais(i.preco) + '</b> <span class="badge">' + escHtml(i.loja) + '</span> ' + (i.marca ? '<span class="small">' + escHtml(i.marca) + '</span>' : '') + '</div></div></div>' +
+          '<div style="flex:1;min-width:0"><div class="row-title" style="white-space:normal">' + escHtml(i.titulo) + '</div><div class="small">' + escHtml(i.motivo || '') + '</div><div style="margin-top:4px"><b style="font-size:1.15em">' + sgReais(i.preco) + '</b> ' + (i.loja === 'Mercado Livre' ? '<img src="ml-logo.png" alt="Mercado Livre" title="Mercado Livre" style="height:18px;vertical-align:middle">' : '<span class="badge">' + escHtml(i.loja) + '</span>') + ' ' + (i.marca ? '<span class="small">' + escHtml(i.marca) + '</span>' : '') + '</div></div></div>' +
           '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-secondary btn-sm" href="' + escHtml(i.link) + '" target="_blank" rel="noopener" style="text-decoration:none">Ver no Mercado Livre</a><button class="btn btn-primary btn-sm" data-sg="aprovar" data-id="' + escHtml(i.id) + '">Aprovar e colocar no catálogo</button><button class="btn btn-ghost btn-sm" data-sg="rejeitar" data-id="' + escHtml(i.id) + '">Rejeitar</button></div></div>';
       }).join('');
     });

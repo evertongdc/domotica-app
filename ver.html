@@ -72,8 +72,10 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
 #toast.on{opacity:1}
 #modal{position:fixed;inset:0;background:rgba(3,8,18,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:12px}
 #modal.on{display:flex}
-#mbox{width:min(440px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#16264a,#0f1a33);border:1px solid var(--gl2);border-radius:16px;padding:14px}
-#mbox h3{margin:0 0 6px}
+#mbox{width:min(440px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#16264a,#0f1a33);border:1px solid var(--gl2);border-radius:16px;padding:18px 20px;box-sizing:border-box;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word}
+#mbox *{box-sizing:border-box;max-width:100%}
+#mbox input,#mbox select,#mbox textarea{width:100%}
+#mbox h3{margin:0 0 10px}
 #fabs,#bDados{display:none}
 @media (max-width:900px){
   /* cabeçalho de uma linha só (rola de lado); Salvar fica sempre à vista */
@@ -1640,13 +1642,13 @@ function htmlInstalacao(p) {
   if (cat === undefined) { carregarCatalogo(); return h + '<div class="note">Carregando catálogo…</div>'; }
   if (cat === null) return h + '<div class="note">Não consegui abrir o catálogo agora.</div>';
   const atual = cat.find(x => x.id === p.produtoId), sug = sugerirProdutos(p);
-  h += '<select data-f="produtoId"><option value="">— nenhum escolhido —</option>' + cat.filter(x => x.ativo !== false || x.id === p.produtoId).map(x => '<option value="' + x.id + '"' + (x.id === p.produtoId ? ' selected' : '') + '>' + esc(String(x.nome).slice(0, 58)) + (x.preco_aparelho ? ' — ' + reais(x.preco_aparelho) : '') + '</option>').join('') + '</select>';
+  h += '<select data-f="produtoId"><option value="">— nenhum escolhido —</option>' + cat.filter(x => x.ativo !== false || x.id === p.produtoId).map(x => '<option value="' + x.id + '"' + (x.id === p.produtoId ? ' selected' : '') + '>' + esc(String(x.nome_curto || x.nome).slice(0, 58)) + (x.preco_aparelho ? ' — ' + reais(x.preco_aparelho) : '') + '</option>').join('') + '</select>';
   if (atual && atual.exige_neutro && !fiosDe(p, 'final').neutro && ehInterrP(p)) h += '<div class="note" style="color:#fbbf24;margin-top:5px">Este produto exige neutro, e o projeto final não tem o fio neutro (azul). Marque “Neutro” nos fios finais.</div>';
   const exato = ehInterrP(p) ? cat.some(x => x.ativo !== false && nTeclasTxt(x.nome) === reqTeclas(p) && PALAVRAS[p.tipo].some(k => semAcento(x.nome).indexOf(k) >= 0)) : true;
   const fant = (Array.isArray(S.sugestoes) ? S.sugestoes : []).filter(x => x.req_tipo === p.tipo && (x.req_teclas || 0) === reqTeclas(p));
   if (!atual && ehInterrP(p) && !exato) h += '<div class="note" style="margin-top:6px;color:#fbbf24">Seu catálogo não tem ' + (p.tipo === 'botao' ? 'keypad' : 'interruptor') + ' de ' + reqTeclas(p) + ' ' + (p.tipo === 'botao' ? 'botões' : 'teclas') + '.</div>';
   if (!atual && fant.length) h += '<div class="note" style="margin-top:6px">👻 Opções do bot — só entram no catálogo se você aprovar:</div>' + fant.map(x => '<div class="card" style="margin:5px 0;padding:8px;border:1px dashed #a78bfa;opacity:.92"><div style="font-size:12.5px">' + esc(String(x.titulo).slice(0, 80)) + '</div><div class="note">' + esc(x.motivo || '') + '</div><div class="row" style="margin-top:5px"><b style="flex:none">' + reais(x.preco) + '</b><a href="' + esc(x.link) + '" target="_blank" rel="noopener" style="color:#7dd3fc;flex:none">ver no Mercado Livre</a></div><div class="row" style="margin-top:6px"><button data-act="aprovarsug" data-id="' + x.id + '">Aprovar e usar</button><button data-act="dispensarsug" data-id="' + x.id + '">Dispensar</button></div></div>').join('');
-  if (!atual) h += sug.length ? '<div class="note" style="margin-top:6px">Sugestões do seu catálogo para este item:</div>' + sug.map(x => '<div class="row" style="margin:3px 0"><span style="flex:3">' + esc(String(x.nome).slice(0, 52)) + (x.preco_aparelho ? ' <b>' + reais(x.preco_aparelho) + '</b>' : '') + '</span><button data-act="usarprod" data-id="' + x.id + '" style="flex:none">Usar</button></div>').join('')
+  if (!atual) h += sug.length ? '<div class="note" style="margin-top:6px">Sugestões do seu catálogo para este item:</div>' + sug.map(x => '<div class="row" style="margin:3px 0"><span style="flex:3">' + esc(String(x.nome_curto || x.nome).slice(0, 52)) + (x.preco_aparelho ? ' <b>' + reais(x.preco_aparelho) + '</b>' : '') + '</span><button data-act="usarprod" data-id="' + x.id + '" style="flex:none">Usar</button></div>').join('')
     : '<div class="note" style="margin-top:6px">Nenhum produto do catálogo combina com “' + esc(T.nome) + '”. <a href="index.html#catalogo" target="_blank" style="color:#7dd3fc">Cadastrar um produto novo no catálogo</a>.</div>';
   return h;
 }
