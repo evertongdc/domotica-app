@@ -2040,6 +2040,44 @@ window.DOMOTICA_CFG = {
     },
   };
 
+
+  // ── Atalho "Enviar para o sistema": roda no navegador do próprio dono, na página do Mercado Livre que ele está vendo ──
+  try { const hh = location.hash || ''; if (hh.indexOf('#captar=') === 0) { sessionStorage.setItem('dom_captar', hh.slice(8)); history.replaceState(null, '', location.pathname + location.search); } } catch (e) {}
+  function atalhoML() {
+    var O = '__ORIGEM__', o = [], T = function(e) { return e ? e.textContent.replace(/\s+/g, ' ').trim() : ''; };
+    document.querySelectorAll('.poly-card,li.ui-search-layout__item,.ui-search-result__wrapper').forEach(function(c) {
+      var a = c.querySelector('a.poly-component__title,a.ui-search-link,h2 a,h3 a'); if (!a || !a.href) return;
+      var f = c.querySelector('.poly-price__current .andes-money-amount__fraction') || c.querySelector('.andes-money-amount__fraction'); if (!f) return;
+      var ct = c.querySelector('.poly-price__current .andes-money-amount__cents') || c.querySelector('.andes-money-amount__cents');
+      var p = parseFloat(T(f).replace(/\./g, '') + '.' + (ct ? T(ct) : '00')), im = c.querySelector('img'), is = im ? (im.getAttribute('src') || '') : '';
+      if (is.indexOf('http') !== 0) is = im ? (im.getAttribute('data-src') || '') : '';
+      var l; try { var u = new URL(a.href), pf = u.searchParams.get('pdp_filters'); l = u.origin + u.pathname + (pf ? '?pdp_filters=' + pf : ''); } catch (x) { return; }
+      o.push({ titulo: T(a), link: l, preco: p, imagem: is, marca: T(c.querySelector('.poly-component__brand')), vendedor: T(c.querySelector('.poly-component__seller')).replace(/^Por\s+/i, '') });
+    });
+    if (!o.length) {
+      var m = function(n) { var e = document.querySelector('meta[property="' + n + '"],meta[itemprop="' + n + '"],meta[name="' + n + '"]'); return e ? e.content : ''; };
+      var pr = parseFloat(m('price')), cn = document.querySelector('link[rel=canonical]');
+      if (isFinite(pr)) o.push({ titulo: m('og:title') || document.title, link: (cn ? cn.href : location.href).split('?')[0], preco: pr, imagem: m('og:image') });
+    }
+    if (!o.length) { alert('Não encontrei produtos nesta página. Abra uma busca ou um anúncio do Mercado Livre e clique de novo.'); return; }
+    var j = btoa(unescape(encodeURIComponent(JSON.stringify(o.slice(0, 40))))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    window.open(O + '/#captar=' + j, '_blank');
+  }
+  const atalhoCodigo = () => 'javascript:(' + atalhoML.toString().replace('__ORIGEM__', location.origin).replace(/\n\s*/g, ' ') + ')()';
+  async function processarCaptura() {
+    let bruto = null; try { bruto = sessionStorage.getItem('dom_captar'); sessionStorage.removeItem('dom_captar'); } catch (e) {}
+    if (!bruto) return;
+    try {
+      const itens = JSON.parse(decodeURIComponent(escape(atob(bruto.replace(/-/g, '+').replace(/_/g, '/')))));
+      toast('Recebendo ' + itens.length + ' produto(s) do Mercado Livre…', 'info', 4000);
+      const r = await sb.functions.invoke('captar-produtos', { body: { itens: itens } }); let d = r.data;
+      if (r.error) { try { d = await r.error.context.json(); } catch (x) { d = { ok: false, erro: r.error.message }; } }
+      navegar('sugestoes');
+      if (!d || d.ok === false) { toast((d && d.erro) || 'Não consegui receber os produtos.', 'error', 9000); return; }
+      toast(d.novas + ' sugestão(ões) nova(s) para aprovar' + (d.ja_existiam ? ' · ' + d.ja_existiam + ' já conhecida(s)' : '') + (d.fora_padrao.length ? ' · ' + d.fora_padrao.length + ' fora do padrão das plantas (ignorados)' : '') + '.', d.novas ? 'success' : 'warn', 9000);
+    } catch (e) { toast('Os dados do atalho vieram incompletos. Clique no atalho de novo.', 'error', 8000); }
+  }
+
   // ── Sugestões do bot de produtos: o bot procura sozinho; nada entra no catálogo sem a sua aprovação ──
   const SG_TIPO = { interruptor: 'Interruptor', botao: 'Keypad', tomada: 'Tomada', tomada_20a: 'Tomada 20 A', tomada_dupla: 'Tomada dupla', tomada_usb: 'Tomada com USB', tomada_dedicada: 'Tomada dedicada', tomada_alta: 'Tomada alta', echo: 'Echo', echo_dot: 'Echo Dot', echo_pop: 'Echo Pop', echo_show: 'Echo Show', echo_hub: 'Echo Hub', echo_studio: 'Echo Studio', hub: 'Hub', spot: 'Spot', ponto_luz: 'Lâmpada', plafon: 'Plafon', fita_led: 'Fita LED', arandela: 'Arandela', camera: 'Câmera', sensor: 'Sensor', sensor_presenca: 'Sensor de presença', detector: 'Detector de fumaça', fechadura: 'Fechadura', ar_condicionado: 'Controle de ar-condicionado', cortina: 'Motor de cortina', roteador: 'Roteador', ventilador: 'Ventilador' };
   const sgReais = v => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
@@ -2057,6 +2095,9 @@ window.DOMOTICA_CFG = {
       '<div class="small" style="margin-top:8px">Última busca: <b>' + escHtml(quando) + '</b>' + (res.lidos != null ? ' · ' + res.lidos + ' produto(s) lidos da sua lista, ' + (res.novas || 0) + ' sugestão(ões) nova(s)' : (res.buscados != null ? ' · ' + res.buscados + ' busca(s), ' + (res.novas || 0) + ' sugestão(ões) nova(s)' : '')) + '</div>' +
       (erros.length ? '<div class="alert alert-error" style="margin-top:10px">' + erros.map(escHtml).join('<br>') + '</div>' : '') +
       '<details style="margin-top:10px"><summary class="small" style="cursor:pointer">Busca automática pela API do Mercado Livre (se um dia você tiver acesso)</summary><div class="small" style="line-height:1.6;margin-top:6px">Se o Mercado Livre liberar um aplicativo para você, crie os segredos <b>ML_CLIENT_ID</b> e <b>ML_CLIENT_SECRET</b> no Supabase (Edge Functions → Secrets). O bot passa sozinho a buscar produtos de verdade, pelo melhor valor.</div></details></div>';
+    h += '<div class="glass card" style="padding:16px;margin-bottom:14px"><div class="row-title">Atalho “Enviar para o sistema” (o jeito mais rápido)</div><div class="small" style="margin:4px 0 10px;line-height:1.6">Você pesquisa no Mercado Livre como sempre, no seu navegador. Quando estiver numa <b>busca</b> ou num <b>anúncio</b>, clique no atalho: os produtos da página vêm para cá, com o seu link de afiliado, e entram como <b>sugestão para aprovar</b> — só os que batem com o padrão das plantas (ex.: 4 teclas). O resto é ignorado.</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><a id="sg-atalho" class="btn btn-primary btn-sm" href="#" style="text-decoration:none" title="Arraste para a barra de favoritos">⭐ Enviar para o sistema</a><button class="btn btn-secondary btn-sm" data-sg="copiar-atalho">Copiar o atalho</button></div>' +
+      '<div class="small" style="margin-top:8px;line-height:1.6"><b>No computador:</b> arraste o botão acima para a barra de favoritos (Ctrl/Cmd+Shift+B mostra a barra). <b>No iPhone:</b> toque em “Copiar o atalho”, salve qualquer página como favorito, edite o favorito e cole o atalho no lugar do endereço.</div></div>';
     if (lacunas.length) h += '<div class="glass card" style="padding:16px;margin-bottom:14px"><div class="row-title">Faltando no catálogo</div><div class="small" style="margin:4px 0 10px">Padrões que as suas plantas pedem e o catálogo ainda não tem:</div>' + lacunas.map(function(l) { const rot = (SG_TIPO[l.tipo] || l.tipo) + (l.teclas ? ' · ' + l.teclas + (l.tipo === 'botao' ? ' botões' : ' teclas') : ''); return '<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;margin:6px 0;flex-wrap:wrap"><span><b>' + escHtml(rot) + '</b></span><a class="btn btn-secondary btn-sm" href="https://lista.mercadolivre.com.br/' + slug(l.termo) + '" target="_blank" rel="noopener" style="text-decoration:none">Procurar no Mercado Livre</a></div>'; }).join('') + '</div>';
     if (!itens.length) h += '<div class="glass card empty">Nenhuma sugestão aguardando aprovação.</div>';
     const grupos = {}; itens.forEach(function(i) { const k = i.req_tipo + '|' + i.req_teclas; (grupos[k] = grupos[k] || []).push(i); });
@@ -2069,6 +2110,7 @@ window.DOMOTICA_CFG = {
       }).join('');
     });
     c.innerHTML = h;
+    const at = $id('sg-atalho'); if (at) at.setAttribute('href', atalhoCodigo());
   }
   VIEWS.sugestoes = {
     titulo: 'Sugestões do bot',
@@ -2083,6 +2125,8 @@ window.DOMOTICA_CFG = {
             const r = await sb.functions.invoke('buscar-produtos', { body: { acao: 'buscar' } }); let d = r.data;
             if (r.error) { try { d = await r.error.context.json(); } catch (x) { d = { ok: false, erro: r.error.message }; } }
             if (d && d.ok === false) toast(d.erro || 'O bot não conseguiu buscar agora.', 'warn', 9000); else toast('Busca concluída: ' + ((d && d.novas) || 0) + ' sugestão(ões) nova(s).', 'success', 6000);
+          } else if (a === 'copiar-atalho') {
+            try { await navigator.clipboard.writeText(atalhoCodigo()); toast('Atalho copiado.', 'success'); } catch (x) { toast('Não consegui copiar. Arraste o botão para a barra de favoritos.', 'warn', 7000); }
           } else if (a === 'aprovar' || a === 'rejeitar') {
             const r = await sb.rpc('sugestao_decidir', { p_id: b.getAttribute('data-id'), p_acao: a }); if (r.error) throw new Error(r.error.message);
             toast(a === 'aprovar' ? 'Aprovado: já está no seu catálogo.' : 'Rejeitado. O bot não sugere de novo.', 'success');
@@ -2107,7 +2151,7 @@ window.DOMOTICA_CFG = {
     if (!s) { mostrarTela('login'); return; }
     if (!(await exigirSegundoFator())) { await sb.auth.signOut(); CTX = null; mostrarTela('login'); return; }
     s = (await sb.auth.getSession()).data.session;
-    try { const c = await ctx(); APP.token = s.access_token; APP.usuario = { id: c.user.id, nome: c.nome, usuario: c.user.email, role: c.role === 'owner' ? 'admin' : c.role }; entrarNoApp(); const h = (location.hash || '').replace('#', ''); if (h && VIEWS[h]) navegar(h); }
+    try { const c = await ctx(); APP.token = s.access_token; APP.usuario = { id: c.user.id, nome: c.nome, usuario: c.user.email, role: c.role === 'owner' ? 'admin' : c.role }; entrarNoApp(); const h = (location.hash || '').replace('#', ''); if (h && VIEWS[h]) navegar(h); processarCaptura(); }
     catch (e) { await sb.auth.signOut(); CTX = null; mostrarTela('login'); mostrarAlerta('login-error', msgErro(e.message)); }
   };
   window.fazerLogin = async function() {
