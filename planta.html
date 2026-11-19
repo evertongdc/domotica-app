@@ -299,7 +299,7 @@ window.DOMOTICA_CFG = {
 <input type="file" id="fileIn" accept="image/*,application/pdf" style="display:none">
 
 <script>
-try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { clienteId: q.get("cliente") || "", imovel: q.get("imovel") || "", plantaId: q.get("planta") || "" }; } catch (e) { window.PLANTA_CTX = {}; }
+try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { clienteId: q.get("cliente") || "", imovel: q.get("imovel") || "", plantaId: q.get("planta") || "", nova: q.get("nova") === "1" }; } catch (e) { window.PLANTA_CTX = {}; }
 </script>
 <script>
 /* Planta_geo.js — núcleo de geometria (roda no navegador e no Node).
@@ -2930,7 +2930,7 @@ $('#hint').addEventListener('click', e => {
 function iniciar() {
   if (CTX.clienteId) { $('#fCliente').value = CTX.clienteId; $('#fCliente').readOnly = true; } if (CTX.imovel) $('#fImovel').value = CTX.imovel;
   $('#fNome').value = P.nome; if (S.estilo === 'real') { $('#bEstilo').textContent = 'Ícones: aparelho real'; $('#bEstilo').classList.add('on'); } renderTools(); renderPanel(); renderHint();
-  const iniciaVazio = () => { try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
+  const iniciaVazio = () => { if (CTX.nova) { try { localStorage.removeItem('planta_rascunho'); history.replaceState(null, '', location.pathname + location.search.replace(/[?&]nova=1/, '').replace(/^&/, '?')); } catch (e) { } return; } try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
   if (CTX.plantaId) { gas('Planta_abrir', CTX.plantaId).then(pl => { const f = pl.fotoDataUrl || null; delete pl.fotoDataUrl; carregar(M.migrar(pl), CTX.plantaId, f); }).catch(e => { toast('Erro ao abrir: ' + e.message, 5000); }); }
   else if (!window.PLANTA_VIEW) iniciaVazio();
   refresh(); setTimeout(fit, 60);

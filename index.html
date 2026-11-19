@@ -1391,7 +1391,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
       '<div class="form-group"><label class="form-label">Imóvel / obra</label><input id="np-imovel" class="form-input" placeholder="Ex.: Apartamento 82"></div>' +
       '<div class="small">O editor abre em tela cheia. Lá você importa a planta do cliente (imagem ou PDF), calibra a escala e marca paredes, cômodos e pontos.</div>',
       '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="np-ir">Abrir editor</button>');
-    $id('np-ir').addEventListener('click', function() { const c = $id('np-cli').value, i = inputVal('np-imovel'); location.href = 'planta.html?' + [c ? 'cliente=' + encodeURIComponent(c) : '', i ? 'imovel=' + encodeURIComponent(i) : ''].filter(Boolean).join('&'); });
+    $id('np-ir').addEventListener('click', function() { const c = $id('np-cli').value, i = inputVal('np-imovel'); location.href = 'planta.html?' + ['nova=1', c ? 'cliente=' + encodeURIComponent(c) : '', i ? 'imovel=' + encodeURIComponent(i) : ''].filter(Boolean).join('&'); });
   }
 
   // ── execução: marcar cada ponto como executado ──
