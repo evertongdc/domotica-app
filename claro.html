@@ -687,33 +687,6 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
   function endereco(c) { return [c.ENDERECO, c.BAIRRO, c.CIDADE].filter(Boolean).join(', '); }
 
   // ── Produtos associados ao cliente ──
-  function chaveIgual(p) {
-    const n = norm(p.NOME), cat = p.CATEGORIA || '', unico = 'u|' + p.ID_PRODUTO;
-    const proto = /zigbee/.test(n) ? 'zigbee' : /bluetooth|\bble\b/.test(n) ? 'bluetooth' : /matter/.test(n) ? 'matter' : /\brf\b|433/.test(n) ? 'rf' : /wi-?fi|wifi/.test(n) ? 'wifi' : '';
-    const NUM = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4 };
-    const m = n.match(/\b(\d)\s*(teclas?|botoes|botao|canais|canal|gang)\b/), w = n.match(/\b(um|uma|dois|duas|tres|quatro)\s*(teclas?|botoes|botao|canais|canal)\b/);
-    const tec = m ? m[1] : (w ? NUM[w[1]] : '');
-    let sub = '';
-    if (cat === 'Interruptor') sub = /dimmer/.test(n) ? 'dimmer' : /painel|nspanel/.test(n) ? 'painel' : /modulo|rele|mini/.test(n) ? 'modulo' : 'tecla';
-    else if (cat === 'Tomada') sub = /20a/.test(n) ? '20a' : /usb/.test(n) ? 'usb' : /dupla/.test(n) ? 'dupla' : 'comum';
-    else if (cat === 'Assistente de voz') { const s = n.match(/echo show\s*(\d+)/); sub = s ? 'show' + s[1] : /echo dot/.test(n) ? 'dot' + (/kids/.test(n) ? 'kids' : /max/.test(n) ? 'max' : '') : /echo pop/.test(n) ? 'pop' : /echo hub/.test(n) ? 'hub' : /echo studio/.test(n) ? 'studio' : /painel central/.test(n) ? 'painel' : ''; if (!sub) return unico; }
-    else if (cat === 'Sensor') { sub = /presenca/.test(n) ? 'presenca' : /porta|janela/.test(n) ? 'porta' : /temperatura|umidade/.test(n) ? 'temp' : /fumaca/.test(n) ? 'fumaca' : ''; if (!sub) return unico; }
-    else if (cat === 'Iluminação') { sub = /fita/.test(n) ? 'fita' : /spot/.test(n) ? 'spot' : /plafon/.test(n) ? 'plafon' : /arandela/.test(n) ? 'arandela' : /lampada/.test(n) ? 'lampada' : ''; if (!sub) return unico; }
-    else return unico;
-    return [cat, sub, tec, proto].join('|');
-  }
-  function principais(l) {
-    l.forEach(function(p) { p._iguais = 0; });
-    if (CAT.todos || CAT.busca) return l;
-    const grupos = {}; l.forEach(function(p) { const k = chaveIgual(p); (grupos[k] = grupos[k] || []).push(p); });
-    const preco = function(p) { const v = Number(p.PRECO_APARELHO); return p.PRECO_APARELHO === '' || p.PRECO_APARELHO == null || !isFinite(v) ? Infinity : v; };
-    const manter = {};
-    Object.keys(grupos).forEach(function(k) {
-      const g = grupos[k], usados = g.filter(function(p) { return CAT.emUso[p.ID_PRODUTO]; }), base = usados.length ? usados : [g.slice().sort(function(a, b) { return preco(a) - preco(b); })[0]];
-      base.forEach(function(p) { manter[p.ID_PRODUTO] = true; }); base[0]._iguais = g.length - base.length;
-    });
-    return l.filter(function(p) { return manter[p.ID_PRODUTO]; });
-  }
   function ehAtivo(p) { return p.ATIVO === true || p.ATIVO === 'TRUE'; }
   function elegiveis() { return (CLI.catalogo || []).filter(function(p) { return ehAtivo(p) && p.LINK_COMISSAO; }); }
   function idsDoCliente(idCliente) { return (CLI.vinculos || []).filter(function(v) { return v.ID_CLIENTE === idCliente; }).map(function(v) { return v.ID_PRODUTO; }); }
@@ -752,9 +725,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
 
   function renderLista() {
     const box = $id('cli-lista'); if (!box) return;
-    const l = principais(filtrados());
-    const q0 = norm(CAT.busca), arq = CAT.lista.filter(function(p) { return p.SEM_ESTOQUE === true && (!CAT.categoria || p.CATEGORIA === CAT.categoria) && (!q0 || norm([p.NOME, p.NOME_CURTO, p.MARCA].join(' ')).indexOf(q0) > -1); });
-    const secArq = arq.length ? '<div class="row-title" style="margin:22px 2px 8px">Arquivados sem estoque (' + arq.length + ')</div><div class="glass card table-wrap"><table class="table"><tbody>' + arq.map(function(p) { return '<tr class="ghost"><td><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div><div class="row-title">' + escHtml(nomeP(p)) + '</div><div class="small">Sem estoque' + (p.SEM_ESTOQUE_DESDE ? ' desde ' + fmtData(p.SEM_ESTOQUE_DESDE) : '') + ' · volta sozinho quando o estoque voltar</div></div></div></td><td>' + lojaHtml(p) + '</td><td>' + fmtMoeda(p.PRECO_APARELHO) + '</td><td class="acoes"><button class="btn btn-secondary btn-sm" data-acao="editar" data-id="' + escHtml(p.ID_PRODUTO) + '">Editar</button> <button class="btn btn-ghost btn-sm" data-acao="ativar" data-id="' + escHtml(p.ID_PRODUTO) + '">Reativar</button></td></tr>'; }).join('') + '</tbody></table></div>' : '';
+    const l = filtrados();
     if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (CLI.lista.length ? 'Nenhum cliente com esses filtros.' : 'Nenhum cliente cadastrado ainda. Use “+ Novo cliente”.') + '</div>'; return; }
     const linhas = l.map(function(c) {
       const arq = (c.STATUS || 'ativo') === 'arquivado';
@@ -892,6 +863,33 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
     },
   };
 
+  function chaveIgual(p) {
+    const n = norm(p.NOME), cat = p.CATEGORIA || '', unico = 'u|' + p.ID_PRODUTO;
+    const proto = /zigbee/.test(n) ? 'zigbee' : /bluetooth|\bble\b/.test(n) ? 'bluetooth' : /matter/.test(n) ? 'matter' : /\brf\b|433/.test(n) ? 'rf' : /wi-?fi|wifi/.test(n) ? 'wifi' : '';
+    const NUM = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4 };
+    const m = n.match(/\b(\d)\s*(teclas?|botoes|botao|canais|canal|gang)\b/), w = n.match(/\b(um|uma|dois|duas|tres|quatro)\s*(teclas?|botoes|botao|canais|canal)\b/);
+    const tec = m ? m[1] : (w ? NUM[w[1]] : '');
+    let sub = '';
+    if (cat === 'Interruptor') sub = /dimmer/.test(n) ? 'dimmer' : /painel|nspanel/.test(n) ? 'painel' : /modulo|rele|mini/.test(n) ? 'modulo' : 'tecla';
+    else if (cat === 'Tomada') sub = /20a/.test(n) ? '20a' : /usb/.test(n) ? 'usb' : /dupla/.test(n) ? 'dupla' : 'comum';
+    else if (cat === 'Assistente de voz') { const s = n.match(/echo show\s*(\d+)/); sub = s ? 'show' + s[1] : /echo dot/.test(n) ? 'dot' + (/kids/.test(n) ? 'kids' : /max/.test(n) ? 'max' : '') : /echo pop/.test(n) ? 'pop' : /echo hub/.test(n) ? 'hub' : /echo studio/.test(n) ? 'studio' : /painel central/.test(n) ? 'painel' : ''; if (!sub) return unico; }
+    else if (cat === 'Sensor') { sub = /presenca/.test(n) ? 'presenca' : /porta|janela/.test(n) ? 'porta' : /temperatura|umidade/.test(n) ? 'temp' : /fumaca/.test(n) ? 'fumaca' : ''; if (!sub) return unico; }
+    else if (cat === 'Iluminação') { sub = /fita/.test(n) ? 'fita' : /spot/.test(n) ? 'spot' : /plafon/.test(n) ? 'plafon' : /arandela/.test(n) ? 'arandela' : /lampada/.test(n) ? 'lampada' : ''; if (!sub) return unico; }
+    else return unico;
+    return [cat, sub, tec, proto].join('|');
+  }
+  function principais(l) {
+    l.forEach(function(p) { p._iguais = 0; });
+    if (CAT.todos || CAT.busca) return l;
+    const grupos = {}; l.forEach(function(p) { const k = chaveIgual(p); (grupos[k] = grupos[k] || []).push(p); });
+    const preco = function(p) { const v = Number(p.PRECO_APARELHO); return p.PRECO_APARELHO === '' || p.PRECO_APARELHO == null || !isFinite(v) ? Infinity : v; };
+    const manter = {};
+    Object.keys(grupos).forEach(function(k) {
+      const g = grupos[k], usados = g.filter(function(p) { return CAT.emUso[p.ID_PRODUTO]; }), base = usados.length ? usados : [g.slice().sort(function(a, b) { return preco(a) - preco(b); })[0]];
+      base.forEach(function(p) { manter[p.ID_PRODUTO] = true; }); base[0]._iguais = g.length - base.length;
+    });
+    return l.filter(function(p) { return manter[p.ID_PRODUTO]; });
+  }
   function ehAtivo(p) { return p.ATIVO === true || p.ATIVO === 'TRUE'; }
 
   function filtrados() {
@@ -956,7 +954,9 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
 
   function renderLista() {
     const box = $id('cat-lista'); if (!box) return;
-    const l = filtrados();
+    const l = principais(filtrados());
+    const q0 = norm(CAT.busca), arq = CAT.lista.filter(function(p) { return p.SEM_ESTOQUE === true && (!CAT.categoria || p.CATEGORIA === CAT.categoria) && (!q0 || norm([p.NOME, p.NOME_CURTO, p.MARCA].join(' ')).indexOf(q0) > -1); });
+    const secArq = arq.length ? '<div class="row-title" style="margin:22px 2px 8px">Arquivados sem estoque (' + arq.length + ')</div><div class="glass card table-wrap"><table class="table"><tbody>' + arq.map(function(p) { return '<tr class="ghost"><td><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div><div class="row-title">' + escHtml(nomeP(p)) + '</div><div class="small">Sem estoque' + (p.SEM_ESTOQUE_DESDE ? ' desde ' + fmtData(p.SEM_ESTOQUE_DESDE) : '') + ' · volta sozinho quando o estoque voltar</div></div></div></td><td>' + lojaHtml(p) + '</td><td>' + fmtMoeda(p.PRECO_APARELHO) + '</td><td class="acoes"><button class="btn btn-secondary btn-sm" data-acao="editar" data-id="' + escHtml(p.ID_PRODUTO) + '">Editar</button> <button class="btn btn-ghost btn-sm" data-acao="ativar" data-id="' + escHtml(p.ID_PRODUTO) + '">Reativar</button></td></tr>'; }).join('') + '</tbody></table></div>' : '';
     if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (CAT.lista.length ? 'Nenhum produto com esses filtros.' : 'Catálogo vazio. Use “+ Novo produto” para cadastrar o primeiro.') + '</div>'; return; }
     const linhas = l.map(function(p) {
       const ativo = ehAtivo(p);
