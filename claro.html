@@ -960,7 +960,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
     if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (CAT.lista.length ? 'Nenhum produto com esses filtros.' : 'Catálogo vazio. Use “+ Novo produto” para cadastrar o primeiro.') + '</div>'; return; }
     const linhas = l.map(function(p) {
       const ativo = ehAtivo(p);
-      return '<tr class="' + (ativo ? '' : 'ghost') + '"><td><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div><div class="row-title">' + escHtml(p.NOME) + '</div><div class="small">' + escHtml([p.MARCA, p.APP_CONTROLE].filter(Boolean).join(' · ')) + (p._iguais ? ' · +' + p._iguais + ' igual(is)' : '') + '</div></div></div></td>' +
+      return '<tr class="' + (ativo ? '' : 'ghost') + '"><td><div style="display:flex;gap:10px;align-items:center">' + miniatura(p) + '<div><div class="row-title">' + escHtml(nomeP(p)) + '</div><div class="small" title="' + escHtml(p.NOME) + '">' + escHtml([p.MARCA, p.APP_CONTROLE].filter(Boolean).join(' · ')) + (p._iguais ? ' · +' + p._iguais + ' igual(is)' : '') + '</div></div></div></td>' +
         '<td>' + escHtml(p.CATEGORIA || '—') + (p.FORMATO_CAIXA ? ' <span class="badge">' + escHtml(p.FORMATO_CAIXA) + '</span>' : '') + '</td><td>' + origemBadge(p.ORIGEM) + lojaHtml(p) + '</td>' +
         '<td>' + fmtMoeda(p.PRECO_INSTALACAO) + '</td><td>' + fmtMoeda(p.PRECO_APARELHO) + avisoPreco(p) + '</td>' +
         '<td class="acoes">' + botaoCompartilhar(p) + '<button class="btn btn-secondary btn-sm" data-acao="editar" data-id="' + escHtml(p.ID_PRODUTO) + '">Editar</button> ' +
