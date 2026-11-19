@@ -2198,32 +2198,39 @@ window.DOMOTICA_CFG = {
   }
   const orcTotal = () => { const sub = ED.rooms.reduce((s, r) => s + r.itens.reduce((t, i) => t + num(i.qtd) * num(i.preco), 0), 0); return { sub: sub, total: ED.forma === 'cartao' ? sub * (1 + num(ED.pct) / 100) : sub }; };
   function orcDesenhar() {
+    const _mb = $id('modal-body'), _st = _mb ? _mb.scrollTop : 0;
     const opt = sel => '<option value="">Outro (descrição livre)</option>' + (() => { const g = {}; EDCAT.forEach(p => (g[p.categoria || 'Outros'] = g[p.categoria || 'Outros'] || []).push(p)); return Object.keys(g).map(k => '<optgroup label="' + escHtml(k) + '">' + g[k].map(p => '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + '>' + escHtml(nomeProd(p)) + '</option>').join('') + '</optgroup>').join(''); })();
-    const salas = ED.rooms.map((r, ri) => '<div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin:10px 0">' +
-      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input class="form-input" data-f="rnome" data-r="' + ri + '" value="' + escHtml(r.nome) + '" placeholder="Ambiente" style="flex:1"><button class="btn btn-ghost btn-sm" data-o="delroom" data-r="' + ri + '" title="Remover ambiente">✕</button></div>' +
-      r.itens.map((i, ii) => '<div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 96px 28px;gap:6px;align-items:center;margin:6px 0"><div>' + '<select class="form-input" data-f="prod" data-r="' + ri + '" data-i="' + ii + '">' + opt(i.product_id) + '</select>' + (i.product_id ? '' : '<input class="form-input" style="margin-top:6px" data-f="desc" data-r="' + ri + '" data-i="' + ii + '" value="' + escHtml(i.descricao) + '" placeholder="Descrição">') + '</div>' +
-        '<input class="form-input" type="number" min="1" step="1" data-f="qtd" data-r="' + ri + '" data-i="' + ii + '" value="' + i.qtd + '"><input class="form-input" type="number" min="0" step="0.01" data-f="preco" data-r="' + ri + '" data-i="' + ii + '" value="' + i.preco + '" title="Instalação (unidade)"><button class="btn btn-ghost btn-sm" data-o="delitem" data-r="' + ri + '" data-i="' + ii + '">✕</button></div>').join('') +
-      '<button class="btn btn-secondary btn-sm" data-o="additem" data-r="' + ri + '">+ Item</button></div>').join('');
+    const lb = t => '<div style="font-size:.78em;opacity:.65;margin:0 0 3px 2px">' + t + '</div>';
+    const salas = ED.rooms.map((r, ri) => '<div style="border:1px solid var(--glass-border);border-radius:14px;padding:12px;margin:12px 0">' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input class="form-input" data-f="rnome" data-r="' + ri + '" value="' + escHtml(r.nome) + '" placeholder="Ambiente (ex.: Sala)" style="flex:1;min-width:0;font-weight:600"><button class="btn btn-ghost btn-sm" data-o="delroom" data-r="' + ri + '" title="Remover ambiente" style="flex:none;min-width:40px;min-height:40px">✕</button></div>' +
+      r.itens.map((i, ii) => '<div style="background:rgba(255,255,255,.04);border-radius:10px;padding:10px;margin:8px 0">' +
+        '<select class="form-input" style="width:100%" data-f="prod" data-r="' + ri + '" data-i="' + ii + '">' + opt(i.product_id) + '</select>' +
+        (i.product_id ? '' : '<input class="form-input" style="width:100%;margin-top:8px" data-f="desc" data-r="' + ri + '" data-i="' + ii + '" value="' + escHtml(i.descricao) + '" placeholder="Descrição do item">') +
+        '<div style="display:flex;gap:8px;align-items:flex-end;margin-top:10px">' +
+        '<div style="flex:0 0 72px;min-width:0">' + lb('Qtd') + '<input class="form-input" style="width:100%" type="number" inputmode="numeric" min="1" step="1" data-f="qtd" data-r="' + ri + '" data-i="' + ii + '" value="' + i.qtd + '"></div>' +
+        '<div style="flex:1;min-width:0">' + lb('Instalação (R$ por unid.)') + '<input class="form-input" style="width:100%" type="number" inputmode="decimal" min="0" step="0.01" data-f="preco" data-r="' + ri + '" data-i="' + ii + '" value="' + i.preco + '"></div>' +
+        '<button class="btn btn-ghost btn-sm" data-o="delitem" data-r="' + ri + '" data-i="' + ii + '" title="Remover item" style="flex:none;min-width:40px;min-height:40px">✕</button></div></div>').join('') +
+      '<button class="btn btn-secondary btn-sm" data-o="additem" data-r="' + ri + '" style="margin-top:4px">+ Item</button></div>').join('');
     const corpo = '<div class="form-grid"><div class="form-group full"><label class="form-label required">Cliente</label><select id="oe-cli" class="form-input"><option value="">Selecione...</option>' + EDCLI.map(c => '<option value="' + c.id + '"' + (c.id === ED.client_id ? ' selected' : '') + '>' + escHtml(c.nome) + '</option>').join('') + '</select></div>' +
       '<div class="form-group"><label class="form-label">Status</label><select id="oe-status" class="form-input">' + Object.keys(OR_STATUS).map(k => '<option value="' + k + '"' + (k === ED.status ? ' selected' : '') + '>' + OR_STATUS[k] + '</option>').join('') + '</select></div>' +
       '<div class="form-group"><label class="form-label">Garantia (meses)</label><input id="oe-gar" class="form-input" type="number" min="0" value="' + ED.garantia + '"></div></div>' +
-      '<div class="small" style="margin:10px 0 0">Valores de instalação por unidade. Os aparelhos o cliente compra pelos links.</div>' + salas +
+      salas +
       '<button class="btn btn-secondary btn-sm" data-o="addroom">+ Ambiente</button>' +
       '<div class="form-grid" style="margin-top:14px"><div class="form-group"><label class="form-label">Pagamento</label><select id="oe-forma" class="form-input"><option value="pix">Pix / dinheiro</option><option value="cartao">Cartão</option></select></div>' +
-      '<div class="form-group"><label class="form-label">Acréscimo do cartão (%)</label><input id="oe-pct" class="form-input" type="number" min="0" step="0.1" value="' + ED.pct + '"></div>' +
+      (ED.forma === 'cartao' ? '<div class="form-group"><label class="form-label">Acréscimo do cartão (%)</label><input id="oe-pct" class="form-input" type="number" inputmode="decimal" min="0" step="0.1" value="' + ED.pct + '"></div>' : '') +
       '<div class="form-group full"><label class="form-label">Observações</label><textarea id="oe-obs" class="form-input" rows="3">' + escHtml(ED.obs) + '</textarea></div></div>' +
       '<div style="text-align:right;margin-top:6px;font-size:1.25em">Total: <b id="oe-total"></b></div>';
     abrirModal(ED.id ? 'Orçamento nº ' + ED.numero : 'Novo orçamento', corpo,
       (ED.id ? '<button class="btn btn-ghost" data-o="excluir" style="margin-right:auto">Excluir</button><button class="btn btn-secondary" data-o="pdf">PDF</button><button class="btn btn-secondary" data-o="enviar">Enviar</button>' : '') + '<button class="btn btn-secondary" onclick="fecharModal()">Fechar</button><button class="btn btn-primary" data-o="salvar">Salvar</button>', 'grande');
     $id('oe-forma').value = ED.forma; orcTotalPintar();
     const mb = $id('modal-body'), mf = $id('modal-footer');
-    mb.oninput = mb.onchange = ev => orcCampo(ev);
+    mb.scrollTop = _st; mb.oninput = mb.onchange = ev => orcCampo(ev);
     mb.onclick = mf.onclick = ev => orcClique(ev);
   }
   function orcTotalPintar() { const t = $id('oe-total'); if (t) t.textContent = fm(orcTotal().total); }
   function orcCampo(ev) {
     const t = ev.target, f = t.getAttribute('data-f'), r = +t.getAttribute('data-r'), i = +t.getAttribute('data-i');
-    if (t.id === 'oe-cli') ED.client_id = t.value; else if (t.id === 'oe-status') ED.status = t.value; else if (t.id === 'oe-gar') ED.garantia = num(t.value); else if (t.id === 'oe-forma') ED.forma = t.value; else if (t.id === 'oe-pct') ED.pct = num(t.value); else if (t.id === 'oe-obs') ED.obs = t.value;
+    if (t.id === 'oe-cli') ED.client_id = t.value; else if (t.id === 'oe-status') ED.status = t.value; else if (t.id === 'oe-gar') ED.garantia = num(t.value); else if (t.id === 'oe-forma') { ED.forma = t.value; if (ev.type === 'change') { orcDesenhar(); return; } } else if (t.id === 'oe-pct') ED.pct = num(t.value); else if (t.id === 'oe-obs') ED.obs = t.value;
     else if (f === 'rnome') ED.rooms[r].nome = t.value;
     else if (f === 'prod') { const it = ED.rooms[r].itens[i], p = EDCAT.find(x => x.id === t.value); it.product_id = t.value; if (p) { it.descricao = nomeProd(p); it.preco = num(p.preco_instalacao); } if (ev.type === 'change') { orcDesenhar(); } }
     else if (f === 'desc') ED.rooms[r].itens[i].descricao = t.value;
