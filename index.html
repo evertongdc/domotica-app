@@ -2137,6 +2137,205 @@ window.DOMOTICA_CFG = {
     },
   };
 
+  // ── Orçamentos e Agenda (entram no adaptador; usam sb, ctx e os utilitários das telas) ──
+  const OR_STATUS = { rascunho: 'Rascunho', enviado: 'Enviado', aprovado: 'Aprovado', perdido: 'Perdido' };
+  const OR_COR = { rascunho: '', enviado: 'badge-blue', aprovado: 'badge-ok', perdido: 'badge-off' };
+  const fm = v => fmtMoeda(v);
+  const num = v => { const n = Number(String(v === '' || v == null ? 0 : v).replace(',', '.')); return isFinite(n) ? n : 0; };
+  const nomeProd = p => (p.nome_curto || p.nome || '');
+
+  // ---------------- ORÇAMENTOS ----------------
+  const ORC = { lista: [], filtro: '', busca: '' };
+  VIEWS.orcamentos = {
+    titulo: 'Orçamentos',
+    render: async function(c) {
+      $id('topbar-actions').innerHTML = '<button class="btn btn-primary" data-orc="novo">+ Novo orçamento</button>';
+      c.innerHTML = '<div class="toolbar"><input id="orc-busca" class="form-input grow" placeholder="Buscar por cliente ou número..." value="' + escHtml(ORC.busca) + '"><select id="orc-filtro" class="form-input"><option value="">Todos</option>' + Object.keys(OR_STATUS).map(k => '<option value="' + k + '">' + OR_STATUS[k] + '</option>').join('') + '</select></div><div id="orc-lista"><div class="glass card empty">Carregando...</div></div>';
+      $id('orc-filtro').value = ORC.filtro;
+      $id('orc-busca').addEventListener('input', debounce(e => { ORC.busca = e.target.value; orcPintar(); }, 200));
+      $id('orc-filtro').addEventListener('change', e => { ORC.filtro = e.target.value; orcPintar(); });
+      const acao = ev => { const b = ev.target.closest('[data-orc]'); if (!b) return; const a = b.getAttribute('data-orc'); if (a === 'novo') orcAbrir(null); else if (a === 'abrir') orcAbrir(b.getAttribute('data-id')); };
+      if (c._orcH) { c.removeEventListener('click', c._orcH); $id('topbar-actions').removeEventListener('click', c._orcH); }
+      c._orcH = acao; c.addEventListener('click', acao); $id('topbar-actions').addEventListener('click', acao);
+      await orcCarregar();
+    },
+  };
+  async function orcCarregar() {
+    try { const x = await ctx(); ORC.lista = must(await sb.from('quotes').select('id,numero,status,valor_total,created_at,client_id,clients(nome)').eq('org_id', x.orgId).order('numero', { ascending: false })); orcPintar(); }
+    catch (e) { const b = $id('orc-lista'); if (b) b.innerHTML = '<div class="alert alert-error">' + escHtml(msgErro(e.message)) + '</div>'; }
+  }
+  function orcPintar() {
+    const box = $id('orc-lista'); if (!box) return; const q = norm(ORC.busca);
+    const l = ORC.lista.filter(o => (!ORC.filtro || o.status === ORC.filtro) && (!q || norm((o.clients && o.clients.nome) + ' ' + o.numero).indexOf(q) > -1));
+    if (!l.length) { box.innerHTML = '<div class="glass card empty">' + (ORC.lista.length ? 'Nenhum orçamento com esses filtros.' : 'Nenhum orçamento ainda.') + '</div>'; return; }
+    const tot = l.reduce((s, o) => s + (o.status === 'aprovado' ? num(o.valor_total) : 0), 0);
+    box.innerHTML = '<div class="glass card table-wrap"><table class="table"><thead><tr><th>Nº</th><th>Cliente</th><th>Data</th><th>Status</th><th style="text-align:right">Valor</th></tr></thead><tbody>' +
+      l.map(o => '<tr style="cursor:pointer" data-orc="abrir" data-id="' + o.id + '"><td>' + (o.numero || '—') + '</td><td><span class="row-title">' + escHtml(o.clients ? o.clients.nome : '—') + '</span></td><td>' + fmtData(o.created_at) + '</td><td><span class="badge ' + OR_COR[o.status] + '">' + escHtml(OR_STATUS[o.status] || o.status) + '</span></td><td style="text-align:right">' + fm(o.valor_total) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<div class="lista-cards">' + l.map(o => '<div class="glass item-card" data-orc="abrir" data-id="' + o.id + '"><div class="row-title">#' + (o.numero || '') + ' · ' + escHtml(o.clients ? o.clients.nome : '—') + '</div><div><span class="badge ' + OR_COR[o.status] + '">' + escHtml(OR_STATUS[o.status] || o.status) + '</span> <b>' + fm(o.valor_total) + '</b> <span class="small">' + fmtData(o.created_at) + '</span></div></div>').join('') + '</div>' +
+      '<div class="small" style="margin:10px 2px">Aprovados nesta lista: <b>' + fm(tot) + '</b></div>';
+  }
+
+  let ED = null, EDCAT = [], EDCLI = [];
+  async function orcAbrir(id) {
+    try {
+      const x = await ctx();
+      const [cat, cli] = await Promise.all([
+        sb.from('catalog_products').select('id,nome,nome_curto,categoria,preco_aparelho,preco_instalacao,link_comissao').eq('org_id', x.orgId).eq('ativo', true).order('categoria').order('nome'),
+        sb.from('clients').select('id,nome,telefone,whatsapp').eq('org_id', x.orgId).eq('status', 'ativo').order('nome'),
+      ]);
+      EDCAT = must(cat); EDCLI = must(cli);
+      ED = { id: null, numero: null, client_id: '', status: 'rascunho', forma: 'pix', pct: 0, garantia: 12, obs: '', rooms: [{ nome: 'Sala', itens: [] }] };
+      if (id) {
+        const q = must(await sb.from('quotes').select('*').eq('id', id).single());
+        const rs = must(await sb.from('quote_rooms').select('*').eq('quote_id', id).order('ordem'));
+        const is = must(await sb.from('quote_items').select('*').eq('quote_id', id));
+        ED = { id: q.id, numero: q.numero, client_id: q.client_id, status: q.status || 'rascunho', forma: q.forma_pagamento || 'pix', pct: num(q.acrescimo_cartao_pct), garantia: q.garantia_meses == null ? 12 : q.garantia_meses, obs: q.observacoes || '',
+          rooms: rs.map(r => ({ nome: r.nome, itens: is.filter(i => i.room_id === r.id).map(i => ({ product_id: i.product_id || '', descricao: i.descricao || '', qtd: num(i.qtd_num) || 1, preco: num(i.preco_instalacao) })) })) };
+        if (!ED.rooms.length) ED.rooms.push({ nome: 'Ambiente', itens: [] });
+      }
+      orcDesenhar();
+    } catch (e) { toast(msgErro(e.message), 'error', 8000); }
+  }
+  const orcTotal = () => { const sub = ED.rooms.reduce((s, r) => s + r.itens.reduce((t, i) => t + num(i.qtd) * num(i.preco), 0), 0); return { sub: sub, total: ED.forma === 'cartao' ? sub * (1 + num(ED.pct) / 100) : sub }; };
+  function orcDesenhar() {
+    const opt = sel => '<option value="">Outro (descrição livre)</option>' + (() => { const g = {}; EDCAT.forEach(p => (g[p.categoria || 'Outros'] = g[p.categoria || 'Outros'] || []).push(p)); return Object.keys(g).map(k => '<optgroup label="' + escHtml(k) + '">' + g[k].map(p => '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + '>' + escHtml(nomeProd(p)) + '</option>').join('') + '</optgroup>').join(''); })();
+    const salas = ED.rooms.map((r, ri) => '<div style="border:1px solid var(--glass-border);border-radius:12px;padding:12px;margin:10px 0">' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input class="form-input" data-f="rnome" data-r="' + ri + '" value="' + escHtml(r.nome) + '" placeholder="Ambiente" style="flex:1"><button class="btn btn-ghost btn-sm" data-o="delroom" data-r="' + ri + '" title="Remover ambiente">✕</button></div>' +
+      r.itens.map((i, ii) => '<div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 96px 28px;gap:6px;align-items:center;margin:6px 0"><div>' + '<select class="form-input" data-f="prod" data-r="' + ri + '" data-i="' + ii + '">' + opt(i.product_id) + '</select>' + (i.product_id ? '' : '<input class="form-input" style="margin-top:6px" data-f="desc" data-r="' + ri + '" data-i="' + ii + '" value="' + escHtml(i.descricao) + '" placeholder="Descrição">') + '</div>' +
+        '<input class="form-input" type="number" min="1" step="1" data-f="qtd" data-r="' + ri + '" data-i="' + ii + '" value="' + i.qtd + '"><input class="form-input" type="number" min="0" step="0.01" data-f="preco" data-r="' + ri + '" data-i="' + ii + '" value="' + i.preco + '" title="Instalação (unidade)"><button class="btn btn-ghost btn-sm" data-o="delitem" data-r="' + ri + '" data-i="' + ii + '">✕</button></div>').join('') +
+      '<button class="btn btn-secondary btn-sm" data-o="additem" data-r="' + ri + '">+ Item</button></div>').join('');
+    const corpo = '<div class="form-grid"><div class="form-group full"><label class="form-label required">Cliente</label><select id="oe-cli" class="form-input"><option value="">Selecione...</option>' + EDCLI.map(c => '<option value="' + c.id + '"' + (c.id === ED.client_id ? ' selected' : '') + '>' + escHtml(c.nome) + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Status</label><select id="oe-status" class="form-input">' + Object.keys(OR_STATUS).map(k => '<option value="' + k + '"' + (k === ED.status ? ' selected' : '') + '>' + OR_STATUS[k] + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Garantia (meses)</label><input id="oe-gar" class="form-input" type="number" min="0" value="' + ED.garantia + '"></div></div>' +
+      '<div class="small" style="margin:10px 0 0">Valores de instalação por unidade. Os aparelhos o cliente compra pelos links.</div>' + salas +
+      '<button class="btn btn-secondary btn-sm" data-o="addroom">+ Ambiente</button>' +
+      '<div class="form-grid" style="margin-top:14px"><div class="form-group"><label class="form-label">Pagamento</label><select id="oe-forma" class="form-input"><option value="pix">Pix / dinheiro</option><option value="cartao">Cartão</option></select></div>' +
+      '<div class="form-group"><label class="form-label">Acréscimo do cartão (%)</label><input id="oe-pct" class="form-input" type="number" min="0" step="0.1" value="' + ED.pct + '"></div>' +
+      '<div class="form-group full"><label class="form-label">Observações</label><textarea id="oe-obs" class="form-input" rows="3">' + escHtml(ED.obs) + '</textarea></div></div>' +
+      '<div style="text-align:right;margin-top:6px;font-size:1.25em">Total: <b id="oe-total"></b></div>';
+    abrirModal(ED.id ? 'Orçamento nº ' + ED.numero : 'Novo orçamento', corpo,
+      (ED.id ? '<button class="btn btn-ghost" data-o="excluir" style="margin-right:auto">Excluir</button><button class="btn btn-secondary" data-o="pdf">PDF</button><button class="btn btn-secondary" data-o="enviar">Enviar</button>' : '') + '<button class="btn btn-secondary" onclick="fecharModal()">Fechar</button><button class="btn btn-primary" data-o="salvar">Salvar</button>', 'grande');
+    $id('oe-forma').value = ED.forma; orcTotalPintar();
+    const mb = $id('modal-body'), mf = $id('modal-footer');
+    mb.oninput = mb.onchange = ev => orcCampo(ev);
+    mb.onclick = mf.onclick = ev => orcClique(ev);
+  }
+  function orcTotalPintar() { const t = $id('oe-total'); if (t) t.textContent = fm(orcTotal().total); }
+  function orcCampo(ev) {
+    const t = ev.target, f = t.getAttribute('data-f'), r = +t.getAttribute('data-r'), i = +t.getAttribute('data-i');
+    if (t.id === 'oe-cli') ED.client_id = t.value; else if (t.id === 'oe-status') ED.status = t.value; else if (t.id === 'oe-gar') ED.garantia = num(t.value); else if (t.id === 'oe-forma') ED.forma = t.value; else if (t.id === 'oe-pct') ED.pct = num(t.value); else if (t.id === 'oe-obs') ED.obs = t.value;
+    else if (f === 'rnome') ED.rooms[r].nome = t.value;
+    else if (f === 'prod') { const it = ED.rooms[r].itens[i], p = EDCAT.find(x => x.id === t.value); it.product_id = t.value; if (p) { it.descricao = nomeProd(p); it.preco = num(p.preco_instalacao); } if (ev.type === 'change') { orcDesenhar(); } }
+    else if (f === 'desc') ED.rooms[r].itens[i].descricao = t.value;
+    else if (f === 'qtd') ED.rooms[r].itens[i].qtd = num(t.value);
+    else if (f === 'preco') ED.rooms[r].itens[i].preco = num(t.value);
+    orcTotalPintar();
+  }
+  function orcClique(ev) {
+    const b = ev.target.closest('[data-o]'); if (!b) return; const o = b.getAttribute('data-o'), r = +b.getAttribute('data-r'), i = +b.getAttribute('data-i');
+    if (o === 'addroom') { ED.rooms.push({ nome: '', itens: [] }); orcDesenhar(); }
+    else if (o === 'delroom') { ED.rooms.splice(r, 1); orcDesenhar(); }
+    else if (o === 'additem') { ED.rooms[r].itens.push({ product_id: '', descricao: '', qtd: 1, preco: 0 }); orcDesenhar(); }
+    else if (o === 'delitem') { ED.rooms[r].itens.splice(i, 1); orcDesenhar(); }
+    else if (o === 'salvar') orcSalvar(b);
+    else if (o === 'excluir') confirmarAcao('Excluir o orçamento nº ' + ED.numero + '? Isso não pode ser desfeito.', async function() { try { must(await sb.from('quotes').delete().eq('id', ED.id)); fecharModal(); toast('Orçamento excluído.'); orcCarregar(); } catch (e) { toast(msgErro(e.message), 'error'); } }, { textoConfirmar: 'Excluir', perigo: true });
+    else if (o === 'pdf') orcPdf();
+    else if (o === 'enviar') orcEnviar();
+  }
+  async function orcSalvar(btn) {
+    if (!ED.client_id) { toast('Escolha o cliente.', 'warn'); return; }
+    btn.disabled = true;
+    try {
+      const x = await ctx(), t = orcTotal(), itens = [];
+      ED.rooms.forEach(r => r.itens.forEach(i => { if (i.product_id || i.descricao) itens.push(i); }));
+      const row = { client_id: ED.client_id, status: ED.status, valor_total: Math.round(t.total * 100) / 100, forma_pagamento: ED.forma, acrescimo_cartao_pct: ED.forma === 'cartao' ? num(ED.pct) : 0, garantia_meses: Math.round(num(ED.garantia)), observacoes: ED.obs || null, total_aparelhos: itens.filter(i => i.product_id).reduce((s, i) => s + num(i.qtd), 0) };
+      let q;
+      if (ED.id) q = must(await sb.from('quotes').update(row).eq('id', ED.id).select().single()); else q = must(await sb.from('quotes').insert(Object.assign({ org_id: x.orgId }, row)).select().single());
+      ED.id = q.id; ED.numero = q.numero;
+      must(await sb.from('quote_items').delete().eq('quote_id', q.id)); must(await sb.from('quote_rooms').delete().eq('quote_id', q.id));
+      const salas = ED.rooms.filter(r => r.nome || r.itens.length);
+      if (salas.length) {
+        const rs = must(await sb.from('quote_rooms').insert(salas.map((r, k) => ({ org_id: x.orgId, quote_id: q.id, nome: r.nome || 'Ambiente', ordem: k }))).select());
+        const ins = [];
+        salas.forEach((r, k) => { const sala = rs.find(z => z.ordem === k); r.itens.forEach(i => { if (!i.product_id && !i.descricao) return; ins.push({ org_id: x.orgId, quote_id: q.id, room_id: sala.id, product_id: i.product_id || null, descricao: i.descricao || null, qtd_num: num(i.qtd) || 1, qtd_texto: String(num(i.qtd) || 1), preco_instalacao: num(i.preco) }); }); });
+        if (ins.length) must(await sb.from('quote_items').insert(ins));
+      }
+      toast('Orçamento salvo.', 'success'); fecharModal(); orcCarregar();
+    } catch (e) { btn.disabled = false; toast(msgErro(e.message), 'error', 8000); }
+  }
+  function orcTexto(html) {
+    const cli = EDCLI.find(c => c.id === ED.client_id) || { nome: '' }, t = orcTotal(); let aparelhos = [];
+    const linhas = ED.rooms.filter(r => r.itens.length).map(r => ({ nome: r.nome, itens: r.itens.map(i => { const p = EDCAT.find(z => z.id === i.product_id); if (p && p.link_comissao) aparelhos.push(p); return { n: p ? nomeProd(p) : i.descricao, q: num(i.qtd), v: num(i.preco) }; }) }));
+    const vistos = {}; aparelhos = aparelhos.filter(p => vistos[p.id] ? false : (vistos[p.id] = 1));
+    if (html) {
+      return '<h1 style="margin:0">Orçamento nº ' + (ED.numero || '') + '</h1><p>Cliente: <b>' + escHtml(cli.nome) + '</b></p>' + linhas.map(l => '<h3>' + escHtml(l.nome || 'Ambiente') + '</h3><table><tbody>' + l.itens.map(i => '<tr><td>' + escHtml(i.n) + '</td><td>' + i.q + ' × ' + fm(i.v) + '</td><td style="text-align:right">' + fm(i.q * i.v) + '</td></tr>').join('') + '</tbody></table>').join('') +
+        '<h2 style="text-align:right">Total (instalação): ' + fm(t.total) + '</h2><p>Pagamento: ' + (ED.forma === 'cartao' ? 'Cartão (acréscimo de ' + num(ED.pct) + '%)' : 'Pix / dinheiro') + ' · Garantia: ' + ED.garantia + ' meses</p>' + (ED.obs ? '<p>' + escHtml(ED.obs).replace(/\n/g, '<br>') + '</p>' : '') +
+        (aparelhos.length ? '<h3>Aparelhos (compra direta pelos links)</h3><table><tbody>' + aparelhos.map(p => '<tr><td>' + escHtml(nomeProd(p)) + '</td><td>' + fm(p.preco_aparelho) + '</td><td><a href="' + escHtml(p.link_comissao) + '">comprar</a></td></tr>').join('') + '</tbody></table>' : '');
+    }
+    return 'Orçamento nº ' + (ED.numero || '') + ' — ' + cli.nome + '\n\n' + linhas.map(l => (l.nome || 'Ambiente') + '\n' + l.itens.map(i => '• ' + i.n + ' ' + i.q + ' × ' + fm(i.v)).join('\n')).join('\n\n') + '\n\nTotal da instalação: ' + fm(t.total) + (ED.forma === 'cartao' ? ' (cartão, acréscimo de ' + num(ED.pct) + '%)' : '') + '\nGarantia: ' + ED.garantia + ' meses' + (ED.obs ? '\n' + ED.obs : '') +
+      (aparelhos.length ? '\n\nAparelhos (compra direta):\n' + aparelhos.map(p => '• ' + nomeProd(p) + ' — ' + fm(p.preco_aparelho) + '\n' + p.link_comissao).join('\n') : '');
+  }
+  function orcPdf() {
+    const w = window.open('', '_blank'); if (!w) { toast('Libere pop-ups para gerar o PDF.', 'warn'); return; }
+    w.document.write('<!doctype html><meta charset="utf-8"><title>Orçamento ' + (ED.numero || '') + '</title><style>body{font:14px/1.5 system-ui,sans-serif;max-width:760px;margin:30px auto;padding:0 20px;color:#111}table{width:100%;border-collapse:collapse}td{padding:6px 4px;border-bottom:1px solid #ddd}h3{margin:18px 0 4px}</style>' + orcTexto(true) + '<script>setTimeout(function(){print()},300)<\/script>'); w.document.close();
+  }
+  function orcEnviar() { const cli = EDCLI.find(c => c.id === ED.client_id); abrirCompartilhar('Orçamento nº ' + ED.numero, orcTexto(false), cli ? (cli.whatsapp || cli.telefone) : ''); }
+
+  // ---------------- AGENDA ----------------
+  const AG_TIPO = { levantamento: 'Levantamento', instalacao: 'Instalação', retorno_garantia: 'Retorno de garantia', suporte: 'Suporte' };
+  const AG = { lista: [], clientes: [], vista: 'proximas' };
+  const dh = s => { const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
+  const diaKey = s => { const d = new Date(s); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const paraInput = s => { const d = s ? new Date(s) : new Date(); const z = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - z).toISOString().slice(0, 16); };
+  VIEWS.agenda = {
+    titulo: 'Agenda',
+    render: async function(c) {
+      $id('topbar-actions').innerHTML = '<button class="btn btn-primary" data-ag="novo">+ Nova visita</button>';
+      c.innerHTML = '<div class="toolbar"><select id="ag-vista" class="form-input"><option value="proximas">Próximas</option><option value="passadas">Passadas</option><option value="todas">Todas</option></select></div><div id="ag-lista"><div class="glass card empty">Carregando...</div></div>';
+      $id('ag-vista').value = AG.vista; $id('ag-vista').addEventListener('change', e => { AG.vista = e.target.value; agPintar(); });
+      const acao = ev => { const b = ev.target.closest('[data-ag]'); if (!b) return; const a = b.getAttribute('data-ag'), id = b.getAttribute('data-id'); if (a === 'novo') agForm(null); else if (a === 'editar') agForm(id); else if (a === 'concluir' || a === 'cancelar') agStatus(id, a === 'concluir' ? 'concluida' : 'cancelada'); };
+      if (c._agH) { c.removeEventListener('click', c._agH); $id('topbar-actions').removeEventListener('click', c._agH); }
+      c._agH = acao; c.addEventListener('click', acao); $id('topbar-actions').addEventListener('click', acao);
+      await agCarregar();
+    },
+  };
+  async function agCarregar() {
+    try { const x = await ctx(); const [v, cl] = await Promise.all([sb.from('visits').select('*, clients(nome)').eq('org_id', x.orgId).order('dt_inicio'), sb.from('clients').select('id,nome').eq('org_id', x.orgId).eq('status', 'ativo').order('nome')]); AG.lista = must(v); AG.clientes = must(cl); agPintar(); }
+    catch (e) { const b = $id('ag-lista'); if (b) b.innerHTML = '<div class="alert alert-error">' + escHtml(msgErro(e.message)) + '</div>'; }
+  }
+  function agPintar() {
+    const box = $id('ag-lista'); if (!box) return; const agora = Date.now(), hoje = diaKey(agora);
+    let l = AG.lista.filter(v => AG.vista === 'todas' ? true : AG.vista === 'proximas' ? (v.status !== 'cancelada' && (v.status !== 'concluida') && new Date(v.dt_inicio).getTime() >= new Date(hoje + 'T00:00:00').getTime()) : (new Date(v.dt_inicio).getTime() < new Date(hoje + 'T00:00:00').getTime() || v.status === 'concluida'));
+    if (AG.vista === 'passadas') l = l.slice().reverse();
+    if (!l.length) { box.innerHTML = '<div class="glass card empty">Nenhuma visita.</div>'; return; }
+    const grupos = {}, ordem = []; l.forEach(v => { const k = diaKey(v.dt_inicio); if (!grupos[k]) { grupos[k] = []; ordem.push(k); } grupos[k].push(v); });
+    box.innerHTML = ordem.map(k => { const d = new Date(k + 'T12:00:00'), rot = k === hoje ? 'Hoje' : d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+      return '<div class="row-title" style="margin:16px 2px 8px;text-transform:capitalize">' + escHtml(rot) + '</div>' + grupos[k].map(v => '<div class="glass item-card ' + (v.status === 'cancelada' ? 'ghost' : '') + '"><div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap"><div style="min-width:0"><div class="row-title" style="white-space:normal">' + escHtml(v.titulo || AG_TIPO[v.tipo] || 'Visita') + '</div><div class="small">' + escHtml(new Date(v.dt_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) + (v.dt_fim ? ' – ' + new Date(v.dt_fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + ' · ' + escHtml(AG_TIPO[v.tipo] || '') + (v.clients ? ' · ' + escHtml(v.clients.nome) : '') + (v.status === 'concluida' ? ' · concluída' : v.status === 'cancelada' ? ' · cancelada' : '') + '</div>' + (v.observacoes ? '<div class="small">' + escHtml(v.observacoes) + '</div>' : '') + '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" data-ag="editar" data-id="' + v.id + '">Editar</button>' + (v.status === 'agendada' || !v.status ? '<button class="btn btn-ghost btn-sm" data-ag="concluir" data-id="' + v.id + '">Concluir</button><button class="btn btn-ghost btn-sm" data-ag="cancelar" data-id="' + v.id + '">Cancelar</button>' : '') + '</div></div></div>').join(''); }).join('');
+  }
+  function agForm(id) {
+    const v = id ? AG.lista.find(z => z.id === id) : null;
+    abrirModal(v ? 'Editar visita' : 'Nova visita',
+      '<div class="form-grid"><div class="form-group full"><label class="form-label">Tipo</label><select id="af-tipo" class="form-input">' + Object.keys(AG_TIPO).map(k => '<option value="' + k + '">' + AG_TIPO[k] + '</option>').join('') + '</select></div>' +
+      '<div class="form-group full"><label class="form-label">Título</label><input id="af-titulo" class="form-input" placeholder="Opcional" value="' + escHtml(v ? v.titulo || '' : '') + '"></div>' +
+      '<div class="form-group full"><label class="form-label">Cliente</label><select id="af-cli" class="form-input"><option value="">—</option>' + AG.clientes.map(c => '<option value="' + c.id + '">' + escHtml(c.nome) + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label required">Início</label><input id="af-ini" class="form-input" type="datetime-local" value="' + paraInput(v ? v.dt_inicio : null) + '"></div>' +
+      '<div class="form-group"><label class="form-label">Fim</label><input id="af-fim" class="form-input" type="datetime-local" value="' + (v && v.dt_fim ? paraInput(v.dt_fim) : '') + '"></div>' +
+      '<div class="form-group full"><label class="form-label">Observações</label><textarea id="af-obs" class="form-input" rows="3">' + escHtml(v ? v.observacoes || '' : '') + '</textarea></div></div>',
+      (v ? '<button class="btn btn-ghost" id="af-del" style="margin-right:auto">Excluir</button>' : '') + '<button class="btn btn-secondary" onclick="fecharModal()">Fechar</button><button class="btn btn-primary" id="af-salvar">Salvar</button>');
+    $id('af-tipo').value = v ? v.tipo || 'levantamento' : 'levantamento'; $id('af-cli').value = v && v.client_id ? v.client_id : '';
+    $id('af-salvar').onclick = async function() {
+      const ini = $id('af-ini').value; if (!ini) { toast('Informe o início.', 'warn'); return; }
+      const fim = $id('af-fim').value, row = { tipo: $id('af-tipo').value, titulo: inputVal('af-titulo') || null, client_id: $id('af-cli').value || null, dt_inicio: new Date(ini).toISOString(), dt_fim: fim ? new Date(fim).toISOString() : null, observacoes: inputVal('af-obs') || null };
+      if (row.dt_fim && row.dt_fim < row.dt_inicio) { toast('O fim é antes do início.', 'warn'); return; }
+      this.disabled = true;
+      try { const x = await ctx(); if (v) must(await sb.from('visits').update(row).eq('id', v.id)); else must(await sb.from('visits').insert(Object.assign({ org_id: x.orgId, status: 'agendada' }, row))); fecharModal(); toast('Visita salva.', 'success'); agCarregar(); }
+      catch (e) { this.disabled = false; toast(msgErro(e.message), 'error', 8000); }
+    };
+    if (v) $id('af-del').onclick = () => confirmarAcao('Excluir esta visita?', async function() { try { must(await sb.from('visits').delete().eq('id', v.id)); fecharModal(); toast('Visita excluída.'); agCarregar(); } catch (e) { toast(msgErro(e.message), 'error'); } }, { textoConfirmar: 'Excluir', perigo: true });
+  }
+  async function agStatus(id, st) { try { must(await sb.from('visits').update({ status: st }).eq('id', id)); toast(st === 'concluida' ? 'Visita concluída.' : 'Visita cancelada.', 'success'); agCarregar(); } catch (e) { toast(msgErro(e.message), 'error'); } }
+
   window.iniciarApp = async function() {
     document.addEventListener('keydown', function(ev) {
       if (ev.key === 'Escape') fecharModal();
