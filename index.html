@@ -291,6 +291,7 @@ const ICONES = {
   sugestoes: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
   configuracoes: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>',
   codigos: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/>',
+  pedidos: '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/>',
   plantas: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h8M11 3v8M11 15v6M15 13h6"/>',
   mais: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
 };
@@ -305,6 +306,7 @@ const NAV = [
   { id: 'obras', label: 'Obras' },
   { id: 'dispositivos', label: 'Dispositivos' },
   { id: 'agenda', label: 'Agenda' },
+  { id: 'pedidos', label: 'Pedidos' },
   { id: 'sugestoes', label: 'Sugestões do bot' },
   { id: 'codigos', label: 'Códigos' },
   { id: 'configuracoes', label: 'Configurações' },
@@ -660,6 +662,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
         else if (el.getAttribute('data-acao') === 'arquivar') arquivar(id, true);
         else if (el.getAttribute('data-acao') === 'reativar') arquivar(id, false);
         else if (el.getAttribute('data-acao') === 'lista') compartilharLista(id);
+        else if (el.getAttribute('data-acao') === 'portal') window.portalCliente(id);
       };
       c.addEventListener('click', acao);
       $id('topbar-actions').addEventListener('click', acao);
@@ -731,7 +734,7 @@ function _executarConfirm() { const cb = _confirmCb; _confirmCb = null; fecharMo
       const arq = (c.STATUS || 'ativo') === 'arquivado';
       return '<tr><td><div class="row-title">' + escHtml(c.NOME) + (arq ? ' <span class="badge badge-off">Arquivado</span>' : '') + '</div><div class="small">' + escHtml(endereco(c)) + '</div>' + contagem(c) + '</td>' +
         '<td>' + tipoBadge(c.TIPO) + '</td><td>' + escHtml(c.WHATSAPP || c.TELEFONE || '—') + '</td><td>' + escHtml(c.EMAIL || '—') + '</td>' +
-        '<td class="acoes">' + botaoLista(c) + '<button class="btn btn-secondary btn-sm" data-acao="editar" data-id="' + escHtml(c.ID_CLIENTE) + '">Editar</button> ' +
+        '<td class="acoes">' + botaoLista(c) + '<button class="btn btn-secondary btn-sm" data-acao="portal" data-id="' + escHtml(c.ID_CLIENTE) + '">' + (c.PORTAL ? 'Portal ✓' : 'Portal') + '</button> ' + '<button class="btn btn-secondary btn-sm" data-acao="editar" data-id="' + escHtml(c.ID_CLIENTE) + '">Editar</button> ' +
         '<button class="btn btn-ghost btn-sm" data-acao="' + (arq ? 'reativar' : 'arquivar') + '" data-id="' + escHtml(c.ID_CLIENTE) + '">' + (arq ? 'Reativar' : 'Arquivar') + '</button></td></tr>';
     }).join('');
     const cards = l.map(function(c) {
@@ -1611,7 +1614,7 @@ window.DOMOTICA_CFG = {
   const API = {
     verificarStatusSistema: function() { return ok({ inicializado: true, precisaSetup: false }); },
     obterMeuUsuario: function() { return api(async function() { const c = await ctx(); return { id: c.user.id, nome: c.nome, usuario: c.user.email, email: c.user.email, role: c.role === 'owner' ? 'admin' : c.role }; }); },
-    listarClientes: function() { return api(async function() { return (await listaClientes()).map(function(r) { return de(r, CLI, 'ID_CLIENTE'); }); }); },
+    listarClientes: function() { return api(async function() { return (await listaClientes()).map(function(r) { const o = de(r, CLI, 'ID_CLIENTE'); o.PORTAL = !!r.auth_user_id; return o; }); }); },
     salvarCliente: function(t, d) {
       return api(async function() {
         const c = await ctx(); d = d || {};
@@ -2343,6 +2346,61 @@ window.DOMOTICA_CFG = {
   }
   async function agStatus(id, st) { try { must(await sb.from('visits').update({ status: st }).eq('id', id)); toast(st === 'concluida' ? 'Visita concluída.' : 'Visita cancelada.', 'success'); agCarregar(); } catch (e) { toast(msgErro(e.message), 'error'); } }
 
+
+  // ---------------- PORTAL DO CLIENTE (lado do dono) ----------------
+  const PORTAL_URL = 'https://app.domoticaautomacao.com.br/portal.html';
+  const PD_TIPO = { reparo: 'Reparo', cena: 'Cena', suporte: 'Suporte', duvida: 'Dúvida', outro: 'Outro' };
+  const PD_STATUS = { aberta: 'Aberta', em_analise: 'Em análise', agendada: 'Agendada', concluida: 'Concluída', cancelada: 'Cancelada' };
+  const PD_COR = { aberta: 'badge-blue', em_analise: 'badge-blue', agendada: 'badge-blue', concluida: 'badge-ok', cancelada: 'badge-off' };
+  const PD = { lista: [], resp: [], ver: 'abertas' };
+  window.portalCliente = async function(id) {
+    try {
+      const x = await ctx(); const c = must(await sb.from('clients').select('id,nome,whatsapp,telefone,auth_user_id').eq('id', id).eq('org_id', x.orgId).single());
+      const gerar = async () => {
+        const code = must(await sb.rpc('portal_gerar_convite', { p_client: id }));
+        const link = PORTAL_URL + '#convite=' + code;
+        abrirCompartilhar('Convite do portal · ' + c.nome, 'Olá, ' + c.nome.split(' ')[0] + '! Este é o seu acesso ao portal da Domótica, onde você acompanha a garantia, aprova projetos e pede reparos e cenas:\n\n' + link, c.whatsapp || c.telefone);
+      };
+      if (!c.auth_user_id) { await gerar(); return; }
+      abrirModal('Portal · ' + c.nome, '<p>Este cliente já tem acesso ao portal.</p>',
+        '<button class="btn btn-ghost" id="pt-des" style="margin-right:auto">Remover acesso</button><button class="btn btn-secondary" id="pt-novo">Novo convite</button><button class="btn btn-primary" onclick="fecharModal()">Fechar</button>');
+      $id('pt-novo').onclick = () => { fecharModal(); gerar().catch(e => toast(msgErro(e.message), 'error', 7000)); };
+      $id('pt-des').onclick = () => confirmarAcao('Remover o acesso de ' + c.nome + ' ao portal?', async function() { try { must(await sb.rpc('portal_desvincular', { p_client: id })); fecharModal(); toast('Acesso removido.', 'success'); if (VIEWS.clientes && VIEWS.clientes.render) location.reload(); } catch (e) { toast(msgErro(e.message), 'error', 7000); } }, { textoConfirmar: 'Remover', perigo: true });
+    } catch (e) { toast(msgErro(e.message), 'error', 7000); }
+  };
+  VIEWS.pedidos = {
+    titulo: 'Pedidos',
+    render: async function(c) {
+      $id('topbar-actions').innerHTML = '';
+      c.innerHTML = '<div class="toolbar"><select id="pd-ver" class="form-input"><option value="abertas">Em aberto</option><option value="todas">Todos</option></select></div><div id="pd-lista"><div class="small">Carregando...</div></div>';
+      $id('pd-ver').value = PD.ver; $id('pd-ver').addEventListener('change', e => { PD.ver = e.target.value; pdPintar(); });
+      const h = ev => { const b = ev.target.closest('[data-pd]'); if (b) pdAbrir(b.getAttribute('data-pd')); };
+      if (c._pdH) c.removeEventListener('click', c._pdH); c._pdH = h; c.addEventListener('click', h);
+      await pdCarregar();
+    },
+  };
+  async function pdCarregar() {
+    try { const x = await ctx(); const [s, r] = await Promise.all([sb.from('service_requests').select('*, clients(nome)').eq('org_id', x.orgId).order('created_at', { ascending: false }), sb.from('client_responses').select('*, clients(nome)').eq('org_id', x.orgId).order('created_at', { ascending: false }).limit(30)]); PD.lista = must(s); PD.resp = must(r); pdPintar(); }
+    catch (e) { const b = $id('pd-lista'); if (b) b.innerHTML = '<div class="alert alert-error">' + escHtml(msgErro(e.message)) + '</div>'; }
+  }
+  function pdPintar() {
+    const b = $id('pd-lista'); if (!b) return;
+    const l = PD.lista.filter(s => PD.ver === 'todas' || s.status === 'aberta' || s.status === 'em_analise' || s.status === 'agendada');
+    const dt = d => new Date(d).toLocaleDateString('pt-BR');
+    const sec1 = l.length ? l.map(s => '<div class="glass item-card" data-pd="' + s.id + '" style="cursor:pointer"><div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap"><div style="min-width:0"><div class="row-title">' + escHtml(s.titulo) + '</div><div class="small">' + escHtml((s.clients && s.clients.nome) || '') + ' · ' + PD_TIPO[s.tipo] + (s.ambiente ? ' · ' + escHtml(s.ambiente) : '') + ' · ' + dt(s.created_at) + '</div></div><span class="badge ' + PD_COR[s.status] + '">' + PD_STATUS[s.status] + '</span></div></div>').join('') : '<div class="glass card empty">Nenhum pedido ' + (PD.ver === 'todas' ? '' : 'em aberto ') + 'por enquanto.</div>';
+    const AC = { aprovado: 'aprovou', recusado: 'recusou', alteracoes: 'pediu alterações em' };
+    const sec2 = PD.resp.length ? '<div class="row-title" style="margin:20px 2px 8px">Respostas dos clientes</div>' + PD.resp.map(r => '<div class="glass item-card"><div class="small">' + dt(r.created_at) + '</div><div><b>' + escHtml((r.clients && r.clients.nome) || '') + '</b> ' + AC[r.acao] + ' ' + (r.alvo_tipo === 'orcamento' ? 'um orçamento' : 'um projeto') + (r.comentario ? '<div class="small" style="margin-top:4px">“' + escHtml(r.comentario) + '”</div>' : '') + '</div></div>').join('') : '';
+    b.innerHTML = sec1 + sec2;
+  }
+  function pdAbrir(id) {
+    const s = PD.lista.find(x => x.id === id); if (!s) return;
+    abrirModal(s.titulo, '<div class="small">' + escHtml((s.clients && s.clients.nome) || '') + ' · ' + PD_TIPO[s.tipo] + (s.ambiente ? ' · ' + escHtml(s.ambiente) : '') + '</div>' +
+      (s.descricao ? '<p style="white-space:pre-wrap">' + escHtml(s.descricao) + '</p>' : '') +
+      '<div class="form-group"><label class="form-label">Situação</label><select id="pd-st" class="form-input">' + Object.keys(PD_STATUS).map(k => '<option value="' + k + '"' + (k === s.status ? ' selected' : '') + '>' + PD_STATUS[k] + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Resposta ao cliente</label><textarea id="pd-resp" class="form-input" rows="4" maxlength="2000">' + escHtml(s.resposta || '') + '</textarea></div>',
+      '<button class="btn btn-secondary" onclick="fecharModal()">Fechar</button><button class="btn btn-primary" id="pd-salvar">Salvar</button>');
+    $id('pd-salvar').onclick = async () => { try { must(await sb.from('service_requests').update({ status: $id('pd-st').value, resposta: $id('pd-resp').value.trim() || null }).eq('id', id)); fecharModal(); toast('Pedido atualizado.', 'success'); pdCarregar(); } catch (e) { toast(msgErro(e.message), 'error', 7000); } };
+  }
   window.iniciarApp = async function() {
     document.addEventListener('keydown', function(ev) {
       if (ev.key === 'Escape') fecharModal();

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b1220">
+<title>Portal do cliente · Domótica</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2">
+<style>
+:root{--bg:#0b1220;--card:#131c2e;--card2:#18243a;--line:rgba(255,255,255,.09);--tx:#f2f5fa;--mut:#93a1b8;--or:#ff7a00;--ok:#2ea44f;--warn:#e3a008;--bad:#e5484d;--blue:#4c8dff}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-text-size-adjust:100%}
+body{min-height:100vh;overflow-wrap:anywhere}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;min-width:0}
+textarea{resize:vertical}
+label{display:block;font-size:.82em;color:var(--mut);margin:12px 0 5px 2px}
+.btn{border:1px solid var(--line);background:var(--card2);border-radius:12px;padding:11px 16px;cursor:pointer;font-weight:600;min-height:44px}
+.btn.pri{background:var(--or);border-color:var(--or);color:#111}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.sm{padding:8px 12px;min-height:38px;font-size:.9em}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.5}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+header{position:sticky;top:0;z-index:5;background:rgba(11,18,32,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;height:56px;gap:10px}
+.logo{font-weight:800;color:var(--or);letter-spacing:.2px}
+.logo small{display:block;font-weight:500;color:var(--mut);font-size:.7em;letter-spacing:0}
+main{padding:16px 0 96px}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(11,18,32,.96);border-top:1px solid var(--line);z-index:5;padding-bottom:env(safe-area-inset-bottom)}
+nav .wrap{display:flex;gap:2px;padding:0 6px}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:8px 2px 7px;font-size:.72em;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative;min-width:0}
+nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--or)}
+nav .dot{position:absolute;top:4px;left:calc(50% + 8px);background:var(--or);color:#111;border-radius:9px;font-size:.85em;min-width:17px;height:17px;line-height:17px;font-weight:800;padding:0 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:0 0 12px}
+.card h3{margin:0 0 4px;font-size:1.05em}
+.sm{font-size:.86em;color:var(--mut)}
+.row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:.78em;font-weight:700;white-space:nowrap}
+.b-ok{background:rgba(46,164,79,.18);color:#5fd682}.b-warn{background:rgba(227,160,8,.18);color:#f3c04a}.b-bad{background:rgba(229,72,77,.18);color:#ff8083}.b-blue{background:rgba(76,141,255,.18);color:#8db4ff}.b-off{background:rgba(147,161,184,.16);color:var(--mut)}
+.h{margin:22px 2px 10px;font-size:.8em;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:700}
+.hero{background:linear-gradient(135deg,#1a2740,#131c2e);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+.hero h2{margin:0 0 2px;font-size:1.3em}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat{background:rgba(255,255,255,.05);border-radius:12px;padding:10px 6px;text-align:center}
+.stat b{display:block;font-size:1.6em;line-height:1.1}
+.stat span{font-size:.72em;color:var(--mut)}
+.bar{height:8px;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--or)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.acts .btn{flex:1 1 140px}
+.empty{text-align:center;color:var(--mut);padding:26px 10px}
+.item{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item img{width:44px;height:44px;object-fit:contain;background:#fff;border-radius:8px;flex:none}
+.item .t{flex:1;min-width:0}
+a{color:var(--blue)}
+/* login */
+.auth{max-width:420px;margin:0 auto;padding:36px 20px}
+.tabs{display:flex;gap:6px;margin:18px 0 6px}
+.tabs button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--card2);color:var(--tx)}
+.err{background:rgba(229,72,77,.15);color:#ff9a9d;border-radius:10px;padding:10px 12px;margin:12px 0;font-size:.92em}
+.msg{background:rgba(46,164,79,.15);color:#7fe0a0;border-radius:10px;padding:10px 12px;margin:12px 0;font-size:.92em}
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92vh;overflow:auto;padding:18px 18px calc(18px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 6px;font-size:1.15em}
+.sheet .acts{margin-top:16px}
+@media (min-width:640px){.ov{align-items:center}.sheet{border-radius:20px}}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#222c40;border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:30;display:none;max-width:90vw}
+</style>
+</head>
+<body>
+<div id="raiz"></div>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>// Chaves PÚBLICAS do projeto Supabase "domotica-erp" (a chave publishable foi feita para ficar no navegador;
+// quem protege os dados é o RLS no banco). Nunca coloque aqui a chave service_role.
+window.DOMOTICA_CFG = {
+  url: 'https://uscdtmynbksepdtwdvvq.supabase.co',
+  key: 'sb_publishable_KO5FHrsYVt6iKo8VuXMLkw_Cc0ledzr',
+  // Chave PÚBLICA do Cloudflare Turnstile (CAPTCHA). A chave secreta fica só no Supabase.
+  turnstile: '0x4AAAAAAGGY7w8plV_6Xtly',
+};
+</script>
+<script>
+(function () {
+  var CFG = window.DOMOTICA_CFG, sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  var R = document.getElementById('raiz'), D = null, ABA = 'inicio';
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function brl(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function dia(d) { return d ? new Date(d.length === 10 ? d + 'T12:00:00' : d).toLocaleDateString('pt-BR') : ''; }
+  function dh(d) { var x = new Date(d); return x.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' às ' + x.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+  function seguro(u) { return /^https?:\/\//i.test(u || '') ? u : ''; }
+  function toast(m) { var t = document.getElementById('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = 'none'; }, 4200); }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } }
+  function erroMsg(e) { var m = (e && e.message) || String(e); if (/Invalid login|invalid_credentials/i.test(m)) return 'E-mail ou senha incorretos.'; if (/already registered|already been registered/i.test(m)) return 'Este e-mail já tem conta. Use “Entrar”.'; return m; }
+
+  /* ---------- convite pela URL ---------- */
+  (function () { var m = /convite=([A-Za-z0-9]+)/.exec(location.hash || ''); if (m) { lsSet('dom_convite', m[1].toUpperCase()); history.replaceState(null, '', location.pathname); } })();
+
+  /* ---------- turnstile ---------- */
+  var CF = { id: null, tok: '' };
+  function cfMontar(el) {
+    if (!CFG.turnstile) return;
+    function go() { if (!window.turnstile) return; CF.tok = ''; CF.id = window.turnstile.render(el, { sitekey: CFG.turnstile, theme: 'dark', size: 'flexible', language: 'pt-br', callback: function (t) { CF.tok = t; }, 'expired-callback': function () { CF.tok = ''; }, 'error-callback': function () { CF.tok = ''; } }); }
+    if (window.turnstile) return go();
+    var s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true; s.onload = go; document.head.appendChild(s);
+  }
+  async function cfToken() { if (!CFG.turnstile) return undefined; for (var i = 0; i < 100; i++) { if (CF.tok) return CF.tok; await new Promise(function (r) { setTimeout(r, 200); }); } return ''; }
+  function cfReset() { CF.tok = ''; try { if (window.turnstile && CF.id !== null) window.turnstile.reset(CF.id); } catch (e) { } }
+
+  /* ---------- autenticação ---------- */
+  function telaAuth(modo, aviso) {
+    var conv = lsGet('dom_convite');
+    R.innerHTML = '<div class="auth"><div class="logo" style="font-size:1.4em">Domótica<small>Portal do cliente</small></div>' +
+      (conv ? '<div class="msg">Convite recebido. Entre ou crie sua conta para ativar o seu acesso.</div>' : '') +
+      '<div class="tabs"><button data-m="entrar" class="' + (modo === 'entrar' ? 'on' : '') + '">Entrar</button><button data-m="criar" class="' + (modo === 'criar' ? 'on' : '') + '">Criar conta</button></div>' +
+      (aviso ? '<div class="' + (aviso.ok ? 'msg' : 'err') + '">' + esc(aviso.t) + '</div>' : '') +
+      (modo === 'criar' ? '<label>Seu nome</label><input id="a-nome" autocomplete="name" maxlength="80">' : '') +
+      '<label>E-mail</label><input id="a-email" type="email" autocomplete="email" inputmode="email"><label>Senha' + (modo === 'criar' ? ' (mínimo 8 caracteres)' : '') + '</label><input id="a-senha" type="password" autocomplete="' + (modo === 'criar' ? 'new-password' : 'current-password') + '">' +
+      '<div id="a-cf" style="margin:14px 0 4px"></div><button class="btn pri" id="a-ok" style="width:100%;margin-top:8px">' + (modo === 'criar' ? 'Criar conta' : 'Entrar') + '</button></div>';
+    R.querySelector('.tabs').onclick = function (e) { var b = e.target.closest('button'); if (b) telaAuth(b.dataset.m); };
+    cfMontar(document.getElementById('a-cf'));
+    document.getElementById('a-ok').onclick = function () { modo === 'criar' ? criarConta() : entrar(); };
+    document.getElementById('a-senha').onkeydown = function (e) { if (e.key === 'Enter') document.getElementById('a-ok').click(); };
+  }
+  async function entrar() {
+    var email = document.getElementById('a-email').value.trim(), senha = document.getElementById('a-senha').value, b = document.getElementById('a-ok');
+    if (!email || !senha) return telaAuth('entrar', { t: 'Informe e-mail e senha.' });
+    b.disabled = true; b.textContent = 'Entrando...';
+    var tk = await cfToken(); if (tk === '') { cfReset(); return telaAuth('entrar', { t: 'Não foi possível concluir a verificação de segurança. Tente de novo.' }); }
+    var resp, d = {};
+    try { resp = await fetch(CFG.url + '/functions/v1/login-seguro', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, senha: senha, captcha: tk }) }); d = await resp.json().catch(function () { return {}; }); }
+    catch (e) { return telaAuth('entrar', { t: 'Sem conexão. Verifique a internet.' }); }
+    if (!resp.ok || !d.sessao) return telaAuth('entrar', { t: d.erro || 'Não foi possível entrar agora.' });
+    var s = await sb.auth.setSession({ access_token: d.sessao.access_token, refresh_token: d.sessao.refresh_token });
+    if (s.error) return telaAuth('entrar', { t: erroMsg(s.error) });
+    iniciar();
+  }
+  async function criarConta() {
+    var nome = document.getElementById('a-nome').value.trim(), email = document.getElementById('a-email').value.trim(), senha = document.getElementById('a-senha').value;
+    if (!nome || !email) return telaAuth('criar', { t: 'Informe seu nome e e-mail.' });
+    if (senha.length < 8) return telaAuth('criar', { t: 'A senha precisa ter pelo menos 8 caracteres.' });
+    var b = document.getElementById('a-ok'); b.disabled = true; b.textContent = 'Criando...';
+    var tk = await cfToken(); if (tk === '') { cfReset(); return telaAuth('criar', { t: 'Não foi possível concluir a verificação de segurança. Tente de novo.' }); }
+    var r = await sb.auth.signUp({ email: email, password: senha, options: { data: { nome: nome }, emailRedirectTo: location.origin + location.pathname, captchaToken: tk } });
+    if (r.error) { cfReset(); return telaAuth('criar', { t: erroMsg(r.error) }); }
+    telaAuth('entrar', { ok: true, t: 'Conta criada. Enviamos um link de confirmação para ' + email + '. Confirme e depois entre.' });
+  }
+  async function sair() { try { await sb.auth.signOut(); } catch (e) { } D = null; telaAuth('entrar'); }
+
+  async function iniciar() {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) return telaAuth('entrar');
+    R.innerHTML = '<div class="empty" style="padding-top:40vh">Carregando...</div>';
+    var conv = lsGet('dom_convite');
+    if (conv) { var c = await sb.rpc('claim_client_invite', { p_code: conv }); lsSet('dom_convite', null); if (c.error) toast(c.error.message); }
+    var r = await sb.rpc('portal_resumo');
+    if (r.error) { R.innerHTML = '<div class="auth"><div class="err">' + esc(r.error.message) + '</div><button class="btn" id="x-s">Sair</button></div>'; document.getElementById('x-s').onclick = sair; return; }
+    if (r.data && r.data.erro) return telaSemVinculo();
+    D = r.data; pintar();
+  }
+  function telaSemVinculo() {
+    R.innerHTML = '<div class="auth"><div class="logo" style="font-size:1.4em">Domótica<small>Portal do cliente</small></div><div class="card" style="margin-top:20px"><h3>Seu acesso ainda não foi ativado</h3><p class="sm">Digite o código do convite que a Domótica enviou para você.</p><label>Código do convite</label><input id="v-cod" autocapitalize="characters" maxlength="20"><button class="btn pri" id="v-ok" style="width:100%;margin-top:14px">Ativar acesso</button></div><button class="btn ghost" id="v-s" style="width:100%">Sair</button></div>';
+    document.getElementById('v-s').onclick = sair;
+    document.getElementById('v-ok').onclick = async function () { var c = document.getElementById('v-cod').value.trim().toUpperCase(); if (!c) return; var x = await sb.rpc('claim_client_invite', { p_code: c }); if (x.error) return toast(x.error.message); iniciar(); };
+  }
+
+  /* ---------- regras de leitura dos dados ---------- */
+  function garantia(d) {
+    if (!d.dt_fim_garantia) return { t: 'Sem garantia registrada', c: 'b-off', n: null, k: 'sem' };
+    var n = Math.ceil((new Date(d.dt_fim_garantia + 'T23:59:59') - new Date()) / 86400000);
+    if (n < 0) return { t: 'Garantia encerrada em ' + dia(d.dt_fim_garantia), c: 'b-bad', n: n, k: 'fim' };
+    if (n <= 60) return { t: 'Garantia vence em ' + n + (n === 1 ? ' dia' : ' dias'), c: 'b-warn', n: n, k: 'perto' };
+    return { t: 'Garantia até ' + dia(d.dt_fim_garantia), c: 'b-ok', n: n, k: 'ok' };
+  }
+  var ST_PED = { aberta: ['Aberta', 'b-blue'], em_analise: ['Em análise', 'b-blue'], agendada: ['Agendada', 'b-warn'], concluida: ['Concluída', 'b-ok'], cancelada: ['Cancelada', 'b-off'] };
+  var TIPO_PED = { reparo: 'Reparo', cena: 'Cena', suporte: 'Suporte', duvida: 'Dúvida', outro: 'Outro' };
+  var ST_ORC = { enviado: ['Aguardando sua resposta', 'b-blue'], aprovado: ['Aprovado', 'b-ok'], perdido: ['Recusado', 'b-off'] };
+  function abertos() { return D.solicitacoes.filter(function (s) { return s.status === 'aberta' || s.status === 'em_analise' || s.status === 'agendada'; }); }
+  function projPend() { return D.projetos.filter(function (p) { return !p.resposta || p.resposta.acao === 'alteracoes' ? !p.resposta : false; }); }
+  function orcPend() { return D.orcamentos.filter(function (o) { return o.status === 'enviado'; }); }
+
+  /* ---------- casca ---------- */
+  var ICO = {
+    inicio: '<path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1V11z"/>',
+    projetos: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h8M11 3v8M11 15v6M15 13h6"/>',
+    orcamentos: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>',
+    casa: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="3.2"/>',
+    pedidos: '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/>'
+  };
+  function pintar() {
+    var cont = { projetos: projPend().length, orcamentos: orcPend().length, pedidos: abertos().length };
+    var nomes = { inicio: 'Início', projetos: 'Projetos', orcamentos: 'Orçamentos', casa: 'Minha casa', pedidos: 'Pedidos' };
+    R.innerHTML = '<header><div class="wrap"><div class="logo">' + esc((D.empresa && D.empresa.nome) || 'Domótica') + '<small>Portal do cliente</small></div><button class="btn sm ghost" id="p-sair">Sair</button></div></header>' +
+      '<main><div class="wrap" id="p-corpo"></div></main>' +
+      '<nav><div class="wrap">' + Object.keys(nomes).map(function (k) { return '<button data-a="' + k + '" class="' + (k === ABA ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + ICO[k] + '</svg>' + nomes[k] + (k !== 'inicio' && k !== 'casa' && cont[k] ? '<span class="dot">' + cont[k] + '</span>' : '') + '</button>'; }).join('') + '</div></nav>';
+    document.getElementById('p-sair').onclick = sair;
+    R.querySelector('nav').onclick = function (e) { var b = e.target.closest('button'); if (b) { ABA = b.dataset.a; pintar(); window.scrollTo(0, 0); } };
+    var corpo = document.getElementById('p-corpo'); corpo.innerHTML = ({ inicio: vInicio, projetos: vProjetos, orcamentos: vOrcamentos, casa: vCasa, pedidos: vPedidos })[ABA]();
+    corpo.onclick = clique;
+  }
+  async function recarregar() { var r = await sb.rpc('portal_resumo'); if (r.error || (r.data && r.data.erro)) return toast('Não foi possível atualizar.'); D = r.data; pintar(); }
+
+  /* ---------- telas ---------- */
+  function vInicio() {
+    var dv = D.dispositivos, g = { ok: 0, perto: 0, fim: 0 }; dv.forEach(function (d) { var k = garantia(d).k; if (g[k] != null) g[k]++; });
+    var ab = abertos(), prox = D.visitas.filter(function (v) { return v.status !== 'concluida' && new Date(v.dt_inicio) > new Date(); })[0], ob = D.obras.filter(function (o) { return o.status !== 'concluida' && o.status !== 'cancelada'; })[0];
+    var saude = !dv.length ? 'Seus dispositivos aparecerão aqui depois da instalação.' : g.fim || g.perto ? (g.perto ? g.perto + ' dispositivo(s) com garantia perto do fim. ' : '') + (g.fim ? g.fim + ' com garantia encerrada.' : '') : 'Tudo certo: todos os dispositivos estão dentro da garantia.';
+    var pend = [];
+    projPend().forEach(function (p) { pend.push('<div class="item"><div class="t"><b>' + esc(p.nome) + '</b><div class="sm">Projeto aguardando sua aprovação</div></div><button class="btn sm pri" data-go="projetos">Ver</button></div>'); });
+    orcPend().forEach(function (o) { pend.push('<div class="item"><div class="t"><b>Orçamento nº ' + o.numero + '</b><div class="sm">Aguardando sua resposta · ' + brl(o.valor_total) + '</div></div><button class="btn sm pri" data-go="orcamentos">Ver</button></div>'); });
+    return '<div class="hero"><h2>Olá, ' + esc((D.cliente.nome || '').split(' ')[0]) + '</h2><div class="sm">Saúde da sua casa inteligente</div>' +
+      '<div class="grid3"><div class="stat"><b style="color:#5fd682">' + g.ok + '</b><span>em garantia</span></div><div class="stat"><b style="color:#f3c04a">' + g.perto + '</b><span>vencendo</span></div><div class="stat"><b style="color:#ff8083">' + g.fim + '</b><span>sem garantia</span></div></div>' +
+      '<div class="sm" style="margin-top:12px;color:var(--tx)">' + esc(saude) + '</div>' +
+      '<div class="acts"><button class="btn pri" data-nova="reparo">Solicitar reparo</button><button class="btn" data-nova="cena">Solicitar cena</button></div></div>' +
+      (pend.length ? '<div class="h">Precisa da sua atenção</div><div class="card">' + pend.join('') + '</div>' : '') +
+      (ob ? '<div class="h">Obra</div><div class="card"><div class="row"><b>Instalação em andamento</b><span class="badge b-blue">' + Math.round(ob.progresso_pct || 0) + '%</span></div><div class="bar"><i style="width:' + Math.round(ob.progresso_pct || 0) + '%"></i></div>' + (ob.dt_inicio ? '<div class="sm" style="margin-top:6px">Início em ' + dia(ob.dt_inicio) + '</div>' : '') + '</div>' : '') +
+      (prox ? '<div class="h">Próxima visita</div><div class="card"><b>' + esc(prox.titulo || 'Visita técnica') + '</b><div class="sm">' + dh(prox.dt_inicio) + '</div></div>' : '') +
+      '<div class="h">Pedidos em aberto</div>' + (ab.length ? ab.slice(0, 3).map(cardPedido).join('') : '<div class="card empty">Nenhum pedido em aberto.</div>');
+  }
+  function vProjetos() {
+    if (!D.projetos.length) return '<div class="card empty">Seu projeto aparecerá aqui quando estiver pronto para você ver.</div>';
+    return D.projetos.map(function (p) {
+      var r = p.resposta, st = !r ? ['Aguardando sua aprovação', 'b-blue'] : r.acao === 'aprovado' ? ['Aprovado em ' + dia(r.em), 'b-ok'] : ['Alterações pedidas', 'b-warn'];
+      return '<div class="card"><div class="row"><div style="min-width:0"><h3>' + esc(p.nome) + '</h3><div class="sm">' + esc(p.imovel || '') + '</div></div><span class="badge ' + st[1] + '">' + st[0] + '</span></div>' +
+        (r && r.comentario ? '<div class="sm" style="margin-top:8px">“' + esc(r.comentario) + '”</div>' : '') +
+        '<div class="acts"><a class="btn" style="text-align:center;text-decoration:none;color:inherit" href="ver.html#p=' + esc(p.id) + '">Ver planta e 3D</a>' +
+        (r && r.acao === 'aprovado' ? '' : '<button class="btn" data-proj="alteracoes" data-id="' + esc(p.id) + '">Pedir alterações</button><button class="btn ok" data-proj="aprovado" data-id="' + esc(p.id) + '">Aprovar</button>') + '</div></div>';
+    }).join('');
+  }
+  function vOrcamentos() {
+    if (!D.orcamentos.length) return '<div class="card empty">Quando a Domótica enviar um orçamento, ele aparece aqui.</div>';
+    return D.orcamentos.map(function (o) {
+      var st = ST_ORC[o.status] || [o.status, 'b-off'];
+      var amb = (o.ambientes || []).map(function (a) {
+        return '<div class="h" style="margin:14px 0 4px">' + esc(a.nome) + '</div>' + (a.itens || []).map(function (i) {
+          var l = seguro(i.link);
+          return '<div class="item">' + (seguro(i.imagem) ? '<img src="' + esc(i.imagem) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : '') + '<div class="t"><div>' + esc(i.descricao) + (i.qtd > 1 ? ' <span class="sm">× ' + i.qtd + '</span>' : '') + '</div><div class="sm">Instalação ' + brl(i.instalacao) + (i.qtd > 1 ? ' cada' : '') + '</div></div>' + (l ? '<a class="btn sm" style="text-decoration:none;color:inherit" target="_blank" rel="noopener noreferrer" href="' + esc(l) + '">Comprar</a>' : '') + '</div>';
+        }).join('');
+      }).join('');
+      return '<div class="card"><div class="row"><div><h3>Orçamento nº ' + o.numero + '</h3><div class="sm">' + dia(o.criado_em) + (o.garantia_meses ? ' · garantia de ' + o.garantia_meses + ' meses' : '') + '</div></div><span class="badge ' + st[1] + '">' + st[0] + '</span></div>' +
+        '<div style="font-size:1.5em;font-weight:800;margin:10px 0 0">' + brl(o.valor_total) + '</div><div class="sm">Valor da instalação. Os aparelhos você compra pelos links.</div>' + amb +
+        (o.observacoes ? '<div class="sm" style="margin-top:12px">' + esc(o.observacoes) + '</div>' : '') +
+        (o.resposta && o.resposta.comentario ? '<div class="sm" style="margin-top:8px">Seu comentário: “' + esc(o.resposta.comentario) + '”</div>' : '') +
+        (o.status === 'enviado' ? '<div class="acts"><button class="btn" data-orc="recusado" data-id="' + esc(o.id) + '">Recusar</button><button class="btn ok" data-orc="aprovado" data-id="' + esc(o.id) + '">Aprovar orçamento</button></div>' : '') + '</div>';
+    }).join('');
+  }
+  function vCasa() {
+    if (!D.dispositivos.length) return '<div class="card empty">Seus dispositivos e garantias aparecerão aqui depois da instalação.</div>';
+    var por = {}; D.dispositivos.forEach(function (d) { (por[d.ambiente || 'Outros'] = por[d.ambiente || 'Outros'] || []).push(d); });
+    return Object.keys(por).map(function (k) {
+      return '<div class="h">' + esc(k) + '</div><div class="card">' + por[k].map(function (d) {
+        var g = garantia(d);
+        return '<div class="item"><div class="t"><b>' + esc(d.nome) + '</b><div class="sm">' + (d.dt_instalacao ? 'Instalado em ' + dia(d.dt_instalacao) : '') + '</div><span class="badge ' + g.c + '" style="margin-top:6px">' + esc(g.t) + '</span></div><button class="btn sm" data-nova="reparo" data-dev="' + esc(d.id) + '">Pedir reparo</button></div>';
+      }).join('') + '</div>';
+    }).join('');
+  }
+  function cardPedido(s) {
+    var st = ST_PED[s.status] || [s.status, 'b-off'];
+    return '<div class="card"><div class="row"><div style="min-width:0"><h3>' + esc(s.titulo) + '</h3><div class="sm">' + TIPO_PED[s.tipo] + (s.ambiente ? ' · ' + esc(s.ambiente) : '') + ' · ' + dia(s.criado_em) + '</div></div><span class="badge ' + st[1] + '">' + st[0] + '</span></div>' +
+      (s.descricao ? '<div class="sm" style="margin-top:8px;white-space:pre-wrap">' + esc(s.descricao) + '</div>' : '') +
+      (s.resposta ? '<div style="margin-top:10px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px 12px"><div class="sm">Resposta da equipe</div><div style="white-space:pre-wrap">' + esc(s.resposta) + '</div></div>' : '') +
+      (s.status === 'aberta' ? '<div class="acts"><button class="btn sm ghost" data-canc="' + esc(s.id) + '">Cancelar pedido</button></div>' : '') + '</div>';
+  }
+  function vPedidos() {
+    return '<div class="acts" style="margin:0 0 14px"><button class="btn pri" data-nova="reparo">Reparo</button><button class="btn" data-nova="cena">Cena</button><button class="btn" data-nova="suporte">Suporte</button></div>' +
+      (D.solicitacoes.length ? D.solicitacoes.map(cardPedido).join('') : '<div class="card empty">Você ainda não fez nenhum pedido.</div>');
+  }
+
+  /* ---------- ações ---------- */
+  function sheet(html) { var o = document.createElement('div'); o.className = 'ov'; o.innerHTML = '<div class="sheet">' + html + '</div>'; o.onclick = function (e) { if (e.target === o) o.remove(); }; document.body.appendChild(o); return o; }
+  function clique(e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.go) { ABA = b.dataset.go; pintar(); window.scrollTo(0, 0); }
+    else if (b.dataset.nova) novoPedido(b.dataset.nova, b.dataset.dev);
+    else if (b.dataset.canc) { if (confirm('Cancelar este pedido?')) sb.rpc('portal_cancelar_solicitacao', { p_id: b.dataset.canc }).then(function (r) { if (r.error) toast(r.error.message); else { toast('Pedido cancelado.'); recarregar(); } }); }
+    else if (b.dataset.proj) responder('projeto', b.dataset.id, b.dataset.proj);
+    else if (b.dataset.orc) responder('orcamento', b.dataset.id, b.dataset.orc);
+  }
+  function novoPedido(tipo, dev) {
+    var T = { reparo: ['Solicitar reparo', 'O que aconteceu?', 'Ex.: o interruptor da sala não liga mais a luz'], cena: ['Solicitar cena', 'Qual cena você quer?', 'Ex.: “Cinema”: luzes da sala a 10% e cortina fechada'], suporte: ['Pedir suporte', 'Como podemos ajudar?', 'Descreva a sua dúvida ou o problema'] }[tipo] || ['Novo pedido', 'Descreva', ''];
+    var opts = '<option value="">Nenhum específico</option>' + D.dispositivos.map(function (d) { return '<option value="' + esc(d.id) + '"' + (d.id === dev ? ' selected' : '') + '>' + esc(d.nome + (d.ambiente ? ' · ' + d.ambiente : '')) + '</option>'; }).join('');
+    var o = sheet('<h3>' + T[0] + '</h3><label>Título</label><input id="n-t" maxlength="120" placeholder="' + (tipo === 'cena' ? 'Nome da cena' : 'Resumo do pedido') + '"><label>' + T[1] + '</label><textarea id="n-d" rows="4" maxlength="2000" placeholder="' + esc(T[2]) + '"></textarea><label>Ambiente (opcional)</label><input id="n-a" maxlength="80">' +
+      (tipo !== 'cena' && D.dispositivos.length ? '<label>Dispositivo (opcional)</label><select id="n-v">' + opts + '</select>' : '') +
+      '<div class="acts"><button class="btn" id="n-x">Cancelar</button><button class="btn pri" id="n-ok">Enviar pedido</button></div>');
+    o.querySelector('#n-x').onclick = function () { o.remove(); };
+    o.querySelector('#n-ok').onclick = async function () {
+      var t = o.querySelector('#n-t').value.trim(); if (t.length < 3) return toast('Dê um título ao pedido.');
+      var v = o.querySelector('#n-v'), btn = this; btn.disabled = true;
+      var r = await sb.rpc('portal_solicitar', { p_tipo: tipo, p_titulo: t, p_descricao: o.querySelector('#n-d').value, p_ambiente: o.querySelector('#n-a').value, p_device: v && v.value ? v.value : null });
+      if (r.error) { btn.disabled = false; return toast(r.error.message); }
+      o.remove(); ABA = 'pedidos'; toast('Pedido enviado. A equipe vai responder por aqui.'); recarregar();
+    };
+  }
+  function responder(tipo, id, acao) {
+    var tit = { aprovado: tipo === 'orcamento' ? 'Aprovar orçamento' : 'Aprovar projeto', recusado: 'Recusar orçamento', alteracoes: 'Pedir alterações' }[acao];
+    var pedeCom = acao === 'alteracoes';
+    var o = sheet('<h3>' + tit + '</h3>' + (acao === 'aprovado' ? '<p class="sm">Ao aprovar, a Domótica será avisada para dar continuidade.</p>' : '') + '<label>' + (pedeCom ? 'O que você quer mudar?' : 'Comentário (opcional)') + '</label><textarea id="r-c" rows="4" maxlength="2000"></textarea><div class="acts"><button class="btn" id="r-x">Voltar</button><button class="btn ' + (acao === 'aprovado' ? 'ok' : 'pri') + '" id="r-ok">Confirmar</button></div>');
+    o.querySelector('#r-x').onclick = function () { o.remove(); };
+    o.querySelector('#r-ok').onclick = async function () {
+      var c = o.querySelector('#r-c').value; if (pedeCom && c.trim().length < 3) return toast('Descreva as alterações que você quer.');
+      this.disabled = true; var r = await sb.rpc('portal_responder', { p_tipo: tipo, p_id: id, p_acao: acao, p_comentario: c });
+      if (r.error) { this.disabled = false; return toast(r.error.message); }
+      o.remove(); toast(acao === 'aprovado' ? 'Aprovado. Obrigado!' : 'Resposta enviada.'); recarregar();
+    };
+  }
+
+  window.addEventListener('load', iniciar);
+  sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') { D = null; telaAuth('entrar'); } });
+})();
+</script>
+</body>
+</html>

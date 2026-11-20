@@ -130,8 +130,9 @@ window.DOMOTICA_CFG = {
 (function() {
   document.documentElement.classList.add('ro');
   var CFG = window.DOMOTICA_CFG;
-  var sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-  var token = (location.hash || '').replace(/^#/, '').trim();
+  var PORTAL = /^#p=/.test(location.hash);
+  var sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: PORTAL, autoRefreshToken: PORTAL, detectSessionInUrl: false } });
+  var token = (location.hash || '').replace(/^#/, '').trim(), PID = PORTAL ? token.slice(2) : '';
   var D = null;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function dia(x) { return new Date(x).toLocaleDateString('pt-BR'); }
@@ -157,22 +158,22 @@ window.DOMOTICA_CFG = {
   function pintaStatus() {
     var el = document.getElementById('v-status'); if (!el) return;
     var ultima = (D.respostas || []).slice(-1)[0];
-    el.textContent = D.status === 'aprovada' ? '✓ Você aprovou este projeto' + (ultima ? ' em ' + dia(ultima.em) : '') : D.status === 'alteracoes' ? '✎ Pedido de alterações enviado' : 'Link válido até ' + dia(D.expira_em);
+    el.textContent = D.status === 'aprovada' ? '✓ Você aprovou este projeto' + (ultima ? ' em ' + dia(ultima.em) : '') : D.status === 'alteracoes' ? '✎ Pedido de alterações enviado' : (PORTAL ? '' : 'Link válido até ' + dia(D.expira_em));
   }
   async function responder(acao) {
     var corpo = '<label style="font-size:13px">Seu nome<input data-nome style="' + CAMPO + '" maxlength="80"></label>' +
       (acao === 'alteracoes' ? '<label style="font-size:13px;display:block;margin-top:10px">O que você quer mudar?<textarea data-com rows="4" style="' + CAMPO + '" maxlength="2000" placeholder="Ex.: mover o ponto de luz da sala, incluir tomada na varanda…"></textarea></label>' : '<label style="font-size:13px;display:block;margin-top:10px">Comentário (opcional)<textarea data-com rows="2" style="' + CAMPO + '" maxlength="2000"></textarea></label>');
     var r = await dialogo(acao === 'aprovada' ? 'Aprovar projeto' : 'Solicitar alterações', corpo, acao === 'aprovada' ? 'Aprovar' : 'Enviar pedido');
     if (!r) return;
-    var x = await sb.rpc('share_responder', { p_token: token, p_acao: acao, p_nome: r.nome, p_comentario: r.com });
+    var x = PORTAL ? await sb.rpc('portal_responder', { p_tipo: 'projeto', p_id: PID, p_acao: acao === 'aprovada' ? 'aprovado' : 'alteracoes', p_comentario: r.com }) : await sb.rpc('share_responder', { p_token: token, p_acao: acao, p_nome: r.nome, p_comentario: r.com });
     if (x.error) { alert(x.error.message || 'Não foi possível enviar.'); return; }
     D.status = acao; D.respostas = (D.respostas || []).concat([{ acao: acao, nome: r.nome, em: new Date().toISOString() }]); pintaStatus();
     alert(acao === 'aprovada' ? 'Projeto aprovado. Obrigado!' : 'Pedido enviado. A Domótica vai analisar e retornar.');
   }
   window.addEventListener('load', async function() {
     if (!token) return tela('Link inválido.');
-    var r = await sb.rpc('share_get', { p_token: token });
-    var d = r.data;
+    var r = PORTAL ? await sb.rpc('portal_projeto', { p_id: PID }) : await sb.rpc('share_get', { p_token: token });
+    var d = r.data; if (PORTAL && d && !d.erro) { d.empresa = 'Domótica'; d.status = ''; d.respostas = []; }
     if (r.error || !d || d.erro) return tela(d && d.erro === 'expirado' ? 'Este link expirou. Peça um novo à Domótica.' : 'Este link não está disponível.');
     D = d; document.title = (d.nome || 'Planta') + ' · ' + (d.empresa || 'Domótica');
     window.Planta.carregar(d.planta, null);
@@ -180,6 +181,7 @@ window.DOMOTICA_CFG = {
     info.style.cssText = 'display:flex;flex-direction:column;line-height:1.25;font-size:13px';
     info.innerHTML = '<b>' + esc(d.nome || 'Planta') + (d.imovel ? ' · ' + esc(d.imovel) : '') + '</b><span id="v-status" style="opacity:.8"></span>';
     topo.appendChild(info); pintaStatus();
+    if (PORTAL) { var vt = document.createElement('a'); vt.href = 'portal.html'; vt.textContent = '← Portal'; vt.style.cssText = 'color:inherit;text-decoration:none;padding:7px 10px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);font-size:13px'; topo.insertBefore(vt, topo.firstChild); }
     var barra = document.createElement('div');
     barra.id = 'v-barra';
     barra.innerHTML = '<button data-a="alteracoes">✎ Solicitar alterações</button><button data-a="aprovada" class="ap">✓ Aprovar projeto</button>';
@@ -233,6 +235,7 @@ window.DOMOTICA_CFG = {
     <section id="v3d" class="view">
       <div id="bar3d">
         <label style="margin:0">Pé-direito</label><input id="pe3" type="number" style="width:84px"> <span class="note">cm</span>
+        <select id="vis3" title="Visual do 3D"><option value="noite">Noturno</option><option value="dia">Claro</option></select>
         <select id="modo3"><option value="solida">Paredes sólidas</option><option value="vidro">Paredes translúcidas</option><option value="corte">Corte (110 cm)</option></select>
         <label style="margin:0"><input type="checkbox" id="lig3" checked style="width:auto"> ligações</label>
         <label style="margin:0"><input type="checkbox" id="forro3" checked style="width:auto"> forro/teto</label>
@@ -2259,9 +2262,10 @@ async function abrir3d() {
     } catch (e) { return toast('Não consegui carregar o 3D: ' + e.message, 5000); }
     const c = $('#c3d'); T3.ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); T3.ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     c.insertBefore(T3.ren.domElement, c.firstChild);
+    T3.ren.shadowMap.enabled = true; T3.ren.shadowMap.type = THREE.PCFSoftShadowMap; T3.ren.outputEncoding = THREE.sRGBEncoding;
     T3.scene = new THREE.Scene(); T3.scene.background = new THREE.Color(0xe9eef5);
     T3.cam = new THREE.PerspectiveCamera(40, 1, 5, 80000); T3.ctl = new THREE.OrbitControls(T3.cam, T3.ren.domElement); T3.ctl.enableDamping = true;
-    T3.scene.add(new THREE.AmbientLight(0xffffff, .5)); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); T3.scene.add(d);
+    T3.amb = new THREE.AmbientLight(0xffffff, .5); T3.scene.add(T3.amb); T3.hemi = new THREE.HemisphereLight(0x8fa4c8, 0x1a1410, 0); T3.scene.add(T3.hemi); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); d.castShadow = true; d.shadow.mapSize.set(2048, 2048); d.shadow.bias = -0.0005; T3.scene.add(d); T3.scene.add(d.target); T3.sun = d;
     T3.grp = new THREE.Group(); T3.scene.add(T3.grp); T3.ok = true;
     (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; T3.ctl.update(); T3.ren.render(T3.scene, T3.cam); })();
   }
@@ -2269,17 +2273,36 @@ async function abrir3d() {
 }
 function resize3d() { const c = $('#c3d'), w = c.clientWidth, h = c.clientHeight; if (!T3.ren || !w || !h) return; T3.ren.setSize(w, h); T3.cam.aspect = w / h; T3.cam.updateProjectionMatrix(); }
 function peDe(c) { return (c && c.pe) || P.peDireito; }
+
+function visual3() { try { return localStorage.getItem('planta_visual') === 'dia' ? 'dia' : 'noite'; } catch (e) { return 'noite'; } }
+function texMarmore() {
+  if (T3.texM) return T3.texM; const cv = document.createElement('canvas'); cv.width = cv.height = 512; const x = cv.getContext('2d');
+  x.fillStyle = '#2b2e34'; x.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 900; i++) { x.fillStyle = 'rgba(' + (50 + Math.random() * 30 | 0) + ',' + (52 + Math.random() * 30 | 0) + ',' + (58 + Math.random() * 30 | 0) + ',.10)'; x.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 40, 2 + Math.random() * 40); }
+  for (let v = 0; v < 14; v++) { x.beginPath(); let px = Math.random() * 512, py = Math.random() * 512; x.moveTo(px, py); for (let k = 0; k < 7; k++) { px += (Math.random() - .5) * 150; py += (Math.random() - .5) * 150; x.lineTo(px, py); } x.strokeStyle = 'rgba(200,205,215,' + (.05 + Math.random() * .12) + ')'; x.lineWidth = .6 + Math.random() * 1.6; x.stroke(); }
+  x.strokeStyle = 'rgba(0,0,0,.22)'; x.lineWidth = 2; x.strokeRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 160, 1 / 160); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; return (T3.texM = t);
+}
+function aplicarVisual() {
+  const n = visual3() === 'noite'; T3.noite = n;
+  T3.scene.background.set(n ? 0x050608 : 0xe9eef5); T3.ren.toneMapping = n ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; T3.ren.toneMappingExposure = n ? 1.15 : 1;
+  T3.amb.intensity = n ? .10 : .5; T3.hemi.intensity = n ? .16 : 0; T3.sun.intensity = n ? .32 : .5; T3.sun.color.set(n ? 0xffe2c0 : 0xffffff);
+  const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, r = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300), sc = T3.sun.shadow.camera;
+  T3.sun.position.set(cx + r * .5, r * 1.6, cy + r * .35); T3.sun.target.position.set(cx, 0, cy); sc.left = sc.bottom = -r * .85; sc.right = sc.top = r * .85; sc.near = 10; sc.far = r * 4; sc.updateProjectionMatrix();
+  if ($('#vis3')) $('#vis3').value = visual3();
+}
 function build3d(reenquadrar) {
   if (!T3.ok) return; const g = T3.grp; while (g.children.length) { const o = g.children.pop(); if (o.geometry) o.geometry.dispose(); }
-  const modo = $('#modo3').value, Hn = P.peDireito;
+  aplicarVisual(); const NT = T3.noite, modo = $('#modo3').value, Hn = P.peDireito;
   // cada parede tem a altura do pé-direito do cômodo ao lado; ponto de teto fica sob o forro (pé-direito menos o rebaixo)
   const distPoly = (poly, m) => { let d = 1e9; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; d = Math.min(d, G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, m[0], m[1]).d); } return d; };
   const altW = w => { const m = [(w.x1 + w.x2) / 2, (w.y1 + w.y2) / 2], tol = (w.esp || 15) / 2 + 4; let h = 0; P.comodos.forEach(c => { if (G.dentro(c.pontos, m[0], m[1]) || distPoly(c.pontos, m) <= tol) h = Math.max(h, peDe(c)); }); return h || Hn; };
   const tetoDe = c => peDe(c) - ((c && c.rebaixo) || 0);
   const yPonto = p => { const c = getById(P.comodos, p.comodo), lim = ehTeto(p) ? tetoDe(c) - 2 : peDe(c); return clamp(alturaDe(p), 5, Math.max(10, lim)); };
-  const mWall = new THREE.MeshStandardMaterial({ color: 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: .9 });
-  const mTop = new THREE.MeshStandardMaterial({ color: 0xd5dbe5 });
-  const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); g.add(m); };
+  const mWall = new THREE.MeshStandardMaterial({ color: NT ? 0x14171c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: NT ? .7 : .9 });
+  const mTop = new THREE.MeshStandardMaterial({ color: NT ? 0x262b33 : 0xd5dbe5 });
+  const mLed = new THREE.MeshStandardMaterial({ color: 0xff8a2a, emissive: 0xff7a14, emissiveIntensity: 1.0 });
+  const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = m.receiveShadow = true; g.add(m); };
   P.paredes.forEach(w => {
     const Hw = modo === 'corte' ? Math.min(110, altW(w)) : altW(w);
     const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
@@ -2293,17 +2316,20 @@ function build3d(reenquadrar) {
       cur = o.u1;
     });
     box(cur, q.L + (w.esp || 15) / 2, 0, Hw, w, q, mWall);
+    if (NT && modo !== 'vidro') [1, -1].forEach(sd => { const off = sd * ((w.esp || 15) / 2 + 3), led = new THREE.Mesh(new THREE.BoxGeometry(q.L, 1.5, 2.2), mLed); led.position.set(w.x1 + q.ux * q.L / 2 - q.uy * off, 1.4, w.y1 + q.uy * q.L / 2 + q.ux * off); led.rotation.y = -Math.atan2(q.uy, q.ux); g.add(led); });
   });
+  if (NT) { const b0 = bbox(), gp = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x0a0b0e, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.set((b0.x0 + b0.x1) / 2, -.5, (b0.y0 + b0.y1) / 2); gp.receiveShadow = true; g.add(gp); }
   const cores = [0xb9d3f0, 0xf0d2a8, 0xb8e0c6, 0xd6bfee, 0xf2dc8c, 0xa9dde6];
   P.comodos.forEach((c, i) => {
     const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
-    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; g.add(m);
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial({ map: texMarmore(), color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide, roughness: .38, metalness: .12 }) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; g.add(m);
   });
   const altP = p => p.altura == null ? 100 : p.altura;
   if ($('#forro3') && $('#forro3').checked && modo !== 'corte') P.comodos.forEach(c => {
     const sh = new THREE.Shape(); c.pontos.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); });
-    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c.forro ? 0xfff3d6 : 0xffffff, transparent: true, opacity: .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); g.add(f);
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: NT ? 0x0c0e12 : (c.forro ? 0xfff3d6 : 0xffffff), transparent: true, opacity: NT ? .10 : .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); g.add(f);
   });
+  T3.nLuz = 0;
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
     const cor = new THREE.Color(M.corDe(p)), cat = M.catDe(p), w = getById(P.paredes, p.parede), mat = new THREE.MeshStandardMaterial({ color: cor, emissive: cor, emissiveIntensity: .25 });
@@ -2313,6 +2339,7 @@ function build3d(reenquadrar) {
     else if (p.tipo === 'interruptor' || p.tipo === 'botao') m = new THREE.Mesh(new THREE.BoxGeometry(11 + 4 * ((p.teclas || 1) - 1), 11, 4), mat);
     else if (cat === 'energia') m = new THREE.Mesh(new THREE.BoxGeometry(11, 11, 4), mat);
     else m = new THREE.Mesh(new THREE.BoxGeometry(16, 12, 7), mat);
+    if (NT && cat === 'luz' && !w && (T3.nLuz = (T3.nLuz || 0) + 1) <= 10) { const pl = new THREE.PointLight(0xffc27a, 1.1, 520, 1.6); pl.position.set(p.x, Math.max(20, y - 15), p.y); g.add(pl); }
     const lo3 = ladoOffset(p); m.position.set(p.x + lo3.dx, y, p.y + lo3.dy); if (w) { const q = wallGeo(w); m.rotation.y = -Math.atan2(q.uy, q.ux); } g.add(m);
   });
   if ($('#lig3').checked) P.ligacoes.forEach(l => {
@@ -2331,12 +2358,12 @@ function build3d(reenquadrar) {
   if (reenquadrar) iso();
 }
 function bbox() { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; P.paredes.forEach(w => { x0 = Math.min(x0, w.x1, w.x2); x1 = Math.max(x1, w.x1, w.x2); y0 = Math.min(y0, w.y1, w.y2); y1 = Math.max(y1, w.y1, w.y2); }); if (x0 > x1) { x0 = y0 = 0; x1 = y1 = 800; } return { x0, y0, x1, y1 }; }
-function iso() { if (!T3.ok) return; const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, s = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300); T3.cam.position.set(cx + s * .85, s * .95 + P.peDireito, cy + s * .85); T3.ctl.target.set(cx, P.peDireito * .3, cy); T3.cam.lookAt(T3.ctl.target); T3.ctl.update(); }
+function iso() { if (!T3.ok) return; const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, s = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300); if (T3.noite) T3.cam.position.set(cx + s * .1, s * 1.75 + P.peDireito, cy + s * .5); else T3.cam.position.set(cx + s * .85, s * .95 + P.peDireito, cy + s * .85); T3.ctl.target.set(cx, P.peDireito * .3, cy); T3.cam.lookAt(T3.ctl.target); T3.ctl.update(); }
 function focarComodo(c) {
   const xs = c.pontos.map(p => p[0]), ys = c.pontos.map(p => p[1]), w = Math.max.apply(null, xs) - Math.min.apply(null, xs), h = Math.max.apply(null, ys) - Math.min.apply(null, ys), d = Math.max(w, h) * 1.05 + 180;
   T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
 }
-$('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
+$('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
 $('#bIso').onclick = iso; $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
 $('#bPng').onclick = () => { T3.ren.render(T3.scene, T3.cam); const a = document.createElement('a'); a.href = T3.ren.domElement.toDataURL('image/png'); a.download = (P.nome || 'planta') + '_3d.png'; a.click(); };
@@ -2887,7 +2914,7 @@ $('#hint').addEventListener('click', e => {
 function iniciar() {
   if (CTX.clienteId) { $('#fCliente').value = CTX.clienteId; $('#fCliente').readOnly = true; } if (CTX.imovel) $('#fImovel').value = CTX.imovel;
   $('#fNome').value = P.nome; if (S.estilo === 'real') { $('#bEstilo').textContent = 'Ícones: aparelho real'; $('#bEstilo').classList.add('on'); } renderTools(); renderPanel(); renderHint();
-  const iniciaVazio = () => { try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
+  const iniciaVazio = () => { if (CTX.nova) { try { localStorage.removeItem('planta_rascunho'); history.replaceState(null, '', location.pathname + location.search.replace(/[?&]nova=1/, '').replace(/^&/, '?')); } catch (e) { } return; } try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
   if (CTX.plantaId) { gas('Planta_abrir', CTX.plantaId).then(pl => { const f = pl.fotoDataUrl || null; delete pl.fotoDataUrl; carregar(M.migrar(pl), CTX.plantaId, f); }).catch(e => { toast('Erro ao abrir: ' + e.message, 5000); }); }
   else if (!window.PLANTA_VIEW) iniciaVazio();
   refresh(); setTimeout(fit, 60);
