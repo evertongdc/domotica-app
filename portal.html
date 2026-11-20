@@ -86,6 +86,18 @@ body.on-auth{background:#070b1c}
 .tabs{display:flex;gap:6px;margin:18px 0 6px}
 .tabs button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;cursor:pointer}
 .tabs button.on{background:var(--card2);color:var(--tx)}
+body.on-auth input,body.on-auth select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:10px 12px;outline:none;transition:border-color .15s,background .15s}
+body.on-auth input:focus{border-color:#FE792C;background:rgba(255,255,255,.1)}
+body.on-auth label{font-size:12px;font-weight:500;color:#b8c0e0;margin:0 0 6px}
+.fg{margin-bottom:12px}
+.pwb{position:relative}body.on-auth .pwb input,.pwb input{padding-right:46px}
+body.on-auth .chk input{padding:0;width:16px;height:16px}
+.pwb button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:inherit;opacity:.8;cursor:pointer;padding:6px;line-height:0}
+.chk{display:flex;align-items:center;gap:8px;color:#b8c0e0;cursor:pointer;user-select:none;margin:0 0 12px;font-size:14px}
+.chk input{width:16px;height:16px;padding:0;accent-color:#FE792C}
+.btn.ent{background:linear-gradient(135deg,#FE792C,#ff5f1a);border-color:transparent;color:#1a0b00;box-shadow:0 6px 18px rgba(254,121,44,.35);width:100%;margin-top:6px;border-radius:10px}
+.lk{display:block;text-align:center;margin-top:14px;font-size:14px;color:#8791b8}
+.lk a{color:#FF9B5E;text-decoration:none}
 .err{background:rgba(229,72,77,.15);color:#ff9a9d;border-radius:10px;padding:10px 12px;margin:12px 0;font-size:.92em}
 .msg{background:rgba(46,164,79,.15);color:#7fe0a0;border-radius:10px;padding:10px 12px;margin:12px 0;font-size:.92em}
 /* modal */
@@ -112,7 +124,17 @@ window.DOMOTICA_CFG = {
 </script>
 <script>
 (function () {
-  var CFG = window.DOMOTICA_CFG, sb = supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  var CFG = window.DOMOTICA_CFG, ARMAZ = (function () {
+    var MEM = {};
+    function lido(a, k) { try { return a.getItem(k); } catch (e) { return null; } }
+    function manter() { try { return localStorage.getItem('dom_manter') !== '0'; } catch (e) { return true; } }
+    return {
+      getItem: function (k) { var v = lido(sessionStorage, k); if (v !== null) return v; var w = lido(localStorage, k); return w !== null ? w : (MEM[k] === undefined ? null : MEM[k]); },
+      setItem: function (k, v) { MEM[k] = v; var m = manter(), d = m ? localStorage : sessionStorage, o = m ? sessionStorage : localStorage; try { d.setItem(k, v); try { o.removeItem(k); } catch (e) { } } catch (e) { try { o.setItem(k, v); } catch (e2) { } } },
+      removeItem: function (k) { delete MEM[k]; try { localStorage.removeItem(k); } catch (e) { } try { sessionStorage.removeItem(k); } catch (e) { } }
+    };
+  })(),
+  sb = supabase.createClient(CFG.url, CFG.key, { auth: { storage: ARMAZ, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
   var R = document.getElementById('raiz'), D = null, ABA = 'inicio';
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function brl(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -144,24 +166,65 @@ window.DOMOTICA_CFG = {
   function cabecalhoAuth() { return fundoAuth() + '<div class="lg-plate"><img src="' + LOGO + '" alt="Domótica — A sua casa inteligente"></div><div class="auth-ttl">Portal do Cliente</div>'; }
 
   /* ---------- autenticação ---------- */
+  var OLHO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var OLHO_C = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0112 19C5.6 19 2 12 2 12a18 18 0 015.1-5.9M9.9 5.1A9.7 9.7 0 0112 5c6.4 0 10 7 10 7a18 18 0 01-2.2 3.2M1 1l22 22"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/></svg>';
+  function olho(el) {
+    if (!el || el.getAttribute('data-olho')) return; el.setAttribute('data-olho', '1');
+    var w = document.createElement('div'); w.className = 'pwb'; el.parentNode.insertBefore(w, el); w.appendChild(el);
+    var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', 'Mostrar senha'); b.innerHTML = OLHO;
+    b.onclick = function () { var v = el.type === 'password'; el.type = v ? 'text' : 'password'; b.innerHTML = v ? OLHO_C : OLHO; b.setAttribute('aria-label', v ? 'Ocultar senha' : 'Mostrar senha'); };
+    w.appendChild(b);
+  }
   function telaAuth(modo, aviso) {
-    var conv = lsGet('dom_convite');
+    var conv = lsGet('dom_convite'), cr = modo === 'criar';
     document.body.classList.add('on-auth');
     R.innerHTML = '<div class="auth">' + cabecalhoAuth() + '<div class="gl" style="margin-top:16px">' +
+      '<p style="text-align:center;margin:0 0 16px;color:#b8c0e0">' + (cr ? 'Crie sua conta' : 'Acesse sua conta') + '</p>' +
       (conv ? '<div class="msg">Convite recebido. Entre ou crie sua conta para ativar o seu acesso.</div>' : '') +
-      '<div class="tabs"><button data-m="entrar" class="' + (modo === 'entrar' ? 'on' : '') + '">Entrar</button><button data-m="criar" class="' + (modo === 'criar' ? 'on' : '') + '">Criar conta</button></div>' +
       (aviso ? '<div class="' + (aviso.ok ? 'msg' : 'err') + '">' + esc(aviso.t) + '</div>' : '') +
-      (modo === 'criar' ? '<label>Seu nome</label><input id="a-nome" autocomplete="name" maxlength="80">' : '') +
-      '<label>E-mail</label><input id="a-email" type="email" autocomplete="email" inputmode="email"><label>Senha' + (modo === 'criar' ? ' (mínimo 8 caracteres)' : '') + '</label><input id="a-senha" type="password" autocomplete="' + (modo === 'criar' ? 'new-password' : 'current-password') + '">' +
-      '<div id="a-cf" style="margin:14px 0 4px"></div><button class="btn pri" id="a-ok" style="width:100%;margin-top:8px">' + (modo === 'criar' ? 'Criar conta' : 'Entrar') + '</button></div></div>';
-    R.querySelector('.tabs').onclick = function (e) { var b = e.target.closest('button'); if (b) telaAuth(b.dataset.m); };
+      (cr ? '<div class="fg"><label>Seu nome</label><input id="a-nome" autocomplete="name" maxlength="80"></div>' : '') +
+      '<div class="fg"><label>E-mail</label><input id="a-email" type="email" autocomplete="email" inputmode="email"></div>' +
+      '<div class="fg"><label>Senha' + (cr ? ' (mínimo 8 caracteres)' : '') + '</label><input id="a-senha" type="password" autocomplete="' + (cr ? 'new-password' : 'current-password') + '"></div>' +
+      (cr ? '' : '<label class="chk"><input type="checkbox" id="a-manter"' + (lsGet('dom_manter') !== '0' ? ' checked' : '') + '> Manter conectado neste aparelho</label>') +
+      '<div id="a-cf" style="margin:0 0 4px"></div><button class="btn ent" id="a-ok">' + (cr ? 'Criar conta' : 'Entrar') + '</button>' +
+      (cr ? '<p class="lk">Já tem conta? <a href="#" id="a-ir">Entrar</a></p>' : '<p class="lk"><a href="#" id="a-esq">Esqueci minha senha</a></p><p class="lk" style="margin-top:8px">Primeira vez? <a href="#" id="a-ir">Criar conta</a></p>') +
+      '</div></div>';
+    document.getElementById('a-ir').onclick = function (e) { e.preventDefault(); telaAuth(cr ? 'entrar' : 'criar'); };
+    olho(document.getElementById('a-senha'));
     cfMontar(document.getElementById('a-cf'));
-    document.getElementById('a-ok').onclick = function () { modo === 'criar' ? criarConta() : entrar(); };
+    document.getElementById('a-ok').onclick = function () { cr ? criarConta() : entrar(); };
     document.getElementById('a-senha').onkeydown = function (e) { if (e.key === 'Enter') document.getElementById('a-ok').click(); };
+    var esq = document.getElementById('a-esq');
+    if (esq) esq.onclick = async function (e) {
+      e.preventDefault();
+      var em = document.getElementById('a-email').value.trim();
+      if (!em) return telaAuth('entrar', { t: 'Digite seu e-mail no campo acima e toque de novo em “Esqueci minha senha”.' });
+      var tk = await cfToken(); if (tk === '') { cfReset(); return telaAuth('entrar', { t: 'Não foi possível concluir a verificação de segurança. Tente de novo.' }); }
+      var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname, captchaToken: tk });
+      cfReset();
+      if (r.error) return telaAuth('entrar', { t: erroMsg(r.error) });
+      telaAuth('entrar', { ok: true, t: 'Se esse e-mail tiver conta, enviamos um link para criar uma nova senha.' });
+    };
   }
+  sb.auth.onAuthStateChange(function (ev) {
+    if (ev !== 'PASSWORD_RECOVERY') return;
+    setTimeout(function () {
+      var o = sheet('<h3>Criar nova senha</h3><div class="fg"><label>Nova senha (mínimo 8 caracteres)</label><input id="ns-1" type="password" autocomplete="new-password"></div><div class="fg"><label>Repita a senha</label><input id="ns-2" type="password" autocomplete="new-password"></div><div class="acts"><button class="btn ent" id="ns-ok">Salvar nova senha</button></div>');
+      olho(document.getElementById('ns-1')); olho(document.getElementById('ns-2'));
+      document.getElementById('ns-ok').onclick = async function () {
+        var a1 = document.getElementById('ns-1').value, a2 = document.getElementById('ns-2').value;
+        if (a1.length < 8) return toast('A senha precisa ter pelo menos 8 caracteres.');
+        if (a1 !== a2) return toast('As senhas não conferem.');
+        var r = await sb.auth.updateUser({ password: a1 });
+        if (r.error) return toast(erroMsg(r.error));
+        o.remove(); toast('Senha alterada.');
+      };
+    }, 400);
+  });
   async function entrar() {
     var email = document.getElementById('a-email').value.trim(), senha = document.getElementById('a-senha').value, b = document.getElementById('a-ok');
     if (!email || !senha) return telaAuth('entrar', { t: 'Informe e-mail e senha.' });
+    try { var mc = document.getElementById('a-manter'); lsSet('dom_manter', mc && !mc.checked ? '0' : '1'); } catch (e) { }
     b.disabled = true; b.textContent = 'Entrando...';
     var tk = await cfToken(); if (tk === '') { cfReset(); return telaAuth('entrar', { t: 'Não foi possível concluir a verificação de segurança. Tente de novo.' }); }
     var resp, d = {};
