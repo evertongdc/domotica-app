@@ -73,15 +73,14 @@ body.on-auth{background:#070b1c}
 @media (prefers-reduced-motion:reduce){.wv,.tr{animation:none}.wv{opacity:.4}}
 .gl{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:22px 20px;-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);box-shadow:0 8px 32px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
 .auth>.lg-plate{background:none;box-shadow:none;border-radius:0;padding:0;width:min(250px,72%);margin:6px auto 0;isolation:isolate}
-.auth>.lg-plate::before{content:'';position:absolute;z-index:-2;inset:-34px -44px;background:radial-gradient(closest-side at 28% 50%,rgba(254,121,44,.75),transparent 72%),radial-gradient(closest-side at 74% 55%,rgba(30,110,255,.8),transparent 72%);filter:blur(22px);animation:neon 4s ease-in-out infinite}
-.auth>.lg-plate::after{content:'';position:absolute;z-index:-1;inset:-6px -18px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.97) 55%,rgba(255,255,255,.85) 72%,transparent 100%);filter:blur(7px)}
+.auth>.lg-plate::before{content:'';position:absolute;z-index:-2;inset:-34px -44px;background:radial-gradient(closest-side at 28% 50%,rgba(254,121,44,.42),transparent 72%),radial-gradient(closest-side at 74% 55%,rgba(30,110,255,.5),transparent 72%);filter:blur(22px);animation:neon 4s ease-in-out infinite}
 @keyframes neon{0%,100%{opacity:.7;transform:scale(.97)}50%{opacity:1;transform:scale(1.05)}}
 @media (prefers-reduced-motion:reduce){.auth>.lg-plate::before{animation:none}}
 .lg-plate{background:#fff;border-radius:18px;padding:10px 14px;display:block;margin:0 auto;width:min(230px,70%);box-shadow:0 6px 24px rgba(0,0,0,.35)}
 .lg-plate img{display:block;width:100%;height:auto}
 .auth-ttl{text-align:center;margin:14px 0 4px;font-weight:700;font-size:20px;letter-spacing:-.01em;color:var(--tx)}
 .hd-logo{display:flex;align-items:center;gap:10px;min-width:0}
-.hd-logo .lg-plate{margin:0;width:auto;padding:4px 8px;border-radius:10px;box-shadow:none}
+.hd-logo .lg-plate{margin:0;width:auto;padding:0;background:none;box-shadow:none}
 .hd-logo .lg-plate img{height:30px;width:auto}
 .hd-logo span{font-size:.78em;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);white-space:nowrap}
 .tabs{display:flex;gap:6px;margin:18px 0 6px}
@@ -140,7 +139,7 @@ window.DOMOTICA_CFG = {
   function cfReset() { CF.tok = ''; try { if (window.turnstile && CF.id !== null) window.turnstile.reset(CF.id); } catch (e) { } }
 
   /* ---------- visual do login ---------- */
-  var LOGO = 'logo-completa.png?v=1';
+  var LOGO = 'logo-neon.png?v=1';
   function fundoAuth() { return '<div class="auth-bg"></div>'; }
   function cabecalhoAuth() { return fundoAuth() + '<div class="lg-plate"><img src="' + LOGO + '" alt="Domótica — A sua casa inteligente"></div><div class="auth-ttl">Portal do Cliente</div>'; }
 
