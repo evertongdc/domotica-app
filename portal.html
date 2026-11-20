@@ -74,7 +74,7 @@ body.on-auth{background:#070b1c}
 .gl{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:22px 20px;-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);box-shadow:0 8px 32px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
 .lg-plate{background:#fff;border-radius:18px;padding:10px 14px;display:block;margin:0 auto;width:min(230px,70%);box-shadow:0 6px 24px rgba(0,0,0,.35)}
 .lg-plate img{display:block;width:100%;height:auto}
-.auth-ttl{text-align:center;margin:14px 0 4px;font-weight:700;font-size:1.05em;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(90deg,#FE792C,#9fd0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.auth-ttl{text-align:center;margin:14px 0 4px;font-weight:700;font-size:20px;letter-spacing:-.01em;color:var(--tx)}
 .hd-logo{display:flex;align-items:center;gap:10px;min-width:0}
 .hd-logo .lg-plate{margin:0;width:auto;padding:4px 8px;border-radius:10px;box-shadow:none}
 .hd-logo .lg-plate img{height:30px;width:auto}
@@ -136,16 +136,7 @@ window.DOMOTICA_CFG = {
 
   /* ---------- visual do login ---------- */
   var LOGO = 'logo-completa.png?v=1';
-  function fundoAuth() {
-    var w = '', i, a, r;
-    function arco(cx, cy, r, a1, a2) { var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1), x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2); return 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' A' + r + ' ' + r + ' 0 0 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1); }
-    var d2r = Math.PI / 180;
-    for (i = 1; i <= 9; i++) { r = 70 + i * 82; w += '<path class="wv" style="animation-delay:' + (i * 0.35).toFixed(2) + 's" stroke-width="' + (3.2 - i * 0.22).toFixed(2) + '" d="' + arco(90, 1140, r, -88 * d2r, -2 * d2r) + '"/>'; }
-    for (i = 1; i <= 7; i++) { r = 60 + i * 76; w += '<path class="wv wv2" style="animation-delay:' + (i * 0.45 + 1).toFixed(2) + 's" stroke-width="' + (2.8 - i * 0.22).toFixed(2) + '" d="' + arco(720, 70, r, 92 * d2r, 178 * d2r) + '"/>'; }
-    var tr = [[0, 300, 130, 300, 190, 360, 190, 470], [800, 760, 690, 760, 640, 810, 640, 930], [0, 880, 90, 880, 140, 830, 140, 740], [800, 420, 700, 420, 650, 370, 650, 250]], t = '';
-    tr.forEach(function (p) { t += '<polyline class="tr" points="' + p.join(' ') + '"/><circle class="nd" cx="' + p[p.length - 2] + '" cy="' + p[p.length - 1] + '" r="4"/>'; });
-    return '<div class="auth-bg"><svg viewBox="0 0 800 1200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="gw" gradientUnits="userSpaceOnUse" x1="0" y1="1200" x2="800" y2="0"><stop offset="0" stop-color="#FE792C"/><stop offset=".55" stop-color="#ffb27a"/><stop offset="1" stop-color="#8fd0ff"/></linearGradient><linearGradient id="gw2" gradientUnits="userSpaceOnUse" x1="800" y1="0" x2="0" y2="1200"><stop offset="0" stop-color="#8fd0ff"/><stop offset="1" stop-color="#FE792C"/></linearGradient></defs>' + w + t + '</svg></div>';
-  }
+  function fundoAuth() { return '<div class="auth-bg"></div>'; }
   function cabecalhoAuth() { return fundoAuth() + '<div class="lg-plate"><img src="' + LOGO + '" alt="Domótica — A sua casa inteligente"></div><div class="auth-ttl">Portal do Cliente</div>'; }
 
   /* ---------- autenticação ---------- */
