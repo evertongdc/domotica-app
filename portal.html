@@ -7,10 +7,11 @@
 <meta name="theme-color" content="#0b1220">
 <title>Portal do cliente · Domótica</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0b1220;--card:#131c2e;--card2:#18243a;--line:rgba(255,255,255,.09);--tx:#f2f5fa;--mut:#93a1b8;--or:#ff7a00;--ok:#2ea44f;--warn:#e3a008;--bad:#e5484d;--blue:#4c8dff}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-text-size-adjust:100%}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-text-size-adjust:100%}
 body{min-height:100vh;overflow-wrap:anywhere}
 button,input,select,textarea{font:inherit;color:inherit}
 input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;min-width:0}
@@ -58,7 +59,25 @@ nav .dot{position:absolute;top:4px;left:calc(50% + 8px);background:var(--or);col
 .item .t{flex:1;min-width:0}
 a{color:var(--blue)}
 /* login */
-.auth{max-width:420px;margin:0 auto;padding:36px 20px}
+body.on-auth{background:#070b1c}
+.auth{position:relative;z-index:1;max-width:420px;margin:0 auto;padding:28px 20px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+.auth-bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:radial-gradient(900px 600px at 8% 0%,rgba(254,121,44,.26),transparent 60%),radial-gradient(900px 700px at 100% 100%,rgba(13,68,222,.40),transparent 60%),linear-gradient(160deg,#0b1233,#070b1c)}
+.auth-bg svg{position:absolute;inset:0;width:100%;height:100%}
+.wv{fill:none;stroke:url(#gw);stroke-linecap:round;animation:wvp 5s ease-in-out infinite}
+.wv2{stroke:url(#gw2)}
+@keyframes wvp{0%,100%{opacity:.18}50%{opacity:.8}}
+.tr{fill:none;stroke:url(#gw);stroke-width:1.4;stroke-dasharray:6 10;opacity:.5;animation:trf 6s linear infinite}
+@keyframes trf{to{stroke-dashoffset:-160}}
+.nd{fill:#ffb27a;opacity:.85}
+@media (prefers-reduced-motion:reduce){.wv,.tr{animation:none}.wv{opacity:.4}}
+.gl{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:22px 20px;-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);box-shadow:0 8px 32px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+.lg-plate{background:#fff;border-radius:18px;padding:10px 14px;display:block;margin:0 auto;width:min(230px,70%);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.lg-plate img{display:block;width:100%;height:auto}
+.auth-ttl{text-align:center;margin:14px 0 4px;font-weight:700;font-size:1.05em;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(90deg,#FE792C,#9fd0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hd-logo{display:flex;align-items:center;gap:10px;min-width:0}
+.hd-logo .lg-plate{margin:0;width:auto;padding:4px 8px;border-radius:10px;box-shadow:none}
+.hd-logo .lg-plate img{height:30px;width:auto}
+.hd-logo span{font-size:.78em;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);white-space:nowrap}
 .tabs{display:flex;gap:6px;margin:18px 0 6px}
 .tabs button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--mut);font-weight:600;cursor:pointer}
 .tabs button.on{background:var(--card2);color:var(--tx)}
@@ -114,16 +133,31 @@ window.DOMOTICA_CFG = {
   async function cfToken() { if (!CFG.turnstile) return undefined; for (var i = 0; i < 100; i++) { if (CF.tok) return CF.tok; await new Promise(function (r) { setTimeout(r, 200); }); } return ''; }
   function cfReset() { CF.tok = ''; try { if (window.turnstile && CF.id !== null) window.turnstile.reset(CF.id); } catch (e) { } }
 
+  /* ---------- visual do login ---------- */
+  var LOGO = 'logo-completa.png?v=1';
+  function fundoAuth() {
+    var w = '', i, a, r;
+    function arco(cx, cy, r, a1, a2) { var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1), x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2); return 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' A' + r + ' ' + r + ' 0 0 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1); }
+    var d2r = Math.PI / 180;
+    for (i = 1; i <= 9; i++) { r = 70 + i * 82; w += '<path class="wv" style="animation-delay:' + (i * 0.35).toFixed(2) + 's" stroke-width="' + (3.2 - i * 0.22).toFixed(2) + '" d="' + arco(90, 1140, r, -88 * d2r, -2 * d2r) + '"/>'; }
+    for (i = 1; i <= 7; i++) { r = 60 + i * 76; w += '<path class="wv wv2" style="animation-delay:' + (i * 0.45 + 1).toFixed(2) + 's" stroke-width="' + (2.8 - i * 0.22).toFixed(2) + '" d="' + arco(720, 70, r, 92 * d2r, 178 * d2r) + '"/>'; }
+    var tr = [[0, 300, 130, 300, 190, 360, 190, 470], [800, 760, 690, 760, 640, 810, 640, 930], [0, 880, 90, 880, 140, 830, 140, 740], [800, 420, 700, 420, 650, 370, 650, 250]], t = '';
+    tr.forEach(function (p) { t += '<polyline class="tr" points="' + p.join(' ') + '"/><circle class="nd" cx="' + p[p.length - 2] + '" cy="' + p[p.length - 1] + '" r="4"/>'; });
+    return '<div class="auth-bg"><svg viewBox="0 0 800 1200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="gw" gradientUnits="userSpaceOnUse" x1="0" y1="1200" x2="800" y2="0"><stop offset="0" stop-color="#FE792C"/><stop offset=".55" stop-color="#ffb27a"/><stop offset="1" stop-color="#8fd0ff"/></linearGradient><linearGradient id="gw2" gradientUnits="userSpaceOnUse" x1="800" y1="0" x2="0" y2="1200"><stop offset="0" stop-color="#8fd0ff"/><stop offset="1" stop-color="#FE792C"/></linearGradient></defs>' + w + t + '</svg></div>';
+  }
+  function cabecalhoAuth() { return fundoAuth() + '<div class="lg-plate"><img src="' + LOGO + '" alt="Domótica — A sua casa inteligente"></div><div class="auth-ttl">Portal do Cliente</div>'; }
+
   /* ---------- autenticação ---------- */
   function telaAuth(modo, aviso) {
     var conv = lsGet('dom_convite');
-    R.innerHTML = '<div class="auth"><div class="logo" style="font-size:1.4em">Domótica<small>Portal do cliente</small></div>' +
+    document.body.classList.add('on-auth');
+    R.innerHTML = '<div class="auth">' + cabecalhoAuth() + '<div class="gl" style="margin-top:16px">' +
       (conv ? '<div class="msg">Convite recebido. Entre ou crie sua conta para ativar o seu acesso.</div>' : '') +
       '<div class="tabs"><button data-m="entrar" class="' + (modo === 'entrar' ? 'on' : '') + '">Entrar</button><button data-m="criar" class="' + (modo === 'criar' ? 'on' : '') + '">Criar conta</button></div>' +
       (aviso ? '<div class="' + (aviso.ok ? 'msg' : 'err') + '">' + esc(aviso.t) + '</div>' : '') +
       (modo === 'criar' ? '<label>Seu nome</label><input id="a-nome" autocomplete="name" maxlength="80">' : '') +
       '<label>E-mail</label><input id="a-email" type="email" autocomplete="email" inputmode="email"><label>Senha' + (modo === 'criar' ? ' (mínimo 8 caracteres)' : '') + '</label><input id="a-senha" type="password" autocomplete="' + (modo === 'criar' ? 'new-password' : 'current-password') + '">' +
-      '<div id="a-cf" style="margin:14px 0 4px"></div><button class="btn pri" id="a-ok" style="width:100%;margin-top:8px">' + (modo === 'criar' ? 'Criar conta' : 'Entrar') + '</button></div>';
+      '<div id="a-cf" style="margin:14px 0 4px"></div><button class="btn pri" id="a-ok" style="width:100%;margin-top:8px">' + (modo === 'criar' ? 'Criar conta' : 'Entrar') + '</button></div></div>';
     R.querySelector('.tabs').onclick = function (e) { var b = e.target.closest('button'); if (b) telaAuth(b.dataset.m); };
     cfMontar(document.getElementById('a-cf'));
     document.getElementById('a-ok').onclick = function () { modo === 'criar' ? criarConta() : entrar(); };
@@ -166,7 +200,8 @@ window.DOMOTICA_CFG = {
     D = r.data; pintar();
   }
   function telaSemVinculo() {
-    R.innerHTML = '<div class="auth"><div class="logo" style="font-size:1.4em">Domótica<small>Portal do cliente</small></div><div class="card" style="margin-top:20px"><h3>Seu acesso ainda não foi ativado</h3><p class="sm">Digite o código do convite que a Domótica enviou para você.</p><label>Código do convite</label><input id="v-cod" autocapitalize="characters" maxlength="20"><button class="btn pri" id="v-ok" style="width:100%;margin-top:14px">Ativar acesso</button></div><button class="btn ghost" id="v-s" style="width:100%">Sair</button></div>';
+    document.body.classList.add('on-auth');
+    R.innerHTML = '<div class="auth">' + cabecalhoAuth() + '<div class="gl" style="margin-top:16px"><h3>Seu acesso ainda não foi ativado</h3><p class="sm">Digite o código do convite que a Domótica enviou para você.</p><label>Código do convite</label><input id="v-cod" autocapitalize="characters" maxlength="20"><button class="btn pri" id="v-ok" style="width:100%;margin-top:14px">Ativar acesso</button><button class="btn ghost" id="v-s" style="width:100%;margin-top:8px">Sair</button></div></div>';
     document.getElementById('v-s').onclick = sair;
     document.getElementById('v-ok').onclick = async function () { var c = document.getElementById('v-cod').value.trim().toUpperCase(); if (!c) return; var x = await sb.rpc('claim_client_invite', { p_code: c }); if (x.error) return toast(x.error.message); iniciar(); };
   }
@@ -197,7 +232,8 @@ window.DOMOTICA_CFG = {
   function pintar() {
     var cont = { projetos: projPend().length, orcamentos: orcPend().length, pedidos: abertos().length };
     var nomes = { inicio: 'Início', projetos: 'Projetos', orcamentos: 'Orçamentos', casa: 'Minha casa', pedidos: 'Pedidos' };
-    R.innerHTML = '<header><div class="wrap"><div class="logo">' + esc((D.empresa && D.empresa.nome) || 'Domótica') + '<small>Portal do cliente</small></div><button class="btn sm ghost" id="p-sair">Sair</button></div></header>' +
+    document.body.classList.remove('on-auth');
+    R.innerHTML = '<header><div class="wrap"><div class="hd-logo"><div class="lg-plate"><img src="' + LOGO + '" alt="Domótica"></div><span>Portal do Cliente</span></div><button class="btn sm ghost" id="p-sair">Sair</button></div></header>' +
       '<main><div class="wrap" id="p-corpo"></div></main>' +
       '<nav><div class="wrap">' + Object.keys(nomes).map(function (k) { return '<button data-a="' + k + '" class="' + (k === ABA ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + ICO[k] + '</svg>' + nomes[k] + (k !== 'inicio' && k !== 'casa' && cont[k] ? '<span class="dot">' + cont[k] + '</span>' : '') + '</button>'; }).join('') + '</div></nav>';
     document.getElementById('p-sair').onclick = sair;
