@@ -9,17 +9,22 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-light-32.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-light-48.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2" media="(prefers-color-scheme: dark)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=2" media="(prefers-color-scheme: dark)"><link rel="apple-touch-icon" id="ati" href="apple-touch-icon.png?v=2"><script>try{if(!matchMedia("(prefers-color-scheme: dark)").matches)document.getElementById("ati").href="apple-touch-icon-light.png?v=2"}catch(e){}</script>
 <meta name="theme-color" content="#000000">
 <style>
-:root{--or:#ff7a00;--bl:#1e88ff;--bg1:#0b1220;--bg2:#13213f;--gl:rgba(255,255,255,.07);--gl2:rgba(255,255,255,.12);--tx:#e8eefb;--mu:#9fb0cf;--er:#e5484d;--wa:#f2b705;--ok:#2ea44f}
+:root{--or:#ff7a00;--bl:#1e88ff;--bg1:#0b1220;--bg2:#13213f;--gl:rgba(255,255,255,.07);--gl2:rgba(255,255,255,.12);--tx:#e8eefb;--mu:#9fb0cf;--er:#e5484d;--wa:#f2b705;--ok:#2ea44f;
+  --bd:rgba(255,255,255,.14);--inb:rgba(0,0,0,.28);--inbd:rgba(255,255,255,.16);--th:#101a33;--mbox:linear-gradient(160deg,#16264a,#0f1a33);--sheet:#0f1a33;--dgr:#ffb4b6;
+  --svgf:invert(1) hue-rotate(180deg) brightness(1.35);--imgf:brightness(.74) invert(1) hue-rotate(180deg);--cvbg:#0b1220;color-scheme:dark}
+html[data-tema=claro]{--bg1:#eef2f9;--bg2:#dbe4f2;--gl:rgba(255,255,255,.75);--gl2:rgba(15,23,42,.08);--tx:#0f172a;--mu:#52607a;--bd:rgba(15,23,42,.2);--inb:#fff;--inbd:rgba(15,23,42,.22);--th:#e6ecf6;--mbox:#fff;--sheet:#fff;--dgr:#b42318;--svgf:none;--imgf:none;--cvbg:#f4f6fa;color-scheme:light}
+@media (prefers-color-scheme:light){html:not([data-tema=escuro]){--bg1:#eef2f9;--bg2:#dbe4f2;--gl:rgba(255,255,255,.75);--gl2:rgba(15,23,42,.08);--tx:#0f172a;--mu:#52607a;--bd:rgba(15,23,42,.2);--inb:#fff;--inbd:rgba(15,23,42,.22);--th:#e6ecf6;--mbox:#fff;--sheet:#fff;--dgr:#b42318;--svgf:none;--imgf:none;--cvbg:#f4f6fa;color-scheme:light}}
+#svg{filter:var(--svgf)}#imgF{filter:var(--imgf)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:var(--tx);font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
 button,input,select,textarea{font:inherit;color:inherit}
-button{background:var(--gl2);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 11px;cursor:pointer;backdrop-filter:blur(8px)}
+button{background:var(--gl2);border:1px solid var(--bd);border-radius:10px;padding:7px 11px;cursor:pointer;backdrop-filter:blur(8px)}
 button:active{transform:scale(.97)}
 button.pri{background:linear-gradient(135deg,var(--or),#ff9a3d);border-color:transparent;color:#1a1000;font-weight:700}
 button.on{outline:2px solid var(--bl);background:rgba(30,136,255,.25)}
-button.danger{border-color:rgba(229,72,77,.6);color:#ffb4b6}
-input,select,textarea{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:6px 8px;width:100%;min-width:0}
+button.danger{border-color:rgba(229,72,77,.6);color:var(--dgr)}
+input,select,textarea{background:var(--inb);border:1px solid var(--inbd);border-radius:8px;padding:6px 8px;width:100%;min-width:0}
 textarea{resize:vertical;min-height:54px}
 label{display:block;font-size:12px;color:var(--mu);margin:8px 0 3px}
 header#top{display:flex;gap:8px;align-items:center;padding:8px 10px;background:var(--gl);border-bottom:1px solid var(--gl2);backdrop-filter:blur(14px);flex-wrap:wrap}
@@ -36,7 +41,7 @@ section.view.on{display:flex}
 #v2d{gap:8px;padding:0 8px 8px}
 #tools,#panel{width:230px;flex:none;background:var(--gl);border:1px solid var(--gl2);border-radius:14px;padding:8px;overflow:auto;backdrop-filter:blur(14px)}
 #panel{width:290px}
-#cwrap{flex:1;min-width:0;position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--gl2);background:#f4f6fa}
+#cwrap{flex:1;min-width:0;position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--gl2);background:var(--cvbg)}
 #svg{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
 #hint{position:absolute;left:10px;top:10px;right:10px;pointer-events:none;display:flex;gap:6px;flex-wrap:wrap}
 #hint span{background:rgba(11,18,32,.82);color:#fff;border-radius:9px;padding:5px 9px;font-size:12px}
@@ -57,7 +62,7 @@ section.view.on{display:flex}
 .scroll{overflow:auto;padding:10px;width:100%}
 table{border-collapse:collapse;width:100%;font-size:12.5px}
 th,td{padding:6px 8px;border-bottom:1px solid var(--gl2);text-align:left;vertical-align:top}
-th{color:var(--mu);font-weight:600;position:sticky;top:0;background:#101a33}
+th{color:var(--mu);font-weight:600;position:sticky;top:0;background:var(--th)}
 tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .lv{display:inline-block;padding:1px 7px;border-radius:7px;font-size:11px;font-weight:700;margin-right:6px}
@@ -72,7 +77,7 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
 #toast.on{opacity:1}
 #modal{position:fixed;inset:0;background:rgba(3,8,18,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:12px}
 #modal.on{display:flex}
-#mbox{width:min(440px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#16264a,#0f1a33);border:1px solid var(--gl2);border-radius:16px;padding:18px 20px;box-sizing:border-box;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word}
+#mbox{width:min(440px,100%);max-height:90vh;overflow:auto;background:var(--mbox);border:1px solid var(--gl2);border-radius:16px;padding:18px 20px;box-sizing:border-box;overflow-x:hidden;overflow-wrap:anywhere;word-break:break-word}
 #mbox *{box-sizing:border-box;max-width:100%}
 #mbox input,#mbox select,#mbox textarea{width:100%}
 #mbox h3{margin:0 0 10px}
@@ -91,7 +96,7 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
   /* o desenho ocupa a tela toda; ferramentas e detalhes sobem de baixo quando chamados */
   #v2d{flex-direction:column;overflow:hidden;padding:0 6px 6px}
   #cwrap{flex:1;height:auto;min-height:0}
-  #tools,#panel{position:fixed;left:8px;right:8px;bottom:8px;width:auto;max-height:64vh;z-index:40;display:none;background:#0f1a33;box-shadow:0 -10px 34px rgba(0,0,0,.55)}
+  #tools,#panel{position:fixed;left:8px;right:8px;bottom:8px;width:auto;max-height:64vh;z-index:40;display:none;background:var(--sheet);box-shadow:0 -10px 34px rgba(0,0,0,.55)}
   body.sheet-tools #tools,body.sheet-panel #panel{display:block}
   #fabs{display:flex;position:absolute;top:10px;right:10px;flex-direction:column;gap:6px;z-index:4}
   #fabs button{padding:7px 10px;font-size:12.5px;background:rgba(11,18,32,.88);color:#fff;white-space:nowrap}
@@ -115,6 +120,7 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
 #fPal{margin-bottom:6px}
 #palVazio{font-size:12px;color:var(--mu);margin:6px 2px}
 </style>
+<script>try{var _t=localStorage.getItem('planta_tema');if(_t==='claro'||_t==='escuro')document.documentElement.setAttribute('data-tema',_t)}catch(e){}</script>
 <script>window.PLANTA_VIEW = true;</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>// Chaves PÚBLICAS do projeto Supabase "domotica-erp" (a chave publishable foi feita para ficar no navegador;
@@ -207,6 +213,7 @@ window.DOMOTICA_CFG = {
     <button id="bEstilo" title="Alterna o desenho dos aparelhos: símbolo de projeto arquitetônico ou o aparelho real (2D e 3D)">Ícones: projeto</button>
     <button id="bModo" title="Alterna entre o padrão atual (como está hoje) e o projeto final (como vai ficar)">Padrão atual</button>
     <button id="bDados">Dados</button>
+    <button id="bTema" title="Tema: automático (segue o aparelho), claro ou escuro">Tema: auto</button>
     <button id="bExp">Exportar</button>
     <button id="bShare">Compartilhar</button>
     <button id="bSalvar" class="pri">Salvar</button>
@@ -2550,6 +2557,9 @@ async function gerarPDF(exp, comLista, cap3d) {
   const n = doc.getNumberOfPages(); for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120); doc.text('Gerado em ' + dataBR() + ' · página ' + i + ' de ' + n, PW - 10, PH - 6, { align: 'right' }); }
   doc.save(nomeArquivo() + '.pdf');
 }
+$('#bTema').onclick = () => { const h = document.documentElement, at = h.getAttribute('data-tema'), nx = !at ? 'claro' : at === 'claro' ? 'escuro' : null; if (nx) h.setAttribute('data-tema', nx); else h.removeAttribute('data-tema'); try { if (nx) localStorage.setItem('planta_tema', nx); else localStorage.removeItem('planta_tema'); } catch (e) { } rotuloTema(); };
+function rotuloTema() { const at = document.documentElement.getAttribute('data-tema'); $('#bTema').textContent = 'Tema: ' + (at || 'auto'); }
+rotuloTema();
 $('#bExp').onclick = async () => {
   if (!P.paredes.length) return toast('Desenhe alguma coisa antes de exportar.');
   const r = await modal('Exportar planta', [
