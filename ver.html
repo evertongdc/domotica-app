@@ -207,6 +207,8 @@ window.DOMOTICA_CFG = {
     <input id="fCliente" placeholder="Cliente (ID)">
     <input id="fImovel" placeholder="Imóvel / obra">
     <div class="sp"></div>
+    <span id="stSalvo" class="pill" style="white-space:nowrap">—</span>
+    <button id="bAtalhos" title="Atalhos de teclado (?)">⌨</button>
     <button id="bUndo" title="Desfazer">↶</button><button id="bRedo" title="Refazer">↷</button>
     <button id="bImp">Planta do cliente</button>
     <button id="bAbrir">Abrir</button>
@@ -951,6 +953,17 @@ window.PLANTA_CTX = {};
     'Nova Digital', 'Broadlink', 'Alexa', 'TP-Link Deco', 'Fire TV', 'Electrolux', 'Huawei AI Life', 'Google Home', 'SmartThings', 'LG ThinQ', 'Xiaomi Home'];
   M.PROTOCOLOS = ['Wi-Fi', 'Zigbee', 'Bluetooth', 'RF 433 MHz', 'Infravermelho (IR)', 'Matter', 'Z-Wave', 'Cabo / Ethernet', 'Nuvem do fabricante', 'Outro'];
   M.STATUS_APP = { pendente: 'Cadastro pendente', cadastrado: 'Conta criada', instalado: 'Instalado no celular', ativo: 'Em uso / configurado' };
+  /** aparelhos soltos: luz sem interruptor vinculado, ou aparelho sem vínculo e sem automação (app/protocolo) */
+  M.soltos = function (p) {
+    const out = [], nomeC = id => { const c = p.comodos.find(x => x.id === id); return c ? c.nome : 'sem cômodo'; };
+    p.pontos.forEach(pt => {
+      if (pt.tipo === 'interruptor' || pt.tipo === 'botao') return;
+      const cat = M.catDe(pt), ligado = p.ligacoes.some(l => l.para === pt.id || l.de === pt.id), obs = (pt.obs || '').trim();
+      if (cat === 'luz' && !ligado) out.push({ id: pt.id, nome: M.nomeDe(pt), comodo: nomeC(pt.comodo), luz: true, obs, obsOk: obs.length >= 10, motivo: 'sem interruptor vinculado' + (obs.length >= 10 ? ' (obs.: ' + obs + ')' : ' e sem observação clara') });
+      else if (cat !== 'luz' && M.PRECISA_APP.indexOf(pt.tipo) >= 0 && !ligado && !pt.appId && !pt.protocolo) out.push({ id: pt.id, nome: M.nomeDe(pt), comodo: nomeC(pt.comodo), luz: false, obs, obsOk: false, motivo: 'sem vínculo e sem automação (defina app/protocolo ou ligue a um comando)' });
+    });
+    return out;
+  };
   M.PRECISA_APP = ['interruptor', 'botao', 'fita_led', 'caixa_som', 'amplificador', 'echo', 'hub', 'ar_condicionado', 'ventilador', 'cortina', 'portao', 'tv', 'camera', 'sensor', 'fechadura', 'roteador', 'outro'];
 
   M.novoApp = function (p, nome, extra) {
@@ -1011,6 +1024,11 @@ window.PLANTA_CTX = {};
     const out = validar0(p), add = (nivel, msg, tipo, id) => out.push({ nivel, msg, alvo: { tipo, id } });
     const nomeC = id => { const c = p.comodos.find(x => x.id === id); return c ? c.nome : 'sem cômodo'; };
     const apps = p.apps || [];
+    for (let i = out.length - 1; i >= 0; i--) if (/^Luz sem comando/.test(out[i].msg)) out.splice(i, 1);
+    M.soltos(p).forEach(x => {
+      if (x.luz) add(x.obsOk ? 'aviso' : 'erro', x.obsOk ? 'Luz sem interruptor (justificado): ' + x.nome + ' (' + x.comodo + ') — ' + x.obs : 'Luz sem interruptor vinculado: ' + x.nome + ' (' + x.comodo + '). Vincule um interruptor ou escreva uma observação clara (ex.: ligada direto, comando por sensor/Alexa).', 'ponto', x.id);
+      else add('aviso', 'Aparelho solto: ' + x.nome + ' (' + x.comodo + ') — ' + x.motivo, 'ponto', x.id);
+    });
     p.pontos.forEach(pt => {
       if (M.PRECISA_APP.indexOf(pt.tipo) >= 0 && !pt.appId && !pt.protocolo) add('info', 'Sem app/protocolo definido: ' + M.nomeDe(pt) + ' (' + nomeC(pt.comodo) + ')', 'ponto', pt.id);
       if (pt.appId && !apps.some(a => a.id === pt.appId)) add('aviso', 'App do aparelho não existe mais na lista: ' + M.nomeDe(pt), 'ponto', pt.id);
@@ -1342,6 +1360,7 @@ let P = M.novaPlanta('Nova planta');
 const S = { tool: 'sel', camadas: new Set(), projeto: 'atual', estilo: (() => { try { return localStorage.getItem('planta_estilo') === 'real' ? 'real' : 'arq'; } catch (e) { return 'arq'; } })(), catalogo: undefined, sugestoes: undefined, sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
   dedo: false, interna: true, cotas: true, ligs: true, fotoDataUrl: null, fotoSuja: false, planoId: CTX.plantaId || null, cal: [], prev: null, tab: 'v2d', filtro: '', cadeia: false, rodaZoom: false, p1: null, dig: '', live: null, ultima: null, ativo: null, ghost: null, mouse: null };
 const undo = [], redo = [];
+S.multi = [];
 const ptrs = new Map(); let gest = null;
 const svg = $('#svg'), gMain = $('#gMain'), gGrid = $('#gGrid'), imgF = $('#imgF');
 
@@ -1376,10 +1395,10 @@ const confirmar = (msg, ok) => modal('Confirmar', [{ tipo: 'info', val: esc(msg)
 
 /* ===================== histórico / persistência ===================== */
 function ajustaParedes() { try { if (M.juntarPontas(P)) { M.normalizarParedes(P); M.unirColineares(P); } } catch (e) { } }
-function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo.length = 0; S.dirty = true; }
-function desfazer() { if (!undo.length) return; redo.push(JSON.stringify(P)); P = JSON.parse(undo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
-function refazer() { if (!redo.length) return; undo.push(JSON.stringify(P)); P = JSON.parse(redo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
-let draftT; function rascunho() { if (window.PLANTA_VIEW) return; clearTimeout(draftT); draftT = setTimeout(() => { try { localStorage.setItem('planta_rascunho', JSON.stringify({ P, planoId: S.planoId, ctx: CTX.clienteId || '' })); } catch (e) { } }, 700); }
+function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo.length = 0; S.dirty = true; S.rev = (S.rev || 0) + 1; }
+function desfazer() { if (!undo.length) return toast('Nada para desfazer.'); S.dirty = true; S.rev = (S.rev || 0) + 1; redo.push(JSON.stringify(P)); P = JSON.parse(undo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
+function refazer() { if (!redo.length) return toast('Nada para refazer.'); S.dirty = true; S.rev = (S.rev || 0) + 1; undo.push(JSON.stringify(P)); P = JSON.parse(redo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
+let draftT; function rascunho() { if (window.PLANTA_VIEW) return; agendaAuto(); clearTimeout(draftT); draftT = setTimeout(() => { try { localStorage.setItem('planta_rascunho', JSON.stringify({ P, planoId: S.planoId, ctx: CTX.clienteId || '' })); } catch (e) { } }, 700); }
 
 /* ===================== geometria de tela ===================== */
 const rectOf = () => svg.getBoundingClientRect();
@@ -1478,7 +1497,7 @@ function renderSVG() {
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
     const lo = ladoOffset(p), cor = M.corDe(p), T = M.TIPOS[p.tipo] || M.TIPOS.outro, cat = M.catDe(p), cmd = p.tipo === 'interruptor' || p.tipo === 'botao';
-    const on = sel && sel.k === 'ponto' && sel.id === p.id, de = S.tool === 'ligar' && S.lig.de === p.id, h = sz / 2;
+    const on = (sel && sel.k === 'ponto' && sel.id === p.id) || S.multi.includes(p.id), de = S.tool === 'ligar' && S.lig.de === p.id, h = sz / 2;
     s += '<g data-k="ponto" data-id="' + p.id + '" transform="translate(' + (p.x + lo.dx) + ' ' + (p.y + lo.dy) + ')"' + (S.ativo && p.comodo !== S.ativo ? ' opacity=".35"' : '') + '>';
     if (on || de) s += '<circle r="' + (sz * .95) + '" fill="none" stroke="' + (de ? '#ff7a00' : '#1e88ff') + '" stroke-width="3" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>';
     if (S.estilo === 'real') s += iconeReal(p, sz * 1.45, cor);
@@ -1927,6 +1946,7 @@ $('#panel').addEventListener('click', e => {
   if (a === 'medirt') return pedirMedida(S.sel.parede, S.sel.t0, S.sel.t1);
 });
 function apagarSel() {
+  if (S.multi.length > 1) { snap(); const n = S.multi.length; S.multi.slice().forEach(i => M.removerPonto(P, i)); S.multi = []; S.sel = null; refresh(); toast(n + ' objetos excluídos. ⌘Z desfaz.'); return; }
   const s = S.sel; if (!s) return; snap();
   if (s.k === 'ponto') M.removerPonto(P, s.id); else if (s.k === 'parede') M.removerParede(P, s.id);
   else if (s.k === 'abertura') P.aberturas = P.aberturas.filter(a => a.id !== s.id); else if (s.k === 'ligacao') P.ligacoes = P.ligacoes.filter(l => l.id !== s.id);
@@ -1999,10 +2019,13 @@ svg.addEventListener('pointerdown', e => {
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
   if (ptrs.size >= 2) { const [a, b] = Array.from(ptrs.values()); gest = { mode: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; S.prev = null; renderSVG(); return; }
   const w = toWorld(e), el = e.target.closest ? e.target.closest('[data-k]') : null, tool = S.tool, desenha = e.pointerType !== 'touch' || S.dedo;
-  gest = { id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, start: w, el, tool, pts: [w], moved: false, mode: 'tap' };
+  gest = { mod: e.shiftKey || e.metaKey || e.ctrlKey, id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, start: w, el, tool, pts: [w], moved: false, mode: 'tap' };
   if (e.button === 1 || e.button === 2 || window.PLANTA_VIEW) gest.mode = 'pan';
   else if (tool === 'rabisco' || tool === 'parede') gest.mode = desenha ? tool : 'pan';
-  else if (tool === 'sel' && el && el.dataset.k === 'ponto') { gest.mode = 'dragPonto'; gest.pid = el.dataset.id; }
+  else if (tool === 'sel' && el && el.dataset.k === 'ponto') {
+    gest.mode = 'dragPonto'; gest.pid = el.dataset.id;
+    if (!gest.mod) { const pt0 = getById(P.pontos, gest.pid); if (!S.multi.includes(gest.pid)) S.multi = pt0 && pt0.grupo ? P.pontos.filter(q => q.grupo === pt0.grupo).map(q => q.id) : []; }
+  }
   else if (tool === 'sel' && el && el.dataset.k === 'handle') { gest.mode = 'dragHandle'; gest.wid = el.dataset.id; gest.hi = el.dataset.i; const ww = getById(P.paredes, gest.wid); gest.old = [ww['x' + gest.hi], ww['y' + gest.hi]]; }
   else if (tool === 'sel' && el && el.dataset.k === 'abertura') { gest.mode = 'dragAbertura'; gest.aid = el.dataset.id; }
   else if (tool === 'sel' && el && el.dataset.k === 'parede' && (e.pointerType !== 'touch' || (S.sel && S.sel.k === 'parede' && S.sel.id === el.dataset.id))) { gest.mode = 'dragParede'; gest.wid = el.dataset.id; gest.orig = JSON.parse(JSON.stringify(P.paredes)); gest.origP = {}; P.pontos.forEach(p => { gest.origP[p.id] = { x: p.x, y: p.y }; }); }
@@ -2033,11 +2056,14 @@ svg.addEventListener('pointermove', e => {
   if (m === 'rabisco') { gest.pts.push(w); S.prev = { k: 'poly', pts: gest.pts }; renderSVG(); return; }
   if (m === 'parede') { atualizarLive(w, gest.a); return; }
   if (m === 'dragPonto') {
-    if (!gest.drag && mv > 4) { snap(); gest.drag = true; S.sel = { k: 'ponto', id: gest.pid }; }
+    if (gest.mod) return;
+    if (!gest.drag && mv > 4) { snap(); gest.drag = true; S.sel = { k: 'ponto', id: gest.pid }; if (S.multi.length > 1 && S.multi.includes(gest.pid)) { gest.o = {}; S.multi.forEach(i => { const q = getById(P.pontos, i); if (q) gest.o[i] = [q.x, q.y]; }); } }
     if (!gest.drag) return;
     const p = getById(P.pontos, gest.pid), T = M.TIPOS[p.tipo] || M.TIPOS.outro; let x = w.x, y = w.y, par = null;
-    if (T.parede) { const c = G.colar({ x, y }, P.paredes, Math.max(60, wpp() * 30)); if (c) { x = c.x; y = c.y; par = c.parede; } }
-    p.x = Math.round(x); p.y = Math.round(y); p.parede = par; renderSVG(); return;
+    if (!gest.o && T.parede) { const c = G.colar({ x, y }, P.paredes, Math.max(60, wpp() * 30)); if (c) { x = c.x; y = c.y; par = c.parede; } }
+    p.x = Math.round(x); p.y = Math.round(y); p.parede = par;
+    if (gest.o) { const dx = p.x - gest.o[gest.pid][0], dy = p.y - gest.o[gest.pid][1]; Object.keys(gest.o).forEach(i => { if (i === gest.pid) return; const q = getById(P.pontos, i); if (q) { q.x = Math.round(gest.o[i][0] + dx); q.y = Math.round(gest.o[i][1] + dy); q.parede = null; } }); }
+    renderSVG(); return;
   }
   if (m === 'dragAbertura') {
     if (!gest.drag && mv > 4) { snap(); gest.drag = true; S.sel = { k: 'abertura', id: gest.aid }; }
@@ -2086,7 +2112,7 @@ function fimGesto(e, cancel) {
     if (!r.ok) { undo.pop(); toast('Não deu para mover: ' + r.motivo); return refresh(); }
     S.sel = { k: 'comodo', id: r.comodoId }; if (S.ativo) S.ativo = r.comodoId; refresh(); toast('Cômodo movido' + (r.portas ? ' e ligado ao vizinho (porta criada).' : '.')); return;
   }
-  if (g.mode === 'dragPonto' && g.drag) { const p = getById(P.pontos, g.pid); p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); return refresh(); }
+  if (g.mode === 'dragPonto' && g.drag) { (g.o ? Object.keys(g.o) : [g.pid]).forEach(i => { const p = getById(P.pontos, i); if (p) p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); }); return refresh(); }
   if (g.mode === 'dragHandle' && g.drag) { ajustaParedes(); M.recalc(P); return refresh(); }
   if (g.mode === 'dragParede' && g.drag) { ajustaParedes(); M.recalc(P); P.pontos.forEach(p => { p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); }); return refresh(); }
   if (g.mode === 'dragAbertura' && g.drag) return refresh();
@@ -2121,8 +2147,12 @@ function tocar(g, w) {
   if (kind === 'tecla' && tool !== 'del') return abrirVinculo(el.dataset.id, +el.dataset.t);
   if (tool === 'sel' || tool === 'rabisco' || tool === 'parede') {
     if (kind === 'trecho') { const t = M.trechos(P)[+el.dataset.i]; if (t) { S.sel = { k: 'trecho', parede: t.parede, t0: t.t0, t1: t.t1 }; return refresh(); } }
-    if (kind && kind !== 'handle') { S.sel = { k: kind, id }; if (kind === 'comodo' && false) return; return refresh(); }
-    if (tool === 'sel') { S.sel = null; return refresh(); }
+    if (kind === 'ponto' && g.mod && tool === 'sel') {
+      const cur = new Set(S.multi.length ? S.multi : (S.sel && S.sel.k === 'ponto' ? [S.sel.id] : [])); cur.has(id) ? cur.delete(id) : cur.add(id);
+      S.multi = [...cur]; S.sel = S.multi.length === 1 ? { k: 'ponto', id: S.multi[0] } : null; if (S.multi.length > 1) toast(S.multi.length + ' objetos selecionados · ⌘G agrupa · ⌘X exclui'); return refresh();
+    }
+    if (kind && kind !== 'handle') { S.sel = { k: kind, id }; if (kind === 'ponto') { const q = getById(P.pontos, id); S.multi = q && q.grupo ? P.pontos.filter(z => z.grupo === q.grupo).map(z => z.id) : []; } else S.multi = []; return refresh(); }
+    if (tool === 'sel') { S.sel = null; S.multi = []; return refresh(); }
     return;
   }
   if (tool === 'del') {
@@ -2194,6 +2224,7 @@ $('#zFit').onclick = () => { S.autoFit = true; fit(); };
 $('#bUndo').onclick = desfazer; $('#bRedo').onclick = refazer;
 window.addEventListener('keydown', e => {
   if (window.PLANTA_VIEW) return;
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && !$('#modal').classList.contains('on') && ['s', 'e', 'o'].includes(e.key.toLowerCase())) { e.preventDefault(); const kk = e.key.toLowerCase(); if (kk === 's') salvarManual(); else if (kk === 'e') $('#bExp').click(); else $('#bAbrir').click(); return; }
   if (/INPUT|TEXTAREA|SELECT/.test((e.target.tagName || ''))) return;
   if ($('#modal').classList.contains('on')) return;
   if (S.ghost) { if (e.key === 'Escape') cancelarGhost(); else if (e.key.toLowerCase() === 'r') girarGhost(); else if (e.key === 'Enter') colocarGhost(); return; }
@@ -2206,10 +2237,37 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (S.tool === 'parede' && e.key.toLowerCase() === 'c') { S.cadeia = !S.cadeia; renderHint(); return; }
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? refazer() : desfazer(); }
-  else if (e.key === 'Delete' || e.key === 'Backspace') { if (S.sel) { e.preventDefault(); apagarSel(); } }
-  else if (e.key === 'Escape') { S.sel = null; S.lig = { de: null, tecla: 1 }; S.tool = 'sel'; S.p1 = null; S.live = null; refresh(); }
+  const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase(), selIds = () => S.multi.length ? S.multi.slice() : (S.sel && S.sel.k === 'ponto' ? [S.sel.id] : []);
+  if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? refazer() : desfazer(); }
+  else if (mod && k === 'y') { e.preventDefault(); refazer(); }
+  else if (mod && k === 'x') { e.preventDefault(); if (S.sel || S.multi.length) apagarSel(); else toast('Nada selecionado.'); }
+  else if (mod && k === 'a') { e.preventDefault(); S.multi = P.pontos.filter(p => !S.ativo || p.comodo === S.ativo).map(p => p.id); S.sel = null; toast(S.multi.length + ' pontos selecionados.'); refresh(); }
+  else if (mod && k === 'g') {
+    e.preventDefault(); const ids = selIds();
+    if (e.shiftKey) { if (!ids.length) return toast('Selecione um grupo para desagrupar.'); snap(); ids.forEach(i => { const q = getById(P.pontos, i); if (q) delete q.grupo; }); S.multi = []; refresh(); toast('Grupo desfeito.'); }
+    else { if (ids.length < 2) return toast('Selecione 2 ou mais objetos (Shift+clique) para agrupar.'); snap(); const gid = 'g' + Date.now().toString(36); ids.forEach(i => { const q = getById(P.pontos, i); if (q) q.grupo = gid; }); S.multi = ids; refresh(); toast('Agrupados (' + ids.length + '). Arrastar um move todos. ⇧⌘G desagrupa.'); }
+  }
+  else if (mod && k === 'd') { e.preventDefault(); const ids = selIds(); if (!ids.length) return toast('Selecione um ponto para duplicar.'); snap(); const novos = ids.map(i => { const q = getById(P.pontos, i); const c = Object.assign({}, JSON.parse(JSON.stringify(q)), { id: M.id(P, 'p'), x: q.x + 30, y: q.y + 30, parede: null }); delete c.grupo; P.pontos.push(c); c.comodo = G.comodoDoPonto(P.comodos, c.x, c.y); return c.id; }); S.multi = novos.length > 1 ? novos : []; S.sel = novos.length === 1 ? { k: 'ponto', id: novos[0] } : null; refresh(); toast('Duplicado.'); }
+  else if (mod && (k === '=' || k === '+')) { e.preventDefault(); $('#zIn').click(); }
+  else if (mod && k === '-') { e.preventDefault(); $('#zOut').click(); }
+  else if (mod && k === '0') { e.preventDefault(); $('#zFit').click(); }
+  else if (mod && k === '/') { e.preventDefault(); mostrarAtalhos(); }
+  else if (!mod && e.key === '?') { e.preventDefault(); mostrarAtalhos(); }
+  else if (e.altKey && /^Digit[1-6]$/.test(e.code)) { e.preventDefault(); const t = ['v2d', 'v3d', 'vpontos', 'vapps', 'vcenas', 'vchecks'][+e.code.slice(5) - 1]; mostrar(t); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { if (S.sel || S.multi.length) { e.preventDefault(); apagarSel(); } }
+  else if (e.key.startsWith('Arrow') && selIds().length) {
+    e.preventDefault(); const d = e.shiftKey ? 25 : 5, dx = e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0, dy = e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
+    snap(); selIds().forEach(i => { const q = getById(P.pontos, i); if (q) { q.x += dx; q.y += dy; q.comodo = G.comodoDoPonto(P.comodos, q.x, q.y); } }); refresh();
+  }
+  else if (!mod && !e.altKey && ({ v: 'sel', r: 'rabisco', w: 'parede', l: 'ligar', m: 'medir' })[k] && S.tab === 'v2d') { S.tool = ({ v: 'sel', r: 'rabisco', w: 'parede', l: 'ligar', m: 'medir' })[k]; S.p1 = null; S.live = null; refresh(); toast('Ferramenta: ' + (FERR.find(f => f[0] === S.tool) || [0, S.tool])[1]); }
+  else if (e.key === 'Escape') { S.sel = null; S.multi = []; S.lig = { de: null, tecla: 1 }; S.tool = 'sel'; S.p1 = null; S.live = null; refresh(); }
 });
+function mostrarAtalhos() {
+  const L = [['⌘Z / ⇧⌘Z (ou ⌘Y)', 'Desfaz / refaz a última edição'], ['⌘S', 'Salva o projeto agora (o salvamento automático roda a cada edição)'], ['⌘E', 'Abre o menu de exportar'], ['⌘O', 'Abre uma planta salva'], ['⌘G / ⇧⌘G', 'Agrupa / desagrupa os objetos selecionados'], ['⌘X, Delete ou Backspace', 'Exclui o que está selecionado'], ['⌘A', 'Seleciona todos os pontos (do cômodo ativo, se houver)'], ['⌘D', 'Duplica o ponto selecionado'], ['Shift/⌘ + clique', 'Soma ou tira um ponto da seleção'], ['Setas (⇧ = maior)', 'Move o ponto selecionado em 5 cm (25 cm)'], ['V · R · W · L · M', 'Ferramentas: selecionar, rabiscar, parede, ligar, medir'], ['⌘+ / ⌘− / ⌘0', 'Zoom e ajustar à tela'], ['Alt+1…6', 'Troca de aba (2D, 3D, Pontos, Apps, Cenas, Checagem)'], ['Esc', 'Cancela e limpa a seleção'], ['?', 'Mostra esta lista']];
+  const box = $('#mbox'); box.innerHTML = '<h3>Atalhos de teclado</h3><table>' + L.map(r => '<tr><td style="white-space:nowrap"><b>' + esc(r[0]) + '</b></td><td>' + esc(r[1]) + '</td></tr>').join('') + '</table><div class="note" style="margin-top:8px">No Windows, use Ctrl no lugar de ⌘.</div><div class="row" style="margin-top:12px"><button class="pri" data-m="no">Fechar</button></div>';
+  $('#modal').classList.add('on'); box.onclick = ev => { if (ev.target.dataset && ev.target.dataset.m) { $('#modal').classList.remove('on'); box.onclick = null; } };
+}
+$('#bAtalhos').onclick = mostrarAtalhos;
 window.addEventListener('resize', () => { renderSVG(); if (T3.on) resize3d(); });
 $('#fNome').addEventListener('change', e => { P.nome = e.target.value; });
 
@@ -2736,7 +2794,30 @@ async function salvar(silencioso) {
     if (!silencioso) toast('Erro ao salvar: ' + e.message, 6000); throw e;
   }
 }
-$('#bSalvar').onclick = () => salvar(false).catch(() => { });
+
+/* ===================== salvamento automático ===================== */
+let autoT = null, salvandoAuto = false;
+function marcaStatus(t) { const el = $('#stSalvo'); if (!el) return; let so = 0; try { so = M.soltos(P).length; } catch (e) { } el.textContent = t + (so ? ' · ⚠ ' + so + ' solto' + (so > 1 ? 's' : '') : ''); el.title = so ? 'Aparelhos soltos (sem interruptor ou sem automação). Veja na aba Checagem.' : ''; }
+function agendaAuto() { if (window.PLANTA_VIEW || !S.dirty) return; marcaStatus('Alterações não salvas…'); clearTimeout(autoT); autoT = setTimeout(autoSalvar, 2200); }
+async function autoSalvar() {
+  clearTimeout(autoT); if (salvandoAuto || !S.dirty || !P.paredes.length) return; salvandoAuto = true; const rev = S.rev; marcaStatus('Salvando…');
+  try { await salvar(true); if (S.rev !== rev) S.dirty = true; marcaStatus('Salvo automaticamente ✓ ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })); }
+  catch (e) { S.dirty = true; marcaStatus('Falha ao salvar, tentando de novo…'); autoT = setTimeout(autoSalvar, 8000); }
+  finally { salvandoAuto = false; if (S.dirty && S.rev !== rev) agendaAuto(); }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && S.dirty) autoSalvar(); });
+window.addEventListener('beforeunload', e => { if (S.dirty && !window.PLANTA_VIEW) { autoSalvar(); e.preventDefault(); e.returnValue = ''; } });
+async function avisoSoltos(so) {
+  const li = so.map(x => '<li><b>' + esc(x.nome) + '</b> (' + esc(x.comodo) + '): ' + esc(x.motivo) + '</li>').join('');
+  const r = await modal('Aparelhos soltos (' + so.length + ')', [{ tipo: 'info', val: 'O projeto foi salvo, mas estes aparelhos estão <b>sem vínculo ou sem automação</b>. Toda luz precisa de um interruptor vinculado (ou de uma observação clara explicando o motivo).<ul style="padding-left:18px;margin:8px 0">' + li + '</ul>' }], 'Revisar o primeiro');
+  if (r) { S.sel = { k: 'ponto', id: so[0].id }; S.multi = []; mostrar('v2d'); refresh(); }
+}
+async function salvarManual() {
+  clearTimeout(autoT); let r = null; try { r = await salvar(false); } catch (e) { return; }
+  marcaStatus('Salvo ✓ ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+  const so = M.soltos(P); if (so.length) await avisoSoltos(so);
+}
+$('#bSalvar').onclick = salvarManual;
 $('#bAbrir').onclick = async () => {
   let lista = [];
   try { lista = await gas('Planta_listar', CTX.clienteId || $('#fCliente').value || ''); } catch (e) { Object.keys(localStorage).filter(k => k.indexOf('planta_local_') === 0).forEach(k => { try { const o = JSON.parse(localStorage[k]); lista.push({ id: k.slice(7), nome: o.nome, imovel: o.imovel, comodos: (o.P.comodos || []).length, pontos: (o.P.pontos || []).length }); } catch (x) { } }); }

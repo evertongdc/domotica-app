@@ -58,6 +58,9 @@ nav .dot{position:absolute;top:4px;left:calc(50% + 8px);background:var(--or);col
 .item img{width:44px;height:44px;object-fit:contain;background:#fff;border-radius:8px;flex:none}
 .item .t{flex:1;min-width:0}
 a{color:var(--blue)}
+html[data-tema=claro]{--bg:#f2f5fb;--card:#ffffff;--card2:#eef2f9;--line:rgba(15,23,42,.13);--tx:#0f172a;--mut:#52607a;color-scheme:light}html[data-tema=claro] header{background:rgba(255,255,255,.92)}html[data-tema=claro] body.on-auth,html[data-tema=claro] body.on-auth{background:#eef2fa}html[data-tema=claro] .auth-bg{background:radial-gradient(900px 600px at 8% 0%,rgba(254,121,44,.16),transparent 60%),radial-gradient(900px 700px at 100% 100%,rgba(13,68,222,.14),transparent 60%),linear-gradient(160deg,#e4eaf6,#f2f5fb)}html[data-tema=claro] .gl{background:rgba(255,255,255,.82);border-color:rgba(15,23,42,.14);box-shadow:0 8px 28px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.8)}html[data-tema=claro] body.on-auth input,html[data-tema=claro] body.on-auth select{background:#fff;border-color:rgba(15,23,42,.22)}html[data-tema=claro] body.on-auth label,html[data-tema=claro] .chk,html[data-tema=claro] .lk{color:#475569}html[data-tema=claro] .lk a{color:#d9560f}html[data-tema=claro] #toast{background:#fff;color:#0f172a;box-shadow:0 8px 24px rgba(15,23,42,.18)}html[data-tema=claro] .sheet{box-shadow:0 -10px 40px rgba(15,23,42,.2)}html[data-tema=claro] .ov{background:rgba(15,23,42,.45)}html[data-tema=claro] .btn.pri,html[data-tema=claro] .btn.ent{color:#1a0b00}html[data-tema=claro] .err{background:rgba(229,72,77,.12);color:#b42318}html[data-tema=claro] .msg{background:rgba(46,164,79,.14);color:#166534}html[data-tema=claro] .auth-ttl{color:#0f172a}@media (prefers-color-scheme:light){html:not([data-tema=escuro]){--bg:#f2f5fb;--card:#ffffff;--card2:#eef2f9;--line:rgba(15,23,42,.13);--tx:#0f172a;--mut:#52607a;color-scheme:light}html:not([data-tema=escuro]) header{background:rgba(255,255,255,.92)}html:not([data-tema=escuro]) body.on-auth,html:not([data-tema=escuro]) body.on-auth{background:#eef2fa}html:not([data-tema=escuro]) .auth-bg{background:radial-gradient(900px 600px at 8% 0%,rgba(254,121,44,.16),transparent 60%),radial-gradient(900px 700px at 100% 100%,rgba(13,68,222,.14),transparent 60%),linear-gradient(160deg,#e4eaf6,#f2f5fb)}html:not([data-tema=escuro]) .gl{background:rgba(255,255,255,.82);border-color:rgba(15,23,42,.14);box-shadow:0 8px 28px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.8)}html:not([data-tema=escuro]) body.on-auth input,html:not([data-tema=escuro]) body.on-auth select{background:#fff;border-color:rgba(15,23,42,.22)}html:not([data-tema=escuro]) body.on-auth label,html:not([data-tema=escuro]) .chk,html:not([data-tema=escuro]) .lk{color:#475569}html:not([data-tema=escuro]) .lk a{color:#d9560f}html:not([data-tema=escuro]) #toast{background:#fff;color:#0f172a;box-shadow:0 8px 24px rgba(15,23,42,.18)}html:not([data-tema=escuro]) .sheet{box-shadow:0 -10px 40px rgba(15,23,42,.2)}html:not([data-tema=escuro]) .ov{background:rgba(15,23,42,.45)}html:not([data-tema=escuro]) .btn.pri,html:not([data-tema=escuro]) .btn.ent{color:#1a0b00}html:not([data-tema=escuro]) .err{background:rgba(229,72,77,.12);color:#b42318}html:not([data-tema=escuro]) .msg{background:rgba(46,164,79,.14);color:#166534}html:not([data-tema=escuro]) .auth-ttl{color:#0f172a}}
+#tema-btn{position:fixed;top:10px;right:10px;z-index:25;width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card2);cursor:pointer;font-size:17px;line-height:1;padding:0}
+header #tema-btn{position:static;width:38px}
 /* login */
 body.on-auth{background:#070b1c}
 .auth>.lg-plate,.auth>.auth-ttl,.auth>.gl{position:relative;z-index:2;flex-shrink:0}
@@ -108,6 +111,7 @@ body.on-auth .chk input{padding:0;width:16px;height:16px}
 @media (min-width:640px){.ov{align-items:center}.sheet{border-radius:20px}}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#222c40;border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:30;display:none;max-width:90vw}
 </style>
+<script>try{var _t=localStorage.getItem('dom_tema');if(_t==='claro'||_t==='escuro')document.documentElement.setAttribute('data-tema',_t)}catch(e){}</script>
 </head>
 <body>
 <div id="raiz"></div>
@@ -161,9 +165,15 @@ window.DOMOTICA_CFG = {
   function cfReset() { CF.tok = ''; try { if (window.turnstile && CF.id !== null) window.turnstile.reset(CF.id); } catch (e) { } }
 
   /* ---------- visual do login ---------- */
-  var LOGO = 'logo-neon.png?v=3';
+  function claro() { var a = document.documentElement.getAttribute('data-tema'); return a === 'claro' || (!a && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches); }
+  function logoAtual() { return claro() ? 'logo-completa.png?v=1' : 'logo-neon.png?v=3'; }
+  var LOGO = logoAtual();
+  function rotuloTema() { var b = document.getElementById('tema-btn'); if (!b) return; var a = document.documentElement.getAttribute('data-tema'); b.textContent = a === 'claro' ? '\u2600' : a === 'escuro' ? '\u263E' : '\u25D0'; b.title = 'Tema: ' + (a || 'autom\u00e1tico') + ' (toque para alternar)'; }
+  window.__tema = function () { alternarTema(); };
+  function alternarTema() { var h = document.documentElement, a = h.getAttribute('data-tema'), n = !a ? 'claro' : a === 'claro' ? 'escuro' : null; if (n) h.setAttribute('data-tema', n); else h.removeAttribute('data-tema'); lsSet('dom_tema', n); LOGO = logoAtual(); document.querySelectorAll('.lg-plate img').forEach(function (i) { i.src = LOGO; }); rotuloTema(); }
+  try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', function () { LOGO = logoAtual(); document.querySelectorAll('.lg-plate img').forEach(function (i) { i.src = LOGO; }); }); } catch (e) { }
   function fundoAuth() { return '<div class="auth-bg"></div>'; }
-  function cabecalhoAuth() { return fundoAuth() + '<div class="lg-plate"><img src="' + LOGO + '" alt="Domótica — A sua casa inteligente"></div><div class="auth-ttl">Portal do Cliente</div>'; }
+  function cabecalhoAuth() { return fundoAuth() + '<button id="tema-btn" onclick="window.__tema()" aria-label="Alternar tema">\u25D0</button>' + '<div class="lg-plate"><img src="' + LOGO + '" alt="Domótica — A sua casa inteligente"></div><div class="auth-ttl">Portal do Cliente</div>'; }
 
   /* ---------- autenticação ---------- */
   var OLHO = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -190,7 +200,7 @@ window.DOMOTICA_CFG = {
       (cr ? '<p class="lk">Já tem conta? <a href="#" id="a-ir">Entrar</a></p>' : '<p class="lk"><a href="#" id="a-esq">Esqueci minha senha</a></p><p class="lk" style="margin-top:8px">Primeira vez? <a href="#" id="a-ir">Criar conta</a></p>') +
       '</div></div>';
     document.getElementById('a-ir').onclick = function (e) { e.preventDefault(); telaAuth(cr ? 'entrar' : 'criar'); };
-    olho(document.getElementById('a-senha'));
+    olho(document.getElementById('a-senha')); rotuloTema();
     cfMontar(document.getElementById('a-cf'));
     document.getElementById('a-ok').onclick = function () { cr ? criarConta() : entrar(); };
     document.getElementById('a-senha').onkeydown = function (e) { if (e.key === 'Enter') document.getElementById('a-ok').click(); };
@@ -292,10 +302,10 @@ window.DOMOTICA_CFG = {
     var cont = { projetos: projPend().length, orcamentos: orcPend().length, pedidos: abertos().length };
     var nomes = { inicio: 'Início', projetos: 'Projetos', orcamentos: 'Orçamentos', casa: 'Minha casa', pedidos: 'Pedidos' };
     document.body.classList.remove('on-auth');
-    R.innerHTML = '<header><div class="wrap"><div class="hd-logo"><div class="lg-plate"><img src="' + LOGO + '" alt="Domótica"></div><span>Portal do Cliente</span></div><button class="btn sm ghost" id="p-sair">Sair</button></div></header>' +
+    R.innerHTML = '<header><div class="wrap"><div class="hd-logo"><div class="lg-plate"><img src="' + LOGO + '" alt="Domótica"></div><span>Portal do Cliente</span></div><div style="display:flex;gap:8px;align-items:center"><button id="tema-btn" onclick="window.__tema()" aria-label="Alternar tema">\u25D0</button><button class="btn sm ghost" id="p-sair">Sair</button></div></div></header>' +
       '<main><div class="wrap" id="p-corpo"></div></main>' +
       '<nav><div class="wrap">' + Object.keys(nomes).map(function (k) { return '<button data-a="' + k + '" class="' + (k === ABA ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + ICO[k] + '</svg>' + nomes[k] + (k !== 'inicio' && k !== 'casa' && cont[k] ? '<span class="dot">' + cont[k] + '</span>' : '') + '</button>'; }).join('') + '</div></nav>';
-    document.getElementById('p-sair').onclick = sair;
+    document.getElementById('p-sair').onclick = sair; rotuloTema();
     R.querySelector('nav').onclick = function (e) { var b = e.target.closest('button'); if (b) { ABA = b.dataset.a; pintar(); window.scrollTo(0, 0); } };
     var corpo = document.getElementById('p-corpo'); corpo.innerHTML = ({ inicio: vInicio, projetos: vProjetos, orcamentos: vOrcamentos, casa: vCasa, pedidos: vPedidos })[ABA]();
     corpo.onclick = clique;
