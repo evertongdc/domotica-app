@@ -1185,6 +1185,27 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
       p.paredes.forEach(o => { if (o === w) return; const r = G.projT(o, x, y); if (r.d > 0.5 && r.d <= tol && r.t > 0.02 && r.t < 0.98 && (!b || r.d < b.d)) b = { d: r.d, x: o.x1 + (o.x2 - o.x1) * r.t, y: o.y1 + (o.y2 - o.y1) * r.t }; });
       if (b) { const nx = Math.round(b.x), ny = Math.round(b.y); if (k === 1) { w.x1 = nx; w.y1 = ny; } else { w.x2 = nx; w.y2 = ny; } mexeu = true; }
     }));
+    // 2b) paredes paralelas muito coladas (a distância é menor que a espessura): a mais curta encosta na outra e as duas viram uma só
+    const esp = Math.max.apply(null, p.paredes.map(w => w.esp || 15).concat([15])), tolPar = Math.max(tol, esp + 1);
+    for (let it = 0; it < 30; it++) {
+      let achou = null;
+      for (let i = 0; i < p.paredes.length && !achou; i++) for (let j = i + 1; j < p.paredes.length && !achou; j++) {
+        const A = p.paredes[i], B = p.paredes[j], la = Math.hypot(A.x2 - A.x1, A.y2 - A.y1), lb = Math.hypot(B.x2 - B.x1, B.y2 - B.y1); if (la < 10 || lb < 10) continue;
+        const ux = (B.x2 - B.x1) / lb, uy = (B.y2 - B.y1) / lb, cr = ((A.x2 - A.x1) * uy - (A.y2 - A.y1) * ux) / la; if (Math.abs(cr) > 0.02) continue;
+        const dist = x => Math.abs((x[0] - B.x1) * uy - (x[1] - B.y1) * ux), d = Math.max(dist([A.x1, A.y1]), dist([A.x2, A.y2]));
+        if (d < 0.5 || d > tolPar) continue;
+        const pr = (x, y) => (x - B.x1) * ux + (y - B.y1) * uy, a1 = pr(A.x1, A.y1), a2 = pr(A.x2, A.y2), ov = Math.min(Math.max(a1, a2), lb) - Math.max(Math.min(a1, a2), 0);
+        if (ov < 10) continue;
+        achou = la <= lb ? { m: A, t: B } : { m: B, t: A };
+      }
+      if (!achou) break;
+      const m = achou.m, t = achou.t, lt = Math.hypot(t.x2 - t.x1, t.y2 - t.y1), tx = (t.x2 - t.x1) / lt, ty = (t.y2 - t.y1) / lt;
+      [[m.x1, m.y1, 1], [m.x2, m.y2, 2]].forEach(e => {
+        const ox = e[0], oy = e[1], k = (ox - t.x1) * tx + (oy - t.y1) * ty, nx = Math.round(t.x1 + tx * k), ny = Math.round(t.y1 + ty * k);
+        p.paredes.forEach(w => { if (Math.abs(w.x1 - ox) < 1 && Math.abs(w.y1 - oy) < 1) { w.x1 = nx; w.y1 = ny; } if (Math.abs(w.x2 - ox) < 1 && Math.abs(w.y2 - oy) < 1) { w.x2 = nx; w.y2 = ny; } });
+      });
+      mexeu = true;
+    }
     // 3) paredes que viraram um ponto somem (se não têm porta/janela)
     const antes = p.paredes.length;
     p.paredes = p.paredes.filter(w => Math.hypot(w.x2 - w.x1, w.y2 - w.y1) >= 1 || p.aberturas.some(a => a.parede === w.id));
