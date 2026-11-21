@@ -981,6 +981,7 @@ window.PLANTA_CTX = {};
     p.comodos.forEach(c => { c.feito = !!c.feito; });
     let mx = 0; p.apps.forEach(o => { const n = parseInt(String(o.id).replace(/\D/g, ''), 10); if (n > mx) mx = n; });
     p.seq = Math.max(p.seq || 1, mx + 1);
+    try { if (M.juntarPontas(p)) { M.normalizarParedes(p); M.unirColineares(p); M.recalc(p); } } catch (e) { }
     return p;
   };
   M.novoPonto = function (p, tipo, x, y, extra) { const o = novoPonto0(p, tipo, x, y, extra); if (o.appId == null) o.appId = ''; if (o.protocolo == null) o.protocolo = ''; return o; };
@@ -1113,6 +1114,41 @@ window.PLANTA_CTX = {};
       }
     }
     return p;
+  };
+
+  /** une automaticamente pontas de paredes que ficaram quase encostadas (<= tol cm) e encaixa pontas soltas na lateral de outra parede.
+   *  Devolve true se mexeu em alguma coisa. */
+  M.juntarPontas = function (p, tol) {
+    tol = tol || 8; let mexeu = false;
+    // 1) pontas próximas entre si viram um único ponto
+    const pts = []; p.paredes.forEach(w => { pts.push({ w, k: 1 }); pts.push({ w, k: 2 }); });
+    const X = e => e.k === 1 ? e.w.x1 : e.w.x2, Y = e => e.k === 1 ? e.w.y1 : e.w.y2;
+    const grupos = [];
+    pts.forEach(e => {
+      const g = grupos.find(gr => gr.some(o => Math.hypot(X(o) - X(e), Y(o) - Y(e)) <= tol));
+      if (g) g.push(e); else grupos.push([e]);
+    });
+    grupos.forEach(g => {
+      if (g.length < 2) return;
+      // ponto de referência: o que mais se repete exatamente; senão a média
+      const cont = {}; g.forEach(e => { const kk = Math.round(X(e)) + ',' + Math.round(Y(e)); cont[kk] = (cont[kk] || 0) + 1; });
+      let best = null, bn = 0; Object.keys(cont).forEach(kk => { if (cont[kk] > bn) { bn = cont[kk]; best = kk; } });
+      let cx, cy; if (bn >= 2) { const a = best.split(','); cx = +a[0]; cy = +a[1]; } else { cx = Math.round(g.reduce((t, e) => t + X(e), 0) / g.length); cy = Math.round(g.reduce((t, e) => t + Y(e), 0) / g.length); }
+      g.forEach(e => { if (Math.round(X(e)) !== cx || Math.round(Y(e)) !== cy) { if (e.k === 1) { e.w.x1 = cx; e.w.y1 = cy; } else { e.w.x2 = cx; e.w.y2 = cy; } mexeu = true; } });
+    });
+    // 2) ponta solta perto do meio de outra parede: encosta nela
+    p.paredes.forEach(w => [1, 2].forEach(k => {
+      const x = k === 1 ? w.x1 : w.x2, y = k === 1 ? w.y1 : w.y2;
+      if (p.paredes.some(o => o !== w && ((Math.abs(o.x1 - x) < 1 && Math.abs(o.y1 - y) < 1) || (Math.abs(o.x2 - x) < 1 && Math.abs(o.y2 - y) < 1)))) return; // já está ligada a outra ponta
+      let b = null;
+      p.paredes.forEach(o => { if (o === w) return; const r = G.projT(o, x, y); if (r.d > 0.5 && r.d <= tol && r.t > 0.02 && r.t < 0.98 && (!b || r.d < b.d)) b = { d: r.d, x: o.x1 + (o.x2 - o.x1) * r.t, y: o.y1 + (o.y2 - o.y1) * r.t }; });
+      if (b) { const nx = Math.round(b.x), ny = Math.round(b.y); if (k === 1) { w.x1 = nx; w.y1 = ny; } else { w.x2 = nx; w.y2 = ny; } mexeu = true; }
+    }));
+    // 3) paredes que viraram um ponto somem (se não têm porta/janela)
+    const antes = p.paredes.length;
+    p.paredes = p.paredes.filter(w => Math.hypot(w.x2 - w.x1, w.y2 - w.y1) >= 1 || p.aberturas.some(a => a.parede === w.id));
+    if (p.paredes.length !== antes) mexeu = true;
+    return mexeu;
   };
 
   /** o polígono (cm) invade o interior de algum cômodo existente? (amostragem em grade) */
@@ -1311,6 +1347,7 @@ function modal(titulo, campos, ok, extra) {
 const confirmar = (msg, ok) => modal('Confirmar', [{ tipo: 'info', val: esc(msg) }], ok || 'Confirmar').then(r => !!r);
 
 /* ===================== histórico / persistência ===================== */
+function ajustaParedes() { try { if (M.juntarPontas(P)) { M.normalizarParedes(P); M.unirColineares(P); } } catch (e) { } }
 function snap() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo.length = 0; S.dirty = true; }
 function desfazer() { if (!undo.length) return; redo.push(JSON.stringify(P)); P = JSON.parse(undo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
 function refazer() { if (!redo.length) return; undo.push(JSON.stringify(P)); P = JSON.parse(redo.pop()); S.sel = null; S.p1 = null; S.live = null; refresh(); }
@@ -1918,7 +1955,7 @@ function processarRabisco(pts) {
   const novos = G.arredondar(e.segs.map(s => encostar(s, r)), 5);
   snap(); let n = 0; novos.forEach(s => { if (addParede(s)) n++; });
   if (!n) { undo.pop(); return toast('Traço curto demais ou já existe.'); }
-  M.recalc(P); refresh();
+  ajustaParedes(); M.recalc(P); refresh();
 }
 
 /* ===================== entrada (Pencil / dedo / mouse) ===================== */
@@ -2022,8 +2059,8 @@ function fimGesto(e, cancel) {
     S.sel = { k: 'comodo', id: r.comodoId }; if (S.ativo) S.ativo = r.comodoId; refresh(); toast('Cômodo movido' + (r.portas ? ' e ligado ao vizinho (porta criada).' : '.')); return;
   }
   if (g.mode === 'dragPonto' && g.drag) { const p = getById(P.pontos, g.pid); p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); return refresh(); }
-  if (g.mode === 'dragHandle' && g.drag) { M.recalc(P); return refresh(); }
-  if (g.mode === 'dragParede' && g.drag) { M.recalc(P); P.pontos.forEach(p => { p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); }); return refresh(); }
+  if (g.mode === 'dragHandle' && g.drag) { ajustaParedes(); M.recalc(P); return refresh(); }
+  if (g.mode === 'dragParede' && g.drag) { ajustaParedes(); M.recalc(P); P.pontos.forEach(p => { p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); }); return refresh(); }
   if (g.mode === 'dragAbertura' && g.drag) return refresh();
   if (g.moved) return renderSVG();
   tocar(g, w);
@@ -2729,7 +2766,7 @@ function concluirParede(a, f, drag) {
   snap();
   if (addParede({ x1: a.x, y1: a.y, x2: f.b.x, y2: f.b.y })) {
     S.ultima = P.paredes[P.paredes.length - 1].id; P.calibrada = P.calibrada || f.typed;
-    M.recalc(P); S.p1 = (!drag && S.cadeia) ? { x: f.b.x, y: f.b.y } : null; S.dig = ''; S.live = null; refresh();
+    ajustaParedes(); M.recalc(P); S.p1 = (!drag && S.cadeia) ? { x: f.b.x, y: f.b.y } : null; S.dig = ''; S.live = null; refresh();
     if (S.p1) atualizarLive(S.mouse || S.p1);
   } else { undo.pop(); S.p1 = null; S.live = null; S.dig = ''; renderSVG(); toast('Já existe uma parede aí.'); }
 }
