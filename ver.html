@@ -2515,9 +2515,9 @@ function aparelho3D(p, o) {
   }
   if (t === 'fita_led') {
     const L = p.comp || 200, N = 48, segs = [], base = B(L, .9, 1.6, std(0xdfe3e8), 0, -.45, 0);
-    for (let i = 0; i < N; i++) { const m = new THREE.MeshBasicMaterial({ color: 0x2a2d33 }), s2 = new THREE.Mesh(new THREE.BoxGeometry(L / N * .92, .4, 1.1), m); s2.position.set(-L / 2 + L / N * (i + .5), -1.1, 0); G3.add(s2); segs.push(m); }
+    for (let i = 0; i < N; i++) { const m = new THREE.MeshBasicMaterial({ color: 0x2a2d33, toneMapped: false }), s2 = new THREE.Mesh(new THREE.BoxGeometry(L / N * .96, 1.1, 2), m); s2.position.set(-L / 2 + L / N * (i + .5), -1.35, 0); G3.add(s2); segs.push(m); }
     R.on = false; R.set = on => { R.on = on; if (!on) segs.forEach(m => m.color.set(0x2a2d33)); };
-    R.tick = tt => { if (!R.on) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22))); };
+    R.tick = tt => { if (!R.on) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22)).multiplyScalar(1.15)); };
     if (o.dirY) G3.rotation.y = o.dirY; R.luz = 0; return R;
   }
   if (t === 'echo' || t === 'echo_dot' || t === 'echo_pop' || t === 'echo_studio') {
@@ -2585,7 +2585,7 @@ function aparelho3D(p, o) {
 /** posição e lado do aparelho: devolve { x, z, nx, nz, w } — AC e itens de parede sempre colados na parede */
 function colaNaParede3(p) {
   const T = M.TIPOS[p.tipo] || M.TIPOS.outro; let w = getById(P.paredes, p.parede); const ac = p.tipo === 'ar_condicionado';
-  if (!w && (ac || T.parede === 1)) { const c = G.colar({ x: p.x, y: p.y }, P.paredes, ac ? 1e6 : 100); if (c) w = getById(P.paredes, c.parede); }
+  if (!w && (ac || T.parede === 1)) { const c = G.colar({ x: p.x, y: p.y }, P.paredes, ac ? 1e6 : 250); if (c) w = getById(P.paredes, c.parede); }
   if (!w) return { x: p.x, z: p.y, nx: 0, nz: 0, w: null };
   const q = wallGeo(w), r = G.projT(w, p.x, p.y), c = getById(P.comodos, p.comodo) || salaDoPonto(p); let side = 1;
   if (c) side = ((c.cx - r.x) * q.nx + (c.cy - r.y) * q.ny) >= 0 ? 1 : -1; else side = ((p.x - r.x) * q.nx + (p.y - r.y) * q.ny) >= 0 ? 1 : -1; if (p.lado === 'fora') side = -side;
@@ -2618,6 +2618,7 @@ function atualizaTeclas3() {
   P.pontos.forEach(sw => { const d = T3.devs[sw.id]; if (!d || !d.A.teclas) return;
     d.A.teclas.forEach(k => { const ds = P.ligacoes.filter(l => l.de === sw.id && (l.tecla || 1) === k.i + 1).map(l => T3.devs[l.para]).filter(Boolean); d.A.setTecla(k.i, ds.some(x => estaOn3(x.p))); }); });
 }
+window.Planta3D = { T3, alternarTecla3, alternarDisp3, estaOn3: p => estaOn3(p) };
 function build3d(reenquadrar) {
   if (!T3.ok) return; const g = T3.grp; while (g.children.length) { const o = g.children.pop(); if (o.geometry) o.geometry.dispose(); }
   aplicarVisual(); const NT = T3.noite, modo = $('#modo3').value, Hn = P.peDireito;
