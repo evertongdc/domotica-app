@@ -219,7 +219,7 @@ window.DOMOTICA_CFG = {
     Planta_compartilhar: async function(planId, dias) { await ctx(); return must(await sb.rpc('share_criar', { p_plan: planId, p_dias: dias })); },
     Planta_compartilhamentos: async function(planId) { await ctx(); return must(await sb.from('plan_shares').select('id, expira_em, revogado, status, respostas, acessos, ultimo_acesso, created_at').eq('plan_id', planId).order('created_at', { ascending: false })); },
     Planta_revogarCompartilhamento: async function(id) { await ctx(); must(await sb.from('plan_shares').update({ revogado: true }).eq('id', id)); return { ok: true }; },
-    Alexa_listar: async function(clienteId) { await ctx(); if (!UUID.test(clienteId || '')) return []; return must(await sb.from('alexa_endpoints').select('id, nome, tipo, plan_id, ponto_id, gatilho, estado, origem_estado, estado_em').eq('client_id', clienteId).order('nome')); },
+    Alexa_listar: async function(clienteId) { await ctx(); if (!UUID.test(clienteId || '')) return []; return must(await sb.from('alexa_endpoints').select('id, nome, codigo, tipo, plan_id, ponto_id, gatilho, estado, origem_estado, estado_em').eq('client_id', clienteId).order('nome')); },
     Alexa_status: async function(clienteId) { await ctx(); if (!UUID.test(clienteId || '')) return { conectado: false, eventos: false }; return must(await sb.rpc('alexa_cliente_status', { p_client: clienteId })); },
     Alexa_salvar: async function(o) {
       var c = await ctx(), linha = { nome: String(o.nome || '').trim().slice(0, 60), tipo: o.tipo, plan_id: UUID.test(o.planId || '') ? o.planId : null, ponto_id: o.pontoId || null, gatilho: !!o.gatilho };
@@ -2529,20 +2529,20 @@ function renderAlexa() {
   if (!cli) { box.innerHTML = h + '<div class="note" style="margin-top:6px">Vincule esta planta a um cliente (campo Cliente no topo) para usar a Alexa.</div></div>'; return; }
   h += '<div class="note" style="margin:6px 0">' + (st ? (st.conectado ? '✅ Conta Alexa do cliente conectada' : '⏳ O cliente ainda não conectou a Alexa (ele ativa a skill no app da Alexa e entra com o login do portal)') + ' · ' + (st.eventos ? 'avisos ao app da Alexa ativos' : 'avisos ao app da Alexa ainda inativos') : 'Carregando…') + '</div>';
   if (S.alexa.erro) h += '<div class="note" style="color:var(--er)">' + esc(S.alexa.erro) + '</div>';
-  h += '<div class="note">Cada ponto publicado vira um aparelho virtual na Alexa. Clicar nele no 3D liga/desliga aqui e a Alexa responde igual (via rotina). Os nomes na Alexa começam com “Domótica” para não confundir com aparelhos reais da casa. Mudou o nome? Peça à Alexa para “descobrir dispositivos”.</div></div>';
+  h += '<div class="note">Cada ponto publicado vira um aparelho virtual na Alexa. Clicar nele no 3D liga/desliga aqui e a Alexa responde igual (via rotina). Na Alexa cada aparelho aparece só com um código (DMT 01, DMT 02…), para não confundir com os aparelhos reais da casa; o nome de verdade fica aqui no sistema. Mudou o nome? Peça à Alexa para “descobrir dispositivos”.</div></div>';
   const rel = P.pontos.filter(p => tipoAlexa(p) !== 'outro' && tipoAlexa(p) !== 'tomada' || epDoPonto(p.id));
   if (rel.length) h += '<div class="sec">Pontos da planta</div>';
   rel.forEach(p => {
     const ep = epDoPonto(p.id), c = getById(P.comodos, p.comodo);
     h += '<div class="card"><div class="row"><div style="flex:3"><b>' + esc(M.nomeDe(p)) + '</b> <span class="note">' + esc(c ? c.nome : 'sem cômodo') + ' · ' + esc(TIPOS_ALEXA[tipoAlexa(p)]) + '</span>' +
-      (ep ? '<div class="note">Na Alexa como «' + esc(ep.nome) + '» · ' + (ep.estado && ep.estado.on ? 'ligado' : 'desligado') + '</div>' : '') + '</div><div style="flex:2;text-align:right">' +
+      (ep ? '<div class="note">Na Alexa como <b>' + esc(ep.codigo || ep.nome) + '</b> · ' + (ep.estado && ep.estado.on ? 'ligado' : 'desligado') + '</div>' : '') + '</div><div style="flex:2;text-align:right">' +
       (ep ? '<label style="display:inline-block;margin:0 8px 0 0"><input type="checkbox" style="width:auto" data-al="gatilho" data-id="' + ep.id + '" ' + (ep.gatilho ? 'checked' : '') + ' title="No Brasil a Alexa marca esse sensor como incompatível para rotinas. Use o aparelho virtual como gatilho."> sensor-gatilho (não funciona em pt-BR)</label><button data-al="desv" data-id="' + ep.id + '">Remover</button>' : '<button class="pri" data-al="pub" data-p="' + esc(p.id) + '">Publicar na Alexa</button>') + '</div></div></div>';
   });
   const soltos = S.alexa.lista.filter(e => !e.ponto_id || !P.pontos.some(p => p.id === e.ponto_id) && (!S.planoId || e.plan_id === S.planoId || !e.plan_id));
   if (soltos.length) h += '<div class="sec">Aparelhos da Alexa sem ponto (disponíveis para vincular)</div>';
   soltos.forEach(e => {
     const tp = e.tipo, ops = P.pontos.filter(p => tipoAlexa(p) === tp && !epDoPonto(p.id));
-    h += '<div class="card"><b>' + esc(e.nome) + '</b> <span class="note">' + esc(TIPOS_ALEXA[tp] || tp) + '</span><div class="row" style="margin-top:6px"><select data-al="sel" data-id="' + e.id + '"><option value="">— vincular a um ponto existente —</option>' + ops.map(p => '<option value="' + esc(p.id) + '">' + esc(M.nomeDe(p)) + '</option>').join('') + '</select>' +
+    h += '<div class="card"><b>' + esc(e.nome) + '</b> <span class="note">' + esc(e.codigo || '') + ' · ' + esc(TIPOS_ALEXA[tp] || tp) + '</span><div class="row" style="margin-top:6px"><select data-al="sel" data-id="' + e.id + '"><option value="">— vincular a um ponto existente —</option>' + ops.map(p => '<option value="' + esc(p.id) + '">' + esc(M.nomeDe(p)) + '</option>').join('') + '</select>' +
       '<button data-al="vinc" data-id="' + e.id + '">Vincular</button><button data-al="novo" data-id="' + e.id + '">Criar ponto</button><button class="danger" data-al="del" data-id="' + e.id + '">Excluir</button></div></div>';
   });
   h += '<div class="sec">Adicionar aparelho Alexa</div><div class="card"><div class="row"><input id="alNome" placeholder="Nome (ex.: Luz da sala)"><select id="alTipo">' + Object.keys(TIPOS_ALEXA).map(k => '<option value="' + k + '">' + TIPOS_ALEXA[k] + '</option>').join('') + '</select><button data-al="add">Adicionar</button></div></div>';
@@ -2554,7 +2554,7 @@ async function alexaAcao(e) {
     if (a === 'gatilho') { const ep = S.alexa.lista.find(x => x.id === id); await gas('Alexa_salvar', { id, clienteId: cli, planId: ep.plan_id, pontoId: ep.ponto_id, nome: ep.nome, tipo: ep.tipo, gatilho: b.checked }); toast(b.checked ? 'Sensor-gatilho ativado. Peça à Alexa para descobrir dispositivos.' : 'Sensor-gatilho removido.'); }
     else if (a === 'pub') {
       if (!S.planoId) await salvar(true);
-      const p = getById(P.pontos, b.dataset.p); await gas('Alexa_salvar', { clienteId: cli, planId: S.planoId, pontoId: p.id, nome: ('Domótica ' + M.nomeDe(p)).slice(0, 60), tipo: tipoAlexa(p), gatilho: false }); toast('Publicado. No app da Alexa, peça “Alexa, descobrir dispositivos”.', 6000);
+      const p = getById(P.pontos, b.dataset.p); await gas('Alexa_salvar', { clienteId: cli, planId: S.planoId, pontoId: p.id, nome: M.nomeDe(p).slice(0, 60), tipo: tipoAlexa(p), gatilho: false }); toast('Publicado. No app da Alexa, peça “Alexa, descobrir dispositivos”.', 6000);
     }
     else if (a === 'desv' || a === 'del') { if (!(await confirmar('Remover este aparelho da Alexa?', 'Remover'))) return; await gas('Alexa_excluir', id); }
     else if (a === 'vinc') { const ep = S.alexa.lista.find(x => x.id === id), sel = document.querySelector('[data-al=sel][data-id="' + id + '"]'); if (!sel.value) return toast('Escolha o ponto da planta.'); if (!S.planoId) await salvar(true); await gas('Alexa_salvar', { id, clienteId: cli, planId: S.planoId, pontoId: sel.value, nome: ep.nome, tipo: ep.tipo, gatilho: ep.gatilho }); toast('Vinculado.'); }
