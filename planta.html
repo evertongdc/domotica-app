@@ -999,14 +999,13 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
     'Nova Digital', 'Broadlink', 'Alexa', 'TP-Link Deco', 'Fire TV', 'Electrolux', 'Huawei AI Life', 'Google Home', 'SmartThings', 'LG ThinQ', 'Xiaomi Home'];
   M.PROTOCOLOS = ['Wi-Fi', 'Zigbee', 'Bluetooth', 'RF 433 MHz', 'Infravermelho (IR)', 'Matter', 'Z-Wave', 'Cabo / Ethernet', 'Nuvem do fabricante', 'Outro'];
   M.STATUS_APP = { pendente: 'Cadastro pendente', cadastrado: 'Conta criada', instalado: 'Instalado no celular', ativo: 'Em uso / configurado' };
-  /** aparelhos soltos: luz sem interruptor vinculado, ou aparelho sem vínculo e sem automação (app/protocolo) */
+  /** só iluminação (e cena) precisa de vínculo: luz sem interruptor vinculado. Câmera, ar-condicionado, cortina etc. não precisam. */
   M.soltos = function (p) {
     const out = [], nomeC = id => { const c = p.comodos.find(x => x.id === id); return c ? c.nome : 'sem cômodo'; };
     p.pontos.forEach(pt => {
       if (pt.tipo === 'interruptor' || pt.tipo === 'botao') return;
       const cat = M.catDe(pt), ligado = p.ligacoes.some(l => l.para === pt.id || l.de === pt.id), obs = (pt.obs || '').trim();
       if (cat === 'luz' && !ligado) out.push({ id: pt.id, nome: M.nomeDe(pt), comodo: nomeC(pt.comodo), luz: true, obs, obsOk: obs.length >= 10, motivo: 'sem interruptor vinculado' + (obs.length >= 10 ? ' (obs.: ' + obs + ')' : ' e sem observação clara') });
-      else if (cat !== 'luz' && M.PRECISA_APP.indexOf(pt.tipo) >= 0 && !ligado && !pt.appId && !pt.protocolo) out.push({ id: pt.id, nome: M.nomeDe(pt), comodo: nomeC(pt.comodo), luz: false, obs, obsOk: false, motivo: 'sem vínculo e sem automação (defina app/protocolo ou ligue a um comando)' });
     });
     return out;
   };
@@ -3048,7 +3047,7 @@ async function salvar(silencioso) {
 
 /* ===================== salvamento automático ===================== */
 let autoT = null, salvandoAuto = false;
-function marcaStatus(t) { const el = $('#stSalvo'); if (!el) return; let so = 0; try { so = M.soltos(P).length; } catch (e) { } el.textContent = t + (so ? ' · ⚠ ' + so + ' solto' + (so > 1 ? 's' : '') : ''); el.title = so ? 'Aparelhos soltos (sem interruptor ou sem automação). Veja na aba Checagem.' : ''; }
+function marcaStatus(t) { const el = $('#stSalvo'); if (!el) return; let so = 0; try { so = M.soltos(P).length; } catch (e) { } el.textContent = t + (so ? ' · ⚠ ' + so + ' solto' + (so > 1 ? 's' : '') : ''); el.title = so ? 'Luzes sem interruptor vinculado. Veja na aba Checagem.' : ''; }
 function agendaAuto() { if (window.PLANTA_VIEW || !S.dirty) return; marcaStatus('Alterações não salvas…'); clearTimeout(autoT); autoT = setTimeout(autoSalvar, 2200); }
 async function autoSalvar() {
   clearTimeout(autoT); if (salvandoAuto || !S.dirty || !P.paredes.length) return; salvandoAuto = true; const rev = S.rev; marcaStatus('Salvando…');
@@ -3060,7 +3059,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && S.d
 window.addEventListener('beforeunload', e => { if (S.dirty && !window.PLANTA_VIEW) { autoSalvar(); e.preventDefault(); e.returnValue = ''; } });
 async function avisoSoltos(so) {
   const li = so.map(x => '<li><b>' + esc(x.nome) + '</b> (' + esc(x.comodo) + '): ' + esc(x.motivo) + '</li>').join('');
-  const r = await modal('Aparelhos soltos (' + so.length + ')', [{ tipo: 'info', val: 'O projeto foi salvo, mas estes aparelhos estão <b>sem vínculo ou sem automação</b>. Toda luz precisa de um interruptor vinculado (ou de uma observação clara explicando o motivo).<ul style="padding-left:18px;margin:8px 0">' + li + '</ul>' }], 'Revisar o primeiro');
+  const r = await modal('Luzes sem interruptor (' + so.length + ')', [{ tipo: 'info', val: 'O projeto foi salvo, mas estes aparelhos são <b>luzes sem interruptor vinculado</b>. Toda luz precisa de um interruptor (ou de uma observação clara explicando o motivo).<ul style="padding-left:18px;margin:8px 0">' + li + '</ul>' }], 'Revisar o primeiro');
   if (r) { S.sel = { k: 'ponto', id: so[0].id }; S.multi = []; mostrar('v2d'); refresh(); }
 }
 async function salvarManual() {
