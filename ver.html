@@ -2440,6 +2440,7 @@ function aplicarVisual() {
 /* ===================== 3D: visão de dentro do ambiente (primeira pessoa) ===================== */
 T3.fp = { on: false, yaw: 0, pitch: 0, x: 0, z: 0, c: null, keys: {}, t0: 0 };
 function entrarDentro() {
+  if (!T3.ok) return toast('O 3D ainda está carregando, tente de novo em um instante.');
   const c = getById(P.comodos, $('#com3').value) || P.comodos[0]; if (!c) return toast('Desenhe um cômodo primeiro.');
   const F = T3.fp; F.on = true; F.c = c; let x = c.cx, z = c.cy; if (!G.dentro(c.pontos, x, z)) { x = c.pontos[0][0] + 40; z = c.pontos[0][1] + 40; }
   F.x = x; F.z = z; F.pitch = -.05; const xs = c.pontos.map(q => q[0]), ys = c.pontos.map(q => q[1]); F.yaw = (Math.max.apply(null, xs) - Math.min.apply(null, xs)) >= (Math.max.apply(null, ys) - Math.min.apply(null, ys)) ? Math.PI / 2 : 0;
