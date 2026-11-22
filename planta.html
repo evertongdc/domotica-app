@@ -1076,12 +1076,6 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
       else add('aviso', 'Aparelho solto: ' + x.nome + ' (' + x.comodo + ') — ' + x.motivo, 'ponto', x.id);
     });
     p.pontos.forEach(pt => {
-      if (pt.appId && !apps.some(a => a.id === pt.appId)) add('aviso', 'App do aparelho não existe mais na lista: ' + M.nomeDe(pt), 'ponto', pt.id);
-    });
-    apps.forEach(a => {
-      const n = M.aparelhosDoApp(p, a.id).length; if (!n) return;
-      if (a.status === 'pendente') add('aviso', 'App "' + a.nome + '" ainda sem cadastro do cliente (' + n + ' aparelho/s).', 'app', a.id);
-      else if (!(a.conta || '').trim()) add('aviso', 'App "' + a.nome + '" sem e-mail/conta registrado.', 'app', a.id);
     });
     return out;
   };
