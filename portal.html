@@ -151,6 +151,7 @@ window.DOMOTICA_CFG = {
   function erroMsg(e) { var m = (e && e.message) || String(e); if (/Invalid login|invalid_credentials/i.test(m)) return 'E-mail ou senha incorretos.'; if (/already registered|already been registered/i.test(m)) return 'Este e-mail já tem conta. Use “Entrar”.'; return m; }
 
   /* ---------- convite pela URL ---------- */
+  (function () { var m2 = /alexa=([A-Za-z0-9+\/=_-]+)/.exec(location.hash || ''); if (m2) { lsSet('dom_alexa', m2[1]); history.replaceState(null, '', location.pathname); } })();
   (function () { var m = /convite=([A-Za-z0-9]+)/.exec(location.hash || ''); if (m) { lsSet('dom_convite', m[1].toUpperCase()); history.replaceState(null, '', location.pathname); } })();
 
   /* ---------- turnstile ---------- */
@@ -190,6 +191,7 @@ window.DOMOTICA_CFG = {
     document.body.classList.add('on-auth');
     R.innerHTML = '<div class="auth">' + cabecalhoAuth() + '<div class="gl" style="margin-top:16px">' +
       '<p style="text-align:center;margin:0 0 16px;color:#b8c0e0">' + (cr ? 'Crie sua conta' : 'Acesse sua conta') + '</p>' +
+      (lsGet('dom_alexa') ? '<div class="msg">Entre com a sua conta para conectar a Alexa.</div>' : '') +
       (conv ? '<div class="msg">Convite recebido. Entre ou crie sua conta para ativar o seu acesso.</div>' : '') +
       (aviso ? '<div class="' + (aviso.ok ? 'msg' : 'err') + '">' + esc(aviso.t) + '</div>' : '') +
       (cr ? '<div class="fg"><label>Seu nome</label><input id="a-nome" autocomplete="name" maxlength="80"></div>' : '') +
@@ -266,7 +268,25 @@ window.DOMOTICA_CFG = {
     var r = await sb.rpc('portal_resumo');
     if (r.error) { R.innerHTML = '<div class="auth"><div class="err">' + esc(r.error.message) + '</div><button class="btn" id="x-s">Sair</button></div>'; document.getElementById('x-s').onclick = sair; return; }
     if (r.data && r.data.erro) return telaSemVinculo();
-    D = r.data; pintar();
+    D = r.data; if (lsGet('dom_alexa')) return telaAlexa(); pintar();
+  }
+  /* ---------- conectar a Alexa (vinculação de conta da skill) ---------- */
+  function telaAlexa() {
+    var p = null; try { p = JSON.parse(atob(lsGet('dom_alexa'))); } catch (e) { }
+    if (!p || !p.r) { lsSet('dom_alexa', null); return pintar(); }
+    document.body.classList.add('on-auth');
+    R.innerHTML = '<div class="auth">' + cabecalhoAuth() + '<div class="gl" style="margin-top:16px"><h3>Conectar com a Alexa</h3><p class="sm">A Alexa vai poder ver e comandar os aparelhos da sua casa que a Domótica configurou (luzes, TV e outros). Você pode desfazer isso quando quiser, no app da Alexa.</p><button class="btn ent" id="al-ok">Autorizar</button><button class="btn ghost" id="al-no" style="width:100%;margin-top:8px">Cancelar</button></div></div>';
+    document.getElementById('al-no').onclick = function () { lsSet('dom_alexa', null); location.href = p.r + '?error=access_denied&state=' + encodeURIComponent(p.s || ''); };
+    document.getElementById('al-ok').onclick = async function () {
+      var b = this; b.disabled = true; b.textContent = 'Conectando...';
+      try {
+        var ses = (await sb.auth.getSession()).data.session;
+        var resp = await fetch(CFG.url + '/functions/v1/alexa-oauth/codigo', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ses.access_token, apikey: CFG.key }, body: JSON.stringify({ r: p.r, s: p.s }) });
+        var d = await resp.json().catch(function () { return {}; });
+        if (!resp.ok || !d.url) throw new Error(d.erro === 'sem_vinculo' ? 'Seu acesso ainda não foi ativado pela Domótica.' : 'Não foi possível conectar agora. Tente de novo.');
+        lsSet('dom_alexa', null); location.href = d.url;
+      } catch (e) { b.disabled = false; b.textContent = 'Autorizar'; toast(e.message); }
+    };
   }
   function telaSemVinculo() {
     document.body.classList.add('on-auth');

@@ -2382,10 +2382,11 @@ $('#cenasBox').addEventListener('change', e => {
 
 /* ===================== aba Checagem ===================== */
 function renderChecks() {
+  if (!window.PLANTA_VIEW && Date.now() - (S.alexa.t || 0) > 4000) { S.alexa.t = Date.now(); carregaAlexa().then(renderAlexa); }
   const v = M.validar(P), n = k => v.filter(x => x.nivel === k).length; let h;
   h = '<div class="card"><b>' + (n('erro') ? n('erro') + ' pendência(s) a resolver' : 'Sem pendências críticas — projeto pronto para orçamento') + '</b><div class="note">' + n('aviso') + ' avisos · ' + n('info') + ' informações</div></div>';
   ['erro', 'aviso', 'info'].forEach(nv => { v.filter(x => x.nivel === nv).forEach((x, i) => { h += '<div class="card click" style="cursor:pointer" data-t="' + x.alvo.tipo + '" data-id="' + (x.alvo.id || '') + '"><span class="lv ' + nv + '">' + nv.toUpperCase() + '</span>' + esc(x.msg) + '</div>'; }); });
-  $('#checksBox').innerHTML = h;
+  $('#checksBox').innerHTML = '<div id="alexaBox"></div>' + h; renderAlexa();
 }
 $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[data-t]'); if (!c) return; if (c.dataset.t === 'app') { mostrar('vapps'); return; } if (c.dataset.id) S.sel = { k: c.dataset.t, id: c.dataset.id }; mostrar('v2d'); refresh(); });
 
@@ -2401,7 +2402,7 @@ async function abrir3d() {
     } catch (e) { return toast('Não consegui carregar o 3D: ' + e.message, 5000); }
     const c = $('#c3d'); T3.ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); T3.ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     c.insertBefore(T3.ren.domElement, c.firstChild);
-    T3.ren.shadowMap.enabled = true; T3.ren.shadowMap.type = THREE.PCFSoftShadowMap; T3.ren.outputEncoding = THREE.sRGBEncoding;
+    T3.ren.shadowMap.enabled = true; T3.ren.shadowMap.autoUpdate = false; T3.ren.shadowMap.type = THREE.PCFSoftShadowMap; T3.ren.outputEncoding = THREE.sRGBEncoding;
     T3.scene = new THREE.Scene(); T3.scene.background = new THREE.Color(0xe9eef5);
     T3.cam = new THREE.PerspectiveCamera(40, 1, 5, 80000); T3.ctl = new THREE.OrbitControls(T3.cam, T3.ren.domElement); T3.ctl.enableDamping = true;
     T3.amb = new THREE.AmbientLight(0xffffff, .5); T3.scene.add(T3.amb); T3.hemi = new THREE.HemisphereLight(0x8fa4c8, 0x1a1410, 0); T3.scene.add(T3.hemi); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); d.castShadow = true; d.shadow.mapSize.set(2048, 2048); d.shadow.bias = -0.0005; T3.scene.add(d); T3.scene.add(d.target); T3.sun = d;
@@ -2412,9 +2413,9 @@ async function abrir3d() {
     el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; const u = alvo3(e); if (!u) return; if (u.tecla) alternarTecla3(u.tecla.sw, u.tecla.t); else alternarDisp3(u.dev); });
     el3.addEventListener('pointermove', e => { if (T3.fp.on) { if (e.buttons) { const dx = e.clientX - (T3.fp.lx == null ? e.clientX : T3.fp.lx), dy = e.clientY - (T3.fp.ly == null ? e.clientY : T3.fp.ly); T3.fp.yaw += dx * .0045; T3.fp.pitch = Math.max(-1.25, Math.min(1.25, T3.fp.pitch - dy * .0045)); T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; } else el3.style.cursor = alvo3(e) ? 'pointer' : 'grab'; return; } if (e.buttons) return; el3.style.cursor = alvo3(e) ? 'pointer' : ''; });
     el3.addEventListener('wheel', e => { if (!T3.fp.on) return; e.preventDefault(); T3.cam.fov = Math.max(35, Math.min(100, T3.cam.fov + e.deltaY * .03)); T3.cam.updateProjectionMatrix(); }, { passive: false });
-    (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt)); const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update(); T3.ren.render(T3.scene, T3.cam); })();
+    (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt)); if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; T3.sombraSuja = false; } const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update(); T3.ren.render(T3.scene, T3.cam); })();
   }
-  resize3d(); build3d(true);
+  await carregaAlexa(); resize3d(); build3d(true);
 }
 function resize3d() { const c = $('#c3d'), w = c.clientWidth, h = c.clientHeight; if (!T3.ren || !w || !h) return; T3.ren.setSize(w, h); T3.cam.aspect = w / h; T3.cam.updateProjectionMatrix(); }
 function peDe(c) { return (c && c.pe) || P.peDireito; }
@@ -2436,6 +2437,85 @@ function aplicarVisual() {
   T3.sun.position.set(cx + r * .5, r * 1.6, cy + r * .35); T3.sun.target.position.set(cx, 0, cy); sc.left = sc.bottom = -r * .85; sc.right = sc.top = r * .85; sc.near = 10; sc.far = r * 4; sc.updateProjectionMatrix();
   if ($('#vis3')) $('#vis3').value = visual3();
 }
+
+
+/* ===================== Alexa: aparelhos virtuais da skill da Domótica (espelho) ===================== */
+S.alexa = { lista: [], status: null, erro: '', avisou: false, aberto: true };
+T3.lastLocal = {};
+const clienteAtual = () => (typeof CTX !== 'undefined' && CTX.clienteId) || ($('#fCliente') && $('#fCliente').value) || '';
+const TIPOS_ALEXA = { luz: 'Luz', interruptor: 'Interruptor', tv: 'TV', cortina: 'Cortina', ar: 'Ar-condicionado', tomada: 'Tomada', outro: 'Outro' };
+const PONTO_DE_TIPO = { luz: 'ponto_luz', tomada: 'tomada', interruptor: 'interruptor', tv: 'tv', cortina: 'cortina', ar: 'ar_condicionado', outro: 'outro' };
+function tipoAlexa(pt) { const c = M.catDe(pt); if (pt.tipo === 'interruptor' || pt.tipo === 'botao') return 'interruptor'; if (c === 'luz') return 'luz'; if (pt.tipo === 'tv') return 'tv'; if (pt.tipo === 'cortina') return 'cortina'; if (pt.tipo === 'ar_condicionado') return 'ar'; if (c === 'energia') return 'tomada'; return 'outro'; }
+async function carregaAlexa() {
+  if (window.PLANTA_VIEW) return; const cli = clienteAtual(); S.alexa.erro = '';
+  if (!cli) { S.alexa.lista = []; S.alexa.status = null; return; }
+  try { S.alexa.lista = (await gas('Alexa_listar', cli)) || []; } catch (e) { S.alexa.lista = []; S.alexa.erro = e.message; }
+  try { S.alexa.status = await gas('Alexa_status', cli); } catch (e) { S.alexa.status = null; }
+}
+function epDoPonto(id) { return S.alexa.lista.find(e => e.ponto_id === id && (!S.planoId || e.plan_id === S.planoId)); }
+function aplicaEstadosAlexa(avisar) {
+  if (!T3.devs) return;
+  S.alexa.lista.forEach(ep => {
+    const d = ep.ponto_id && T3.devs[ep.ponto_id]; if (!d) return; const quer = !!(ep.estado && ep.estado.on);
+    if (Date.now() - (T3.lastLocal[ep.ponto_id] || 0) < 4500 || estaOn3(d.p) === quer) return;
+    T3.on3[ep.ponto_id] = quer; d.A.set(quer); if (avisar && ep.origem_estado === 'alexa') toast((M.nomeDe(d.p) || ep.nome) + (quer ? ' ligado' : ' desligado') + ' pela Alexa');
+  });
+  atualizaTeclas3();
+}
+function alexaPush(pontoId, on) {
+  if (window.PLANTA_VIEW) return; const ep = epDoPonto(pontoId); if (!ep) return;
+  T3.lastLocal[pontoId] = Date.now(); ep.estado = { on }; ep.origem_estado = 'sistema';
+  gas('Alexa_alternar', ep.id, on).then(r => { if (r && r.alexa === false && !S.alexa.avisou) { S.alexa.avisou = true; toast(r.motivo || 'A Alexa ainda não foi avisada deste aparelho.', 7000); } }).catch(() => { });
+}
+setInterval(async () => { if (S.tab !== 'v3d' || !T3.ok || window.PLANTA_VIEW || !S.alexa.lista.length || document.hidden) return; try { S.alexa.lista = (await gas('Alexa_listar', clienteAtual())) || S.alexa.lista; aplicaEstadosAlexa(true); } catch (e) { } }, 3000);
+function renderAlexa() {
+  const box = $('#alexaBox'); if (!box) return; if (window.PLANTA_VIEW) { box.innerHTML = ''; return; }
+  const cli = clienteAtual(), st = S.alexa.status;
+  let h = '<div class="card"><b>🔊 Alexa — aparelhos virtuais</b>';
+  if (!cli) { box.innerHTML = h + '<div class="note" style="margin-top:6px">Vincule esta planta a um cliente (campo Cliente no topo) para usar a Alexa.</div></div>'; return; }
+  h += '<div class="note" style="margin:6px 0">' + (st ? (st.conectado ? '✅ Conta Alexa do cliente conectada' : '⏳ O cliente ainda não conectou a Alexa (ele ativa a skill no app da Alexa e entra com o login do portal)') + ' · ' + (st.eventos ? 'avisos ao app da Alexa ativos' : 'avisos ao app da Alexa ainda inativos') : 'Carregando…') + '</div>';
+  if (S.alexa.erro) h += '<div class="note" style="color:var(--er)">' + esc(S.alexa.erro) + '</div>';
+  h += '<div class="note">Cada ponto publicado vira um aparelho virtual na Alexa. Clicar nele no 3D liga/desliga aqui e a Alexa responde igual (via rotina). Mudou o nome? Peça à Alexa para “descobrir dispositivos”.</div></div>';
+  const rel = P.pontos.filter(p => tipoAlexa(p) !== 'outro' && tipoAlexa(p) !== 'tomada' || epDoPonto(p.id));
+  if (rel.length) h += '<div class="sec">Pontos da planta</div>';
+  rel.forEach(p => {
+    const ep = epDoPonto(p.id), c = getById(P.comodos, p.comodo);
+    h += '<div class="card"><div class="row"><div style="flex:3"><b>' + esc(M.nomeDe(p)) + '</b> <span class="note">' + esc(c ? c.nome : 'sem cômodo') + ' · ' + esc(TIPOS_ALEXA[tipoAlexa(p)]) + '</span>' +
+      (ep ? '<div class="note">Na Alexa como «' + esc(ep.nome) + '» · ' + (ep.estado && ep.estado.on ? 'ligado' : 'desligado') + '</div>' : '') + '</div><div style="flex:2;text-align:right">' +
+      (ep ? '<label style="display:inline-block;margin:0 8px 0 0"><input type="checkbox" style="width:auto" data-al="gatilho" data-id="' + ep.id + '" ' + (ep.gatilho ? 'checked' : '') + '> sensor-gatilho</label><button data-al="desv" data-id="' + ep.id + '">Remover</button>' : '<button class="pri" data-al="pub" data-p="' + esc(p.id) + '">Publicar na Alexa</button>') + '</div></div></div>';
+  });
+  const soltos = S.alexa.lista.filter(e => !e.ponto_id || !P.pontos.some(p => p.id === e.ponto_id) && (!S.planoId || e.plan_id === S.planoId || !e.plan_id));
+  if (soltos.length) h += '<div class="sec">Aparelhos da Alexa sem ponto (disponíveis para vincular)</div>';
+  soltos.forEach(e => {
+    const tp = e.tipo, ops = P.pontos.filter(p => tipoAlexa(p) === tp && !epDoPonto(p.id));
+    h += '<div class="card"><b>' + esc(e.nome) + '</b> <span class="note">' + esc(TIPOS_ALEXA[tp] || tp) + '</span><div class="row" style="margin-top:6px"><select data-al="sel" data-id="' + e.id + '"><option value="">— vincular a um ponto existente —</option>' + ops.map(p => '<option value="' + esc(p.id) + '">' + esc(M.nomeDe(p)) + '</option>').join('') + '</select>' +
+      '<button data-al="vinc" data-id="' + e.id + '">Vincular</button><button data-al="novo" data-id="' + e.id + '">Criar ponto</button><button class="danger" data-al="del" data-id="' + e.id + '">Excluir</button></div></div>';
+  });
+  h += '<div class="sec">Adicionar aparelho Alexa</div><div class="card"><div class="row"><input id="alNome" placeholder="Nome (ex.: Luz da sala)"><select id="alTipo">' + Object.keys(TIPOS_ALEXA).map(k => '<option value="' + k + '">' + TIPOS_ALEXA[k] + '</option>').join('') + '</select><button data-al="add">Adicionar</button></div></div>';
+  box.innerHTML = h;
+}
+async function alexaAcao(e) {
+  const b = e.target.closest('[data-al]'); if (!b) return; const a = b.dataset.al, id = b.dataset.id, cli = clienteAtual();
+  try {
+    if (a === 'gatilho') { const ep = S.alexa.lista.find(x => x.id === id); await gas('Alexa_salvar', { id, clienteId: cli, planId: ep.plan_id, pontoId: ep.ponto_id, nome: ep.nome, tipo: ep.tipo, gatilho: b.checked }); toast(b.checked ? 'Sensor-gatilho ativado. Peça à Alexa para descobrir dispositivos.' : 'Sensor-gatilho removido.'); }
+    else if (a === 'pub') {
+      if (!S.planoId) await salvar(true);
+      const p = getById(P.pontos, b.dataset.p); await gas('Alexa_salvar', { clienteId: cli, planId: S.planoId, pontoId: p.id, nome: M.nomeDe(p), tipo: tipoAlexa(p), gatilho: false }); toast('Publicado. No app da Alexa, peça “Alexa, descobrir dispositivos”.', 6000);
+    }
+    else if (a === 'desv' || a === 'del') { if (!(await confirmar('Remover este aparelho da Alexa?', 'Remover'))) return; await gas('Alexa_excluir', id); }
+    else if (a === 'vinc') { const ep = S.alexa.lista.find(x => x.id === id), sel = document.querySelector('[data-al=sel][data-id="' + id + '"]'); if (!sel.value) return toast('Escolha o ponto da planta.'); if (!S.planoId) await salvar(true); await gas('Alexa_salvar', { id, clienteId: cli, planId: S.planoId, pontoId: sel.value, nome: ep.nome, tipo: ep.tipo, gatilho: ep.gatilho }); toast('Vinculado.'); }
+    else if (a === 'novo') {
+      const ep = S.alexa.lista.find(x => x.id === id), c = getById(P.comodos, S.ativo) || P.comodos[0]; if (!c) return toast('Desenhe um cômodo primeiro.');
+      if (!S.planoId) await salvar(true); snap(); const pt = M.novoPonto(P, PONTO_DE_TIPO[ep.tipo] || 'outro', c.cx, c.cy, { nome: ep.nome }); pt.comodo = c.id;
+      const T = M.TIPOS[pt.tipo]; if (T && T.parede) { const k = G.colar({ x: pt.x, y: pt.y }, P.paredes, 1e6); if (k) { pt.x = Math.round(k.x); pt.y = Math.round(k.y); pt.parede = k.parede; } }
+      P.pontos.push(pt); await salvar(true); await gas('Alexa_salvar', { id, clienteId: cli, planId: S.planoId, pontoId: pt.id, nome: ep.nome, tipo: ep.tipo, gatilho: ep.gatilho }); refresh(); toast('Ponto criado e vinculado. Arraste-o para o lugar certo na planta.', 6000);
+    }
+    else if (a === 'add') { const nome = ($('#alNome').value || '').trim(); if (nome.length < 2) return toast('Dê um nome ao aparelho.'); await gas('Alexa_salvar', { clienteId: cli, planId: S.planoId, pontoId: null, nome, tipo: $('#alTipo').value, gatilho: false }); }
+    await carregaAlexa(); renderAlexa();
+  } catch (err) { toast(/duplicate|unique/i.test(err.message) ? 'Esse ponto já está publicado na Alexa.' : 'Erro: ' + err.message, 6000); }
+}
+document.addEventListener('click', e => { if (e.target.closest('#alexaBox')) alexaAcao(e); });
+document.addEventListener('change', e => { if (e.target.matches && e.target.matches('#alexaBox [data-al=gatilho]')) alexaAcao(e); });
 
 /* ===================== 3D: visão de dentro do ambiente (primeira pessoa) ===================== */
 T3.fp = { on: false, yaw: 0, pitch: 0, x: 0, z: 0, c: null, keys: {}, t0: 0 };
@@ -2493,9 +2573,18 @@ function aparelho3D(p, o) {
   const CyZ = (r1, r2, h, m, x, y, z, seg) => { const c = Cy(r1, r2, h, m, x, y, z, seg); c.rotation.x = Math.PI / 2; return c; };
   const branco = std(0xf1f3f5, { roughness: .4 }), preto = std(0x16181c, { roughness: .35, metalness: .2 }), cinza = std(0x6b7280), prata = std(0xc9ced6, { metalness: .6, roughness: .3 });
   const luzMat = (cor) => std(0xffffff, { emissive: new THREE.Color(cor || 0xffe2a8), emissiveIntensity: 0, roughness: .6 });
-  // a luz só vai para o ambiente: poça de luz no piso (nada de brilho para cima); z = quanto a luz avança da parede
-  const halo = (raio, cor, y, z) => { const pl = new THREE.Mesh(new THREE.PlaneGeometry(raio * 2, raio * 2), new THREE.MeshBasicMaterial({ map: texBrilho(), color: cor || 0xffd79a, transparent: true, opacity: o.noite ? .8 : .3, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); pl.rotation.x = -Math.PI / 2; pl.position.set(o.wx + (o.nx || 0) * (z || 0), 1, o.wz + (o.nz || 0) * (z || 0)); pl.visible = false; pl.renderOrder = 2; o.root.add(pl); return pl; };
-  const luzGenerica = (mats, h) => { R.luz = 1; R.set = on => { mats.forEach(m => { m.emissiveIntensity = on ? 2.6 : 0; }); if (h) h.visible = on; if (R.pl) R.pl.intensity = on ? R.plI : 0; }; };
+  // poça de luz no piso, recortada pelo polígono do cômodo (a luz nunca vaza para outro cômodo); z = quanto a luz avança da parede
+  const raioSala = () => { if (!o.poly || o.poly.length < 3) return 300; const xs = o.poly.map(q => q[0]), ys = o.poly.map(q => q[1]); return Math.hypot(Math.max.apply(null, xs) - Math.min.apply(null, xs), Math.max.apply(null, ys) - Math.min.apply(null, ys)) * .85; };
+  const halo = (raio, cor, y, z) => {
+    const cx = o.wx + (o.nx || 0) * (z || 0), cz = o.wz + (o.nz || 0) * (z || 0); let geo;
+    if (o.poly && o.poly.length > 2) { const sh = new THREE.Shape(); o.poly.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); }); geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); }
+    else { geo = new THREE.CircleGeometry(raio, 48); geo.rotateX(Math.PI / 2); geo.translate(cx, 0, cz); }
+    const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uC: { value: new THREE.Vector2(cx, cz) }, uR: { value: raio }, uCol: { value: new THREE.Color(cor || 0xffe0b0) }, uK: { value: o.noite ? .55 : .2 } },
+      vertexShader: 'varying vec2 vP; void main(){ vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec2 uC; uniform float uR; uniform float uK; uniform vec3 uCol; varying vec2 vP; void main(){ float d = length(vP - uC) / uR; float a = pow(clamp(1.0 - d, 0.0, 1.0), 1.6) * uK; gl_FragColor = vec4(uCol * a, a); }' });
+    const pl = new THREE.Mesh(geo, mat); pl.position.y = 1; pl.visible = false; pl.renderOrder = 2; o.root.add(pl); return pl;
+  };
+  const luzGenerica = (mats, h) => { R.luz = 1; R.set = on => { mats.forEach(m => { m.emissiveIntensity = on ? 2.6 : 0; }); if (h) h.visible = on; if (o.sujar) o.sujar(); if (R.pl) R.pl.intensity = on ? R.plI : 0; }; };
   const ceilBack = o.ceilY != null ? o.ceilY : 270;
   if (t === 'interruptor' || t === 'botao') {
     const n = t === 'botao' ? 4 : Math.min(4, p.teclas || 1), W = n >= 4 ? 10.2 : 8.5, H = n >= 4 ? 10.2 : 8.5;
@@ -2517,37 +2606,37 @@ function aparelho3D(p, o) {
     if (t === 'tomada_usb') B(2.6, 1, .4, std(0x2563eb), 0, -3, 1.05); if (t === 'tomada_20a' || t === 'tomada_dedicada') B(8.5, 1, .2, std(0xea580c), 0, 3.4, 1.02); return R;
   }
   if (t === 'spot') {
-    const lente = luzMat(0xfff0cc), h = halo(85, 0xffe2b0, -3); Cy(4.9, 4.9, .6, std(0xeceff2), 0, -.3, 0, 36); Cy(4.2, 3.6, 1.0, prata, 0, -.9, 0, 36); Cy(3.1, 3.1, .3, lente, 0, -1.4, 0, 36);
+    const lente = luzMat(0xffdba6), h = halo(75, 0xffdba6, -3); Cy(4.9, 4.9, .6, std(0xeceff2), 0, -.3, 0, 36); Cy(4.2, 3.6, 1.0, prata, 0, -.9, 0, 36); Cy(3.1, 3.1, .3, lente, 0, -1.4, 0, 36);
     luzGenerica([lente], h); return R;
   }
   if (t === 'ponto_luz' || t === 'plafon') {
-    const d = t === 'plafon' ? 40 : 30, lente = luzMat(), h = halo(d * 3.2, 0xffe2b0, -5); Cy(d / 2, d / 2, 4.5, branco, 0, -2.25, 0, 48); Cy(d / 2 - 1.2, d / 2 - 1.2, .8, lente, 0, -4.7, 0, 48); luzGenerica([lente], h); return R;
+    const d = t === 'plafon' ? 40 : 30, lente = luzMat(0xffe8cc), h = halo(raioSala(), 0xffe8cc, -5); Cy(d / 2, d / 2, 4.5, branco, 0, -2.25, 0, 48); Cy(d / 2 - 1.2, d / 2 - 1.2, .8, lente, 0, -4.7, 0, 48); luzGenerica([lente], h); return R;
   }
   if (t === 'pendente') {
-    const ext = Math.max(10, ceilBack - (o.wy || 200)), lente = luzMat(0xffd89a), h = halo(110, 0xffd79a, 0);
+    const ext = Math.max(10, ceilBack - (o.wy || 200)), lente = luzMat(0xffbf78), h = halo(150, 0xffbf78, 0);
     Cy(.25, .25, ext, std(0x20242a), 0, ext / 2 + 9, 0, 8); Cy(3.5, 3.5, 1.4, preto, 0, ext + 9.7, 0, 24);
     const dome = new THREE.Mesh(new THREE.SphereGeometry(15, 32, 18, 0, Math.PI * 2, 0, Math.PI / 2), std(0x2b2f36, { metalness: .7, roughness: .25, side: THREE.DoubleSide })); add(dome, 0, 9, 0);
     Cy(4.2, 4.2, 7, lente, 0, 3.5, 0, 24); luzGenerica([lente], h); return R;
   }
   if (t === 'arandela') {
-    const lente = luzMat(0xffd49a), h = halo(70, 0xffd79a, 0, 45); B(8, 16, 1.2, std(0x1f2328), 0, 0, .6);
+    const lente = luzMat(0xffb870), h = halo(70, 0xffb870, 0, 45); B(8, 16, 1.2, std(0x1f2328), 0, 0, .6);
     const m = add(new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 14, 24, 1, false, 0, Math.PI), std(0xffffff, { emissive: new THREE.Color(0xffd49a), emissiveIntensity: 0, transparent: true, opacity: .9, roughness: .3 })), 0, 0, 1.2); m.rotation.y = -Math.PI / 2; m.castShadow = false;
     luzGenerica([m.material], h); return R;
   }
   if (t === 'balizador') {
-    const l = luzMat(0xffd49a), h = halo(55, 0xffd79a, 0, 40); B(9, 9, 8, std(0x2a2e34, { metalness: .5 }), 0, 0, 4); B(7.4, 1.4, .4, l, 0, 0, 8.1); luzGenerica([l], h); return R;
+    const l = luzMat(0xffc88a), h = halo(55, 0xffc88a, 0, 40); B(9, 9, 8, std(0x2a2e34, { metalness: .5 }), 0, 0, 4); B(7.4, 1.4, .4, l, 0, 0, 8.1); luzGenerica([l], h); return R;
   }
   if (t === 'trilho') {
-    const l = luzMat(0xfff0cc), h = halo(120, 0xffe2b0, -8); B(100, 2.2, 3, std(0xe9ecef), 0, -1.1, 0);
+    const l = luzMat(0xfff1dc), h = halo(120, 0xfff1dc, -8); B(100, 2.2, 3, std(0xe9ecef), 0, -1.1, 0);
     [-32, 0, 32].forEach(x => { const c = Cy(2.6, 3.2, 8, std(0x1b1e23), x, -6, 0, 24); c.rotation.z = x * .004; Cy(2.1, 2.1, .3, l, x, -10.2, 0, 24); });
     luzGenerica([l], h); return R;
   }
   if (t === 'fita_led') {
     const L = p.comp || 200, N = 48, segs = [], base = B(L, .9, 1.6, std(0xdfe3e8), 0, -.45, 0);
     for (let i = 0; i < N; i++) { const m = new THREE.MeshBasicMaterial({ color: 0x2a2d33, toneMapped: false }), s2 = new THREE.Mesh(new THREE.BoxGeometry(L / N * .96, 1.1, 2), m); s2.position.set(-L / 2 + L / N * (i + .5), -1.35, 0); G3.add(s2); segs.push(m); }
-    R.on = false; R.set = on => { R.on = on; if (!on) segs.forEach(m => m.color.set(0x2a2d33)); };
-    R.tick = tt => { if (!R.on) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22)).multiplyScalar(1.15)); };
-    if (o.dirY) G3.rotation.y = o.dirY; R.luz = 0; return R;
+    R.on = false; R.set = on => { R.on = on; if (!on) segs.forEach(m => m.color.set(0x2a2d33)); if (R.pl) R.pl.intensity = on ? R.plI : 0; if (o.sujar) o.sujar(); };
+    R.tick = tt => { if (!R.on) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22)).multiplyScalar(1.15)); if (R.pl) R.pl.color.copy(hsl3(.5 - tt * .22)); };
+    if (o.dirY) G3.rotation.y = o.dirY; R.luz = 1; return R;
   }
   if (t === 'echo' || t === 'echo_dot' || t === 'echo_pop' || t === 'echo_studio') {
     const dot = t === 'echo_dot', pop = t === 'echo_pop', stu = t === 'echo_studio', r = stu ? 8.6 : pop ? 5 : dot ? 5 : 7.2, h = stu ? 20.8 : pop ? 8.5 : dot ? 8.9 : 14.8;
@@ -2636,11 +2725,11 @@ function rotaVinculo3(a, b, ca, cb, yA, yB, tetoB) {
   return pts;
 }
 
-function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
+function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); alexaPush(id, novo); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
 function alternarTecla3(sw, tec) {
   const ds = P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).map(l => T3.devs[l.para]).filter(Boolean);
   if (!ds.length) return toast('Esta tecla não tem aparelho vinculado.');
-  const novo = !ds.every(d => estaOn3(d.p)); ds.forEach(d => { T3.on3[d.p.id] = novo; d.A.set(novo); }); atualizaTeclas3();
+  const novo = !ds.every(d => estaOn3(d.p)); ds.forEach(d => { T3.on3[d.p.id] = novo; d.A.set(novo); alexaPush(d.p.id, novo); }); atualizaTeclas3();
   toast(ds.length + ' aparelho' + (ds.length > 1 ? 's' : '') + (novo ? ' ligado' : ' desligado') + (ds.length > 1 ? 's' : ''));
 }
 function atualizaTeclas3() {
@@ -2687,19 +2776,38 @@ function build3d(reenquadrar) {
     const sh = new THREE.Shape(); c.pontos.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); });
     const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: NT ? 0x0c0e12 : (c.forro ? 0xfff3d6 : 0xffffff), transparent: true, opacity: NT ? .10 : .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); g.add(f);
   });
-  T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = [];
+  T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = []; T3.sombraSuja = true;
+  const PRIO = { ponto_luz: 0, plafon: 0, pendente: 1, arandela: 2, spot: 3, trilho: 3, balizador: 4, fita_led: 5 }, permitido = new Set(); let nSomP = 0, nSomS = 0;
+  P.pontos.filter(q => visivel(q) && PRIO[q.tipo] != null).sort((x, y) => PRIO[x.tipo] - PRIO[y.tipo]).slice(0, 18).forEach(q => permitido.add(q.id));
+  // cada tipo de luz ilumina de um jeito e com uma cor; as principais (ponto de luz/plafon) cobrem o cômodo inteiro; as paredes bloqueiam a luz (sem vazar para o vizinho)
+  const criaLuz3 = (p, A, k) => {
+    const t = p.tipo, ang = (k.cp.w ? [k.cp.nx, k.cp.nz] : [0, 0]); let L, alvo = new THREE.Vector3(k.px, 0, k.pz), sombra = false;
+    const raio = k.c && k.c.pontos ? (() => { const xs = k.c.pontos.map(q => q[0]), ys = k.c.pontos.map(q => q[1]); return Math.hypot(Math.max.apply(null, xs) - Math.min.apply(null, xs), Math.max.apply(null, ys) - Math.min.apply(null, ys)); })() : 500;
+    const yL = k.pendura ? k.topo - 10 : k.y;
+    if (t === 'ponto_luz' || t === 'plafon') { L = new THREE.PointLight(0xffe8cc, 0, Math.max(520, raio * 1.6), 1.0); L.position.set(k.px, yL, k.pz); A.plI = 1.9; sombra = nSomP < 8 && ++nSomP; }
+    else if (t === 'pendente') { L = new THREE.PointLight(0xffbf78, 0, 420, 1.1); L.position.set(k.px, k.y - 6, k.pz); A.plI = 1.5; sombra = nSomP < 8 && ++nSomP; }
+    else if (t === 'spot') { L = new THREE.SpotLight(0xffdba6, 0, 460, .5, .45, 1.3); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 3.4, k.pz); A.plI = 3.2; sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'trilho') { L = new THREE.SpotLight(0xfff1dc, 0, 520, .8, .65, 1.2); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 12.5, k.pz); alvo.set(k.px + ang[0] * -90, 0, k.pz + ang[1] * -90); A.plI = 3; sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'arandela') { L = new THREE.SpotLight(0xffb870, 0, 300, 1.0, .95, 1.3); L.position.set(k.px + ang[0] * 10, k.y, k.pz + ang[1] * 10); alvo.set(k.px + ang[0] * 25, 0, k.pz + ang[1] * 25); A.plI = 2.6; sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'balizador') { L = new THREE.SpotLight(0xffc88a, 0, 220, .9, .85, 1.4); L.position.set(k.px + ang[0] * 12, k.y + 4, k.pz + ang[1] * 12); alvo.set(k.px + ang[0] * 45, 0, k.pz + ang[1] * 45); A.plI = 2.2; }
+    else if (t === 'fita_led') { L = new THREE.PointLight(0xff3366, 0, 300, 1.4); L.position.set(k.px, yL - 6, k.pz); A.plI = 1.1; }
+    else return;
+    if (L.isSpotLight) { const tg = new THREE.Object3D(); tg.position.copy(alvo); g.add(tg); L.target = tg; }
+    if (sombra) { L.castShadow = true; L.shadow.mapSize.set(512, 512); L.shadow.camera.near = 4; L.shadow.camera.far = L.distance || 600; L.shadow.bias = -0.0025; L.shadow.radius = 3; }
+    g.add(L); A.pl = L;
+  };
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
     const c = getById(P.comodos, p.comodo), cp = colaNaParede3(p), topo = tetoDe(c), y = yPonto(p), pendura = ehTeto(p) && !cp.w && p.tipo !== 'pendente';
     const yDisp = cp.w ? y : (pendura ? topo : y), px = cp.w ? cp.x : p.x, pz = cp.w ? cp.z : p.y;
     let dirY = 0; if (p.tipo === 'fita_led') { let b2 = null; P.paredes.forEach(w => { const r = G.projT(w, p.x, p.y); if (!b2 || r.d < b2.d) b2 = { d: r.d, w }; }); if (b2) { const q = wallGeo(b2.w); dirY = -Math.atan2(q.uy, q.ux); } }
-    const A = aparelho3D(p, { wx: px, wy: y, wz: pz, nx: cp.nx, nz: cp.nz, root: g, ceilY: topo, noite: NT, dirY });
+    const A = aparelho3D(p, { wx: px, wy: y, wz: pz, nx: cp.nx, nz: cp.nz, root: g, ceilY: topo, noite: NT, dirY, poly: c ? c.pontos : null, sujar: () => { T3.sombraSuja = true; } });
     A.g.position.set(px, yDisp, pz); if (cp.w) A.g.rotation.y = Math.atan2(cp.nx, cp.nz);
-    if (NT && A.luz && (T3.nLuz = (T3.nLuz || 0) + 1) <= 10) { const pl = new THREE.SpotLight(0xffc27a, 0, 650, Math.PI / 2.5, .8, 1.5), tg = new THREE.Object3D(); pl.position.set(px + (cp.w ? cp.nx * 6 : 0), Math.max(20, (pendura ? topo : y) - 8), pz + (cp.w ? cp.nz * 6 : 0)); tg.position.set(px + (cp.w ? cp.nx * 60 : 0), 0, pz + (cp.w ? cp.nz * 60 : 0)); g.add(tg); pl.target = tg; g.add(pl); A.pl = pl; A.plI = 2.6; }
+    if (NT && A.luz && permitido.has(p.id)) criaLuz3(p, A, { px, pz, y, topo, pendura, cp, c });
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
-  atualizaTeclas3();
+  aplicaEstadosAlexa(false); atualizaTeclas3();
   if ($('#lig3').checked) P.ligacoes.forEach(l => {
     const a = getById(P.pontos, l.de), b = getById(P.pontos, l.para); if (!a || !b || !visivel(a) || !visivel(b)) return;
     const ca = colaNaParede3(a), cb = colaNaParede3(b), pts = rotaVinculo3(a, b, ca, cb, yPonto(a), yPonto(b));
