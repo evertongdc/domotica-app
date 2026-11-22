@@ -2482,7 +2482,7 @@ function renderAlexa() {
     const ep = epDoPonto(p.id), c = getById(P.comodos, p.comodo);
     h += '<div class="card"><div class="row"><div style="flex:3"><b>' + esc(M.nomeDe(p)) + '</b> <span class="note">' + esc(c ? c.nome : 'sem cômodo') + ' · ' + esc(TIPOS_ALEXA[tipoAlexa(p)]) + '</span>' +
       (ep ? '<div class="note">Na Alexa como «' + esc(ep.nome) + '» · ' + (ep.estado && ep.estado.on ? 'ligado' : 'desligado') + '</div>' : '') + '</div><div style="flex:2;text-align:right">' +
-      (ep ? '<label style="display:inline-block;margin:0 8px 0 0"><input type="checkbox" style="width:auto" data-al="gatilho" data-id="' + ep.id + '" ' + (ep.gatilho ? 'checked' : '') + '> sensor-gatilho</label><button data-al="desv" data-id="' + ep.id + '">Remover</button>' : '<button class="pri" data-al="pub" data-p="' + esc(p.id) + '">Publicar na Alexa</button>') + '</div></div></div>';
+      (ep ? '<label style="display:inline-block;margin:0 8px 0 0"><input type="checkbox" style="width:auto" data-al="gatilho" data-id="' + ep.id + '" ' + (ep.gatilho ? 'checked' : '') + ' title="No Brasil a Alexa marca esse sensor como incompatível para rotinas. Use o aparelho virtual como gatilho."> sensor-gatilho (não funciona em pt-BR)</label><button data-al="desv" data-id="' + ep.id + '">Remover</button>' : '<button class="pri" data-al="pub" data-p="' + esc(p.id) + '">Publicar na Alexa</button>') + '</div></div></div>';
   });
   const soltos = S.alexa.lista.filter(e => !e.ponto_id || !P.pontos.some(p => p.id === e.ponto_id) && (!S.planoId || e.plan_id === S.planoId || !e.plan_id));
   if (soltos.length) h += '<div class="sec">Aparelhos da Alexa sem ponto (disponíveis para vincular)</div>';
