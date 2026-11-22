@@ -1076,7 +1076,6 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
       else add('aviso', 'Aparelho solto: ' + x.nome + ' (' + x.comodo + ') — ' + x.motivo, 'ponto', x.id);
     });
     p.pontos.forEach(pt => {
-      if (M.PRECISA_APP.indexOf(pt.tipo) >= 0 && !pt.appId && !pt.protocolo) add('info', 'Sem app/protocolo definido: ' + M.nomeDe(pt) + ' (' + nomeC(pt.comodo) + ')', 'ponto', pt.id);
       if (pt.appId && !apps.some(a => a.id === pt.appId)) add('aviso', 'App do aparelho não existe mais na lista: ' + M.nomeDe(pt), 'ponto', pt.id);
     });
     apps.forEach(a => {
