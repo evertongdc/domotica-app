@@ -2224,13 +2224,14 @@ function tocar(g, w) {
     const ex = { parede }; if (tipo === 'interruptor') ex.teclas = S.teclasNovo;
     if (tipo === 'outro' && S.outro) { ex.nome = S.outro.nome; ex.cat = S.outro.cat; ex.sigla = S.outro.sigla; ex.altura = S.outro.altura; }
     snap(); const p = M.novoPonto(P, tipo, x, y, ex); if (tipo === 'ar_condicionado' && P.paredes.length) { const k = G.colar({ x: p.x, y: p.y }, P.paredes, 1e6); if (k) { p.x = Math.round(k.x); p.y = Math.round(k.y); p.parede = k.parede; } } p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); P.pontos.push(p); S.sel = { k: 'ponto', id: p.id }; S.tool = 'sel';
-    if (tipo === 'interruptor' || tipo === 'botao') { S.tool = 'ligar'; S.lig = { de: p.id, tecla: 1 }; S.sel = null; toast('Interruptor criado. Clique nos pontos de luz que ele comanda (Esc termina).', 5000); }
+    if (tipo === 'interruptor' || tipo === 'botao') { S.tool = 'ligar'; S.lig = { de: p.id, tecla: 1, soLuz: true }; S.sel = null; toast('Interruptor criado. Clique nos pontos de luz que ele comanda (Esc termina). Para ligar outros aparelhos, use a ferramenta Ligar pontos.', 6000); }
     return refresh();
   }
   if (tool === 'ligar') {
     if (kind === 'ponto') {
       if (!S.lig.de) { S.lig = { de: id, tecla: 1 }; return refresh({ panel: false }); }
       if (S.lig.de === id) { S.lig = { de: null, tecla: 1 }; return refresh({ panel: false }); }
+      if (S.lig.soLuz && M.catDe(getById(P.pontos, id)) !== 'luz') return toast('Neste modo só pontos de luz. Para outros aparelhos, use a ferramenta “Ligar pontos”.', 4500);
       const o = getById(P.pontos, S.lig.de); snap();
       const l = M.ligar(P, S.lig.de, id, (o.tipo === 'interruptor' || o.tipo === 'botao') ? S.lig.tecla : 0);
       if (!l) { undo.pop(); toast('Essa ligação já existe.'); } else toast('Ligado: ' + M.nomeDe(o) + ' → ' + M.nomeDe(getById(P.pontos, id)));
