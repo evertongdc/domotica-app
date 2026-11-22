@@ -2223,7 +2223,9 @@ function tocar(g, w) {
     if (S.ativo) { const at = getById(P.comodos, S.ativo); if (at && !dentroOuPerto(at.pontos, x, y, 30)) return toast('Cômodo ativo: "' + at.nome + '". Toque dentro dele ou escolha "Todos" na barra de baixo.', 4000); }
     const ex = { parede }; if (tipo === 'interruptor') ex.teclas = S.teclasNovo;
     if (tipo === 'outro' && S.outro) { ex.nome = S.outro.nome; ex.cat = S.outro.cat; ex.sigla = S.outro.sigla; ex.altura = S.outro.altura; }
-    snap(); const p = M.novoPonto(P, tipo, x, y, ex); if (tipo === 'ar_condicionado' && P.paredes.length) { const k = G.colar({ x: p.x, y: p.y }, P.paredes, 1e6); if (k) { p.x = Math.round(k.x); p.y = Math.round(k.y); p.parede = k.parede; } } p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); P.pontos.push(p); S.sel = { k: 'ponto', id: p.id }; S.tool = 'sel'; return refresh();
+    snap(); const p = M.novoPonto(P, tipo, x, y, ex); if (tipo === 'ar_condicionado' && P.paredes.length) { const k = G.colar({ x: p.x, y: p.y }, P.paredes, 1e6); if (k) { p.x = Math.round(k.x); p.y = Math.round(k.y); p.parede = k.parede; } } p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); P.pontos.push(p); S.sel = { k: 'ponto', id: p.id }; S.tool = 'sel';
+    if (tipo === 'interruptor' || tipo === 'botao') { S.tool = 'ligar'; S.lig = { de: p.id, tecla: 1 }; S.sel = null; toast('Interruptor criado. Clique nos pontos de luz que ele comanda (Esc termina).', 5000); }
+    return refresh();
   }
   if (tool === 'ligar') {
     if (kind === 'ponto') {
