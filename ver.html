@@ -2488,7 +2488,7 @@ async function abrir3d() {
     const alvo3 = e => { const r = el3.getBoundingClientRect(); T3.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), T3.cam); const hs = T3.ray.intersectObjects((T3.pick || []).concat(T3.occ || []), false); let h = hs[0]; if (h && h.object.userData.proxy) { const tk = hs.find(q => q.object.userData.tecla && q.distance <= h.distance + 60); if (tk) h = tk; }   // a tecla do interruptor ganha da área de toque ampliada de um aparelho vizinho
       return h && (h.object.userData.tecla || h.object.userData.dev || h.object.userData.mov) ? h.object.userData : null; };
     el3.addEventListener('pointerdown', e => { T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; d0 = { x: e.clientX, y: e.clientY, t: Date.now() }; });
-    el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; const u = alvo3(e); if (!u) return; if (u.mov) { S.movAberto = S.movAberto || {}; S.movAberto[u.mov] = !S.movAberto[u.mov]; T3.sombraSuja = true; } else if (u.tecla) alternarTecla3(u.tecla.sw, u.tecla.t); else alternarDisp3(u.dev); });
+    el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; const u = alvo3(e); if (!u) return; if (u.mov) { S.movAberto = S.movAberto || {}; S.movAberto[u.mov] = !S.movAberto[u.mov]; T3.sombraSuja = true; } else if (u.tecla) tocaTecla3(u.tecla.sw, u.tecla.t); else alternarDisp3(u.dev); });
     el3.addEventListener('pointermove', e => { if (T3.fp.on) { if (e.buttons) { const dx = e.clientX - (T3.fp.lx == null ? e.clientX : T3.fp.lx), dy = e.clientY - (T3.fp.ly == null ? e.clientY : T3.fp.ly); T3.fp.yaw -= dx * .0045; T3.fp.pitch = Math.max(-1.25, Math.min(1.25, T3.fp.pitch + dy * .0045)); T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; } else el3.style.cursor = alvo3(e) ? 'pointer' : 'grab'; return; } if (e.buttons) return; el3.style.cursor = alvo3(e) ? 'pointer' : ''; });
     el3.addEventListener('wheel', e => { if (!T3.fp.on) return; e.preventDefault(); T3.cam.fov = Math.max(35, Math.min(100, T3.cam.fov + e.deltaY * .03)); T3.cam.updateProjectionMatrix(); }, { passive: false });
     (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt)); if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; T3.sombraSuja = false; } const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update(); T3.ren.render(T3.scene, T3.cam); })();
@@ -2865,7 +2865,7 @@ function aparelho3D(p, o) {
       k.userData = { tecla: { sw: p.id, t: i + 1 } }; R.hit.push(k); teclas.push({ pv, led, i });
     }
     { const pw = W * 3 / cols, ph = H * 3 / rows, inv = new THREE.MeshBasicMaterial({ visible: false });   // zonas de toque ~2x maiores que a placa
-      for (let i = 0; i < n; i++) { const z = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, .8), inv); z.position.set(-W * 1.5 + pw * (i % cols) + pw / 2, rows === 2 ? (H * 1.5 - ph * Math.floor(i / cols) - ph / 2) : 0, 2.6); z.userData = { tecla: { sw: p.id, t: i + 1 } }; G3.add(z); R.hit.push(z); } }
+      for (let i = 0; i < n; i++) { const z = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, .8), inv); z.position.set(-W * 1.5 + pw * (i % cols) + pw / 2, rows === 2 ? (H * 1.5 - ph * Math.floor(i / cols) - ph / 2) : 0, 2.6); z.userData = { tecla: { sw: p.id, t: i + 1 } }; G3.add(z); R.hit.push(z); T3.zonas.push({ m: z, base: Math.max(pw, ph), sw: p.id, t: i + 1 }); } }
     R.teclas = teclas; R.setTecla = (i, on) => { const q = teclas[i]; if (!q) return; q.pv.rotation.x = on ? -.14 : .14; q.led.material.emissiveIntensity = on ? 2.2 : 0; };
     teclas.forEach(q => R.setTecla(q.i, false)); return R;
   }
@@ -2996,6 +2996,27 @@ function rotaVinculo3(a, b, ca, cb, yA, yB, tetoB) {
 }
 
 function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); if (!window.PLANTA_VIEW && vincTuya(id)) { tuyaPush(id, novo); return; } T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); alexaPush(id, novo); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
+/** áreas de toque que crescem com o afastamento da câmera: sempre ~34 px na tela (até 4x o tamanho real) */
+function ajustaZonas() {
+  const Z = T3.zonas, c = T3.cam; if (!Z || !Z.length || !c || !T3.ren) return;
+  const h = T3.ren.domElement.clientHeight || 400, key = [c.position.x, c.position.y, c.position.z].map(v => v.toFixed(0)).join(',') + '|' + c.fov + '|' + h + '|' + Z.length; if (key === T3.zKey) return; T3.zKey = key;
+  const k = h / 2 / Math.tan(c.fov * Math.PI / 360);
+  Z.forEach(z => { if (!z.pos) { z.m.updateWorldMatrix(true, false); z.pos = new THREE.Vector3(); z.m.getWorldPosition(z.pos); } const d = Math.max(30, c.position.distanceTo(z.pos)); z.m.scale.setScalar(Math.min(4, Math.max(1, (34 * d / k) / z.base))); });
+}
+/** toque numa tecla: se as teclas do mesmo interruptor ficam coladas na tela (câmera longe), pergunta qual tecla */
+async function tocaTecla3(sw, t) {
+  const d = T3.devs[sw], n = d && d.A.teclas ? d.A.teclas.length : 1;
+  if (n > 1) {
+    const zs = (T3.zonas || []).filter(z => z.sw === sw && z.pos); let perto = false;
+    if (zs.length > 1) { const cv = T3.ren.domElement, pr = z => { const v = z.pos.clone().project(T3.cam); return [(v.x + 1) / 2 * cv.clientWidth, (1 - v.y) / 2 * cv.clientHeight]; }, a = pr(zs[0]), b = pr(zs[1]); perto = Math.hypot(a[0] - b[0], a[1] - b[1]) < 22; }
+    if (perto) {
+      const sw0 = getById(P.pontos, sw), rot = i => 'Tecla ' + i + ' — ' + (P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === i).map(l => { const q = getById(P.pontos, l.para); return q ? M.nomeDe(q) : ''; }).filter(Boolean).join(', ') || 'sem luz ligada');
+      const r = await modal(sw0 ? M.nomeDe(sw0) : 'Interruptor', [{ k: 'tecla', rot: 'Qual tecla?', tipo: 'select', val: String(t), opts: Array.from({ length: n }, (_, i) => [String(i + 1), rot(i + 1)]) }], 'Acionar');
+      if (!r) return; t = +r.tecla;
+    }
+  }
+  alternarTecla3(sw, t);
+}
 function alternarTecla3(sw, tec) {
   { const vt = !window.PLANTA_VIEW && vincTecla(sw, tec); if (vt) return tuyaPushTecla(vt, sw, tec); }
   const ds = P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).map(l => T3.devs[l.para]).filter(Boolean);
@@ -3088,7 +3109,7 @@ function build3dTudo(reenquadrar) {
     const sh = new THREE.Shape(); c.pontos.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); });
     const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: NT ? 0x0c0e12 : (c.forro ? 0xfff3d6 : 0xffffff), transparent: true, opacity: NT ? .10 : .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); g.add(f);
   });
-  T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = []; T3.sombraSuja = true; tetoTicks.forEach(f => T3.ticks.push(f)); tetoPick.forEach(m => T3.pick.push(m));
+  T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = []; T3.zonas = []; T3.zKey = ''; T3.sombraSuja = true; tetoTicks.forEach(f => T3.ticks.push(f)); tetoPick.forEach(m => T3.pick.push(m));
   const PRIO = { ponto_luz: 0, plafon: 0, pendente: 1, arandela: 2, spot: 3, trilho: 3, balizador: 4, fita_led: 5 }, permitido = new Set(); let nSomP = 0, nSomS = 0;
   P.pontos.filter(q => visivel(q) && PRIO[q.tipo] != null).sort((x, y) => PRIO[x.tipo] - PRIO[y.tipo]).slice(0, 18).forEach(q => permitido.add(q.id));
   // cada tipo de luz ilumina de um jeito e com uma cor; as principais (ponto de luz/plafon) cobrem o cômodo inteiro; as paredes bloqueiam a luz (sem vazar para o vizinho)
@@ -3117,11 +3138,11 @@ function build3dTudo(reenquadrar) {
     const A = aparelho3D(p, { wx: px, wy: y, wz: pz, nx: cp.nx, nz: cp.nz, root: g, ceilY: topo, noite: NT, dirY, poly: c ? c.pontos : null, sujar: () => { T3.sombraSuja = true; } });
     A.g.position.set(px, yDisp, pz); if (cp.w) A.g.rotation.y = Math.atan2(cp.nx, cp.nz);
     if (NT && A.luz && permitido.has(p.id)) criaLuz3(p, A, { px, pz, y, topo, pendura, cp, c });
-    if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const z = new THREE.Mesh(new THREE.SphereGeometry(p.tipo === 'tv' ? 34 : (M.catDe(p) === 'energia' ? 14 : 28), 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; z.userData.proxy = true; A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
+    if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const rz = p.tipo === 'tv' ? 34 : (M.catDe(p) === 'energia' ? 14 : 28), z = new THREE.Mesh(new THREE.SphereGeometry(rz, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; z.userData.proxy = true; T3.zonas.push({ m: z, base: 2 * rz }); A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
-  aplicaEstadosAlexa(false); atualizaTeclas3();
+  aplicaEstadosAlexa(false); atualizaTeclas3(); T3.ticks.push(ajustaZonas);
   if ($('#lig3').checked) P.ligacoes.forEach(l => {
     const a = getById(P.pontos, l.de), b = getById(P.pontos, l.para); if (!a || !b || !visivel(a) || !visivel(b)) return;
     const ca = colaNaParede3(a), cb = colaNaParede3(b), pts = rotaVinculo3(a, b, ca, cb, yPonto(a), yPonto(b));
@@ -3146,7 +3167,7 @@ function focarComodo(c) {
 }
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
-$('#bIso').onclick = () => { const c = comodo3(); if (!c) return iso(); const P0 = P; P = recorte3(c); try { iso(); } finally { P = P0; } }; $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
+$('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   // Visão geral = casa inteira $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
 $('#bPng').onclick = () => { T3.ren.render(T3.scene, T3.cam); const a = document.createElement('a'); a.href = T3.ren.domElement.toDataURL('image/png'); a.download = (P.nome || 'planta') + '_3d.png'; a.click(); };
 $('#bImgs').onclick = async () => {
   if (!P.comodos.length) return toast('Sem cômodos.');
