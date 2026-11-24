@@ -1379,6 +1379,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* ===================== estado ===================== */
 let P = M.novaPlanta('Nova planta');
+const COARSE = (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
 const S = { tool: 'sel', camadas: new Set(), projeto: 'atual', estilo: (() => { try { return localStorage.getItem('planta_estilo') === 'real' ? 'real' : 'arq'; } catch (e) { return 'arq'; } })(), catalogo: undefined, sugestoes: undefined, sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
   dedo: false, interna: true, cotas: true, ligs: true, fotoDataUrl: null, fotoSuja: false, planoId: CTX.plantaId || null, cal: [], prev: null, tab: 'v2d', filtro: '', cadeia: false, rodaZoom: false, p1: null, dig: '', live: null, ultima: null, ativo: null, ghost: null, mouse: null };
 const undo = [], redo = [];
@@ -1475,7 +1476,7 @@ function renderSVG() {
   P.paredes.forEach(w => {
     const sw = Math.max(w.esp || 15, 5 * k), on = sel && sel.k === 'parede' && sel.id === w.id;
     s += '<line x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="' + (on ? '#1e88ff' : '#1c2b3a') + '" stroke-width="' + sw + '" stroke-linecap="square" style="pointer-events:none"/>';
-    s += '<line data-k="parede" data-id="' + w.id + '" x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="transparent" stroke-width="18" vector-effect="non-scaling-stroke"/>';
+    s += '<line data-k="parede" data-id="' + w.id + '" x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="transparent" stroke-width="' + (COARSE ? 36 : 18) + '" vector-effect="non-scaling-stroke"/>';
   });
   // aberturas
   P.aberturas.forEach(a => {
@@ -1491,7 +1492,7 @@ function renderSVG() {
       const o = (w.esp || 15) / 4;
       [-o, 0, o].forEach(d => { s += '<line x1="' + (A[0] + q.nx * d) + '" y1="' + (A[1] + q.ny * d) + '" x2="' + (B[0] + q.nx * d) + '" y2="' + (B[1] + q.ny * d) + '" stroke="' + (on ? '#1e88ff' : '#2a7de1') + '" stroke-width="1.6" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; });
     }
-    s += '<line data-k="abertura" data-id="' + a.id + '" x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="transparent" stroke-width="22" vector-effect="non-scaling-stroke"/>';
+    s += '<line data-k="abertura" data-id="' + a.id + '" x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="transparent" stroke-width="' + (COARSE ? 44 : 22) + '" vector-effect="non-scaling-stroke"/>';
   });
   // cotas por trecho
   if (S.cotas) M.trechos(P).forEach((t, i) => {
@@ -1511,7 +1512,7 @@ function renderSVG() {
       ligados.forEach((w, i) => { const o = (i - (ligados.length - 1) / 2) * 5 * k; s += '<line x1="' + (a.x + nx * o) + '" y1="' + (a.y + ny * o) + '" x2="' + (b.x + nx * o) + '" y2="' + (b.y + ny * o) + '" stroke="' + w[2] + '" stroke-width="3" vector-effect="non-scaling-stroke" ' + ((S.projeto === 'final' && !fa[w[0]]) ? 'stroke-dasharray="6 4" ' : '') + 'style="pointer-events:none"/>'; });
     }
     s += '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + 4 * k + '" fill="' + cor + '" style="pointer-events:none"/>';
-    s += '<line data-k="ligacao" data-id="' + l.id + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="transparent" stroke-width="14" vector-effect="non-scaling-stroke"/>';
+    s += '<line data-k="ligacao" data-id="' + l.id + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="transparent" stroke-width="' + (COARSE ? 28 : 14) + '" vector-effect="non-scaling-stroke"/>';
     if (l.tecla) s += '<text x="' + (a.x + (b.x - a.x) * .18) + '" y="' + (a.y + (b.y - a.y) * .18 - 4 * k) + '" text-anchor="middle" font-size="' + 11 * k + '" font-weight="800" fill="' + cor + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">T' + l.tecla + '</text>';
   });
   // pontos
@@ -1522,6 +1523,7 @@ function renderSVG() {
     const lo = ladoOffset(p), cor = M.corDe(p), T = M.TIPOS[p.tipo] || M.TIPOS.outro, cat = M.catDe(p), cmd = p.tipo === 'interruptor' || p.tipo === 'botao';
     const on = (sel && sel.k === 'ponto' && sel.id === p.id) || S.multi.includes(p.id), de = S.tool === 'ligar' && S.lig.de === p.id, h = sz / 2;
     s += '<g data-k="ponto" data-id="' + p.id + '" transform="translate(' + (p.x + lo.dx) + ' ' + (p.y + lo.dy) + ')"' + (S.ativo && p.comodo !== S.ativo ? ' opacity=".35"' : '') + '>';
+    if (COARSE) s += '<circle r="' + (sz * 1.2) + '" fill="transparent"/>';
     if (on || de) s += '<circle r="' + (sz * .95) + '" fill="none" stroke="' + (de ? '#ff7a00' : '#1e88ff') + '" stroke-width="3" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>';
     if (S.estilo === 'real') s += iconeReal(p, sz * 1.45, cor);
     else if (cmd) s += '<rect x="' + -h + '" y="' + -h + '" width="' + sz + '" height="' + sz + '" rx="' + sz * .18 + '" fill="#fff" stroke="' + cor + '" stroke-width="' + sz * .13 + '"/><text y="' + sz * .22 + '" text-anchor="middle" font-size="' + sz * .62 + '" font-weight="800" fill="#1f2937">' + (p.tipo === 'botao' ? 'B' : (p.teclas || 1)) + '</text>';
@@ -1540,7 +1542,7 @@ function renderSVG() {
     for (let t = 1; t <= nT; t++) { const nL = P.ligacoes.filter(l => l.de === sp.id && (l.tecla || 1) === t).length, bx = sp.x + (t - 1 - (nT - 1) / 2) * 30 * k, by = sp.y + 40 * k;
       s += '<g data-k="tecla" data-id="' + sp.id + '" data-t="' + t + '" transform="translate(' + bx + ' ' + by + ')" style="cursor:pointer"><circle r="' + 13 * k + '" fill="#fff" stroke="#ff7a00" stroke-width="' + 2.5 * k + '"/><text y="' + 4.5 * k + '" text-anchor="middle" font-size="' + 13 * k + '" font-weight="800" fill="#1f2937" style="pointer-events:none">' + t + '</text>' + (nL ? '<circle cx="' + 10 * k + '" cy="' + -10 * k + '" r="' + 6 * k + '" fill="#2ea44f"/><text x="' + 10 * k + '" y="' + -7 * k + '" text-anchor="middle" font-size="' + 8 * k + '" font-weight="800" fill="#fff" style="pointer-events:none">' + nL + '</text>' : '') + '</g>'; } } }
   // alças da parede selecionada
-  if (sel && sel.k === 'parede') { const w = getById(P.paredes, sel.id); if (w) [1, 2].forEach(i => { s += '<circle data-k="handle" data-id="' + w.id + '" data-i="' + i + '" cx="' + w['x' + i] + '" cy="' + w['y' + i] + '" r="' + 9 * k + '" fill="#fff" stroke="#1e88ff" stroke-width="' + 3 * k + '"/>'; }); }
+  if (sel && sel.k === 'parede') { const w = getById(P.paredes, sel.id); if (w) [1, 2].forEach(i => { s += '<circle data-k="handle" data-id="' + w.id + '" data-i="' + i + '" cx="' + w['x' + i] + '" cy="' + w['y' + i] + '" r="' + (COARSE ? 15 : 9) * k + '" fill="#fff" stroke="#1e88ff" stroke-width="' + 3 * k + '"/>'; }); }
   // pré-visualizações
   if (S.prev) {
     if (S.prev.k === 'poly') s += '<polyline points="' + S.prev.pts.map(p => p.x + ',' + p.y).join(' ') + '" fill="none" stroke="#ff7a00" stroke-width="3" vector-effect="non-scaling-stroke" stroke-linecap="round" style="pointer-events:none"/>';
@@ -2064,7 +2066,7 @@ svg.addEventListener('pointerdown', e => {
   else if (tool === 'sel' && el && el.dataset.k === 'handle') { gest.mode = 'dragHandle'; gest.wid = el.dataset.id; gest.hi = el.dataset.i; const ww = getById(P.paredes, gest.wid); gest.old = [ww['x' + gest.hi], ww['y' + gest.hi]]; }
   else if (tool === 'sel' && el && el.dataset.k === 'abertura') { gest.mode = 'dragAbertura'; gest.aid = el.dataset.id; }
   else if (tool === 'sel' && el && el.dataset.k === 'parede' && (e.pointerType !== 'touch' || (S.sel && S.sel.k === 'parede' && S.sel.id === el.dataset.id))) { gest.mode = 'dragParede'; gest.wid = el.dataset.id; gest.orig = JSON.parse(JSON.stringify(P.paredes)); gest.origP = {}; P.pontos.forEach(p => { gest.origP[p.id] = { x: p.x, y: p.y }; }); }
-  else if (tool === 'sel' && el && el.dataset.k === 'comodo' && e.pointerType !== 'touch') { gest.mode = 'dragComodo'; gest.cid = el.dataset.id; }
+  else if (tool === 'sel' && el && el.dataset.k === 'comodo') { gest.mode = 'dragComodo'; gest.cid = el.dataset.id; }
   else if (tool === 'sel' || e.pointerType === 'touch') gest.mode = 'tapOuPan';
   if (gest.mode === 'parede') { const q = snapPt(w, Math.max(15, wpp() * 12)); gest.a = S.p1 || q; }
   if (e.button === 2 && S.p1) cancelarParede();
@@ -2079,7 +2081,7 @@ svg.addEventListener('pointermove', e => {
     S.autoFit = false; const k = wpp(); S.view.x -= (cx - gest.cx) * k; S.view.y -= (cy - gest.cy) * k; if (Math.abs(d - gest.d) >= 2) { zoomAt(cx, cy, gest.d / Math.max(1, d)); gest.d = d; } else renderSVG(); gest.cx = cx; gest.cy = cy; return;
   }
   if (e.pointerId !== gest.id) return;
-  const mv = Math.hypot(e.clientX - gest.sx, e.clientY - gest.sy); if (mv > 6) gest.moved = true;
+  const mv = Math.hypot(e.clientX - gest.sx, e.clientY - gest.sy); if (mv > (e.pointerType === 'touch' ? 10 : 6)) gest.moved = true;
   const w = toWorld(e), m = gest.mode; S.mouse = w;
   if (m === 'pan' || (m === 'tapOuPan' && gest.moved)) { S.autoFit = false; const k = wpp(); S.view.x -= (e.clientX - gest.lx) * k; S.view.y -= (e.clientY - gest.ly) * k; gest.lx = e.clientX; gest.ly = e.clientY; renderSVG(); return; }
   if (m === 'ghost') { ghostMover(w); renderSVG(); return; }
@@ -2429,7 +2431,8 @@ $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[da
 const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
 function loadScript(u) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = u; s.onload = ok; s.onerror = () => no(new Error('Falha ao carregar ' + u)); document.head.appendChild(s); }); }
 async function abrir3d() {
-  $('#pe3').value = P.peDireito; $('#com3').innerHTML = P.comodos.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('');
+  const prev3 = $('#com3').value; $('#pe3').value = P.peDireito; $('#com3').innerHTML = P.comodos.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('');
+  { const pref = getById(P.comodos, prev3) ? prev3 : (S.ativo || (S.sel && S.sel.k === 'comodo' ? S.sel.id : '')); if (pref && getById(P.comodos, pref)) $('#com3').value = pref; }
   if (!T3.ok) {
     try {
       if (!window.THREE) await loadScript(window.PLANTA_THREE || 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
@@ -2575,7 +2578,7 @@ function atualizaDentro(dt) {
 }
 function distPolyBorda(poly, x, y) { let d = 1e9; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; d = Math.min(d, G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, x, y).d); } return d; }
 $('#bDentro').onclick = () => { if (T3.fp.on) sairDentro(); else entrarDentro(); };
-$('#com3').addEventListener('change', () => { if (T3.fp.on) { const c = getById(P.comodos, $('#com3').value); if (c) { T3.fp.c = c; T3.fp.x = c.cx; T3.fp.z = c.cy; if (!G.dentro(c.pontos, c.cx, c.cy)) { T3.fp.x = c.pontos[0][0] + 40; T3.fp.z = c.pontos[0][1] + 40; } } } });
+$('#com3').addEventListener('change', () => { if (!T3.fp.on && T3.ok) build3d(true); if (T3.fp.on) { const c = getById(P.comodos, $('#com3').value); if (c) { T3.fp.c = c; T3.fp.x = c.cx; T3.fp.z = c.cy; if (!G.dentro(c.pontos, c.cx, c.cy)) { T3.fp.x = c.pontos[0][0] + 40; T3.fp.z = c.pontos[0][1] + 40; } } } });
 window.addEventListener('keydown', e => { if (!T3.fp.on || S.tab !== 'v3d' || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName || '') || e.metaKey || e.ctrlKey) return; const k = e.key.toLowerCase(); if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { T3.fp.keys[k] = true; e.preventDefault(); } if (k === 'escape') sairDentro(); }, true);
 window.addEventListener('keyup', e => { delete T3.fp.keys[e.key.toLowerCase()]; });
 $('#fpPad').addEventListener('pointerdown', e => { const b = e.target.closest('button'); if (b) { T3.fp.keys[b.dataset.k] = true; e.preventDefault(); } });
@@ -2703,6 +2706,8 @@ function aparelho3D(p, o) {
       const led = new THREE.Mesh(new THREE.CircleGeometry(.28, 12), std(0x000000, { emissive: new THREE.Color(0xfb923c), emissiveIntensity: 0 })); led.position.set(0, -(kh - .35) / 2 + .6, .76); pv.add(led);
       k.userData = { tecla: { sw: p.id, t: i + 1 } }; R.hit.push(k); teclas.push({ pv, led, i });
     }
+    { const pw = W * 2 / cols, ph = H * 2 / rows, inv = new THREE.MeshBasicMaterial({ visible: false });   // zonas de toque ~2x maiores que a placa
+      for (let i = 0; i < n; i++) { const z = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, 5), inv); z.position.set(-W + pw * (i % cols) + pw / 2, rows === 2 ? (H - ph * Math.floor(i / cols) - ph / 2) : 0, 3); z.userData = { tecla: { sw: p.id, t: i + 1 } }; G3.add(z); R.hit.push(z); } }
     R.teclas = teclas; R.setTecla = (i, on) => { const q = teclas[i]; if (!q) return; q.pv.rotation.x = on ? -.14 : .14; q.led.material.emissiveIntensity = on ? 2.2 : 0; };
     teclas.forEach(q => R.setTecla(q.i, false)); return R;
   }
@@ -2844,7 +2849,17 @@ function atualizaTeclas3() {
     d.A.teclas.forEach(k => { const ds = P.ligacoes.filter(l => l.de === sw.id && (l.tecla || 1) === k.i + 1).map(l => T3.devs[l.para]).filter(Boolean); d.A.setTecla(k.i, ds.some(x => estaOn3(x.p))); }); });
 }
 window.Planta3D = { T3, alternarTecla3, alternarDisp3, estaOn3: p => estaOn3(p) };
-function build3d(reenquadrar) {
+/* 3D sempre de UM ambiente (o escolhido em #com3): carrega só as paredes, aberturas, pontos e móveis dele */
+function comodo3() { return getById(P.comodos, $('#com3').value) || getById(P.comodos, S.ativo) || P.comodos[0] || null; }
+function recorte3(c) {
+  const tol = ((P.paredes[0] && P.paredes[0].esp) || 15) + 6, ds = (x, y, a, b) => G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, x, y).d;
+  const nb = (x, y) => c.pontos.some((q, i) => ds(x, y, q, c.pontos[(i + 1) % c.pontos.length]) <= tol);
+  const paredes = P.paredes.filter(w => nb(w.x1, w.y1) && nb(w.x2, w.y2) && nb((w.x1 + w.x2) / 2, (w.y1 + w.y2) / 2)), ids = new Set(paredes.map(w => w.id));
+  const pontos = P.pontos.filter(q => q.comodo === c.id || G.dentro(c.pontos, q.x, q.y) || (q.parede && ids.has(q.parede))), pid = new Set(pontos.map(q => q.id));
+  return Object.assign({}, P, { paredes, comodos: [c], pontos, aberturas: P.aberturas.filter(a => ids.has(a.parede)), ligacoes: P.ligacoes.filter(l => pid.has(l.de) && pid.has(l.para)) });
+}
+function build3d(reenquadrar) { const c = comodo3(); if (!c) return build3dTudo(reenquadrar); const P0 = P; P = recorte3(c); try { return build3dTudo(reenquadrar); } finally { P = P0; } }
+function build3dTudo(reenquadrar) {
   if (!T3.ok) return; const g = T3.grp; while (g.children.length) { const o = g.children.pop(); if (o.geometry) o.geometry.dispose(); }
   aplicarVisual(); const NT = T3.noite, modo = $('#modo3').value, Hn = P.peDireito;
   // cada parede tem a altura do pé-direito do cômodo ao lado; ponto de teto fica sob o forro (pé-direito menos o rebaixo)
@@ -2912,6 +2927,7 @@ function build3d(reenquadrar) {
     const A = aparelho3D(p, { wx: px, wy: y, wz: pz, nx: cp.nx, nz: cp.nz, root: g, ceilY: topo, noite: NT, dirY, poly: c ? c.pontos : null, sujar: () => { T3.sombraSuja = true; } });
     A.g.position.set(px, yDisp, pz); if (cp.w) A.g.rotation.y = Math.atan2(cp.nx, cp.nz);
     if (NT && A.luz && permitido.has(p.id)) criaLuz3(p, A, { px, pz, y, topo, pendura, cp, c });
+    if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const z = new THREE.Mesh(new THREE.SphereGeometry(p.tipo === 'tv' ? 30 : 22, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
@@ -2940,17 +2956,18 @@ function focarComodo(c) {
 }
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
-$('#bIso').onclick = iso; $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
+$('#bIso').onclick = () => { const c = comodo3(); if (!c) return iso(); const P0 = P; P = recorte3(c); try { iso(); } finally { P = P0; } }; $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
 $('#bPng').onclick = () => { T3.ren.render(T3.scene, T3.cam); const a = document.createElement('a'); a.href = T3.ren.domElement.toDataURL('image/png'); a.download = (P.nome || 'planta') + '_3d.png'; a.click(); };
 $('#bImgs').onclick = async () => {
   if (!P.comodos.length) return toast('Sem cômodos.');
   if (!S.planoId) { try { await salvar(true); } catch (e) { return toast('Salve a planta primeiro: ' + e.message, 5000); } }
   const modoAnt = $('#modo3').value; $('#modo3').value = 'corte'; build3d(false); toast('Gerando imagens 3D…', 6000);
   try {
-    for (const c of P.comodos) { focarComodo(c); T3.ren.render(T3.scene, T3.cam); const url = T3.ren.domElement.toDataURL('image/jpeg', .9); const r = await gas('Planta_salvarImagem3D', S.planoId, c.id, url); P.imagens3d[c.id] = r.fileId; }
+    const com0 = $('#com3').value;
+    for (const c of P.comodos) { $('#com3').value = c.id; build3d(false); focarComodo(c); T3.ren.render(T3.scene, T3.cam); const url = T3.ren.domElement.toDataURL('image/jpeg', .9); const r = await gas('Planta_salvarImagem3D', S.planoId, c.id, url); P.imagens3d[c.id] = r.fileId; }
     toast('Imagens salvas para o orçamento (' + P.comodos.length + ').'); await salvar(true);
   } catch (e) { toast('Erro: ' + e.message, 6000); }
-  $('#modo3').value = modoAnt; build3d(true);
+  $('#modo3').value = modoAnt; $('#com3').value = com0; build3d(true);
 };
 
 /* ===================== importar planta do cliente (imagem / PDF) ===================== */
