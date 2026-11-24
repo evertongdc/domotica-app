@@ -3084,20 +3084,30 @@ function ajustaZonas() {
   const k = h / 2 / Math.tan(c.fov * Math.PI / 360);
   Z.forEach(z => { if (!z.pos) { z.m.updateWorldMatrix(true, false); z.pos = new THREE.Vector3(); z.m.getWorldPosition(z.pos); } const d = Math.max(30, c.position.distanceTo(z.pos)); z.m.scale.setScalar(Math.min(4, Math.max(1, (34 * d / k) / z.base))); });
 }
-/** toque numa tecla: se as teclas do mesmo interruptor ficam coladas na tela (câmera longe), pergunta qual tecla */
-async function tocaTecla3(sw, t, pergunta) {
+/** toque numa tecla: interruptor de 1 tecla aciona direto; com mais de uma tecla abre o INTERRUPTOR VIRTUAL na tela */
+function tocaTecla3(sw, t) {
   const d = T3.devs[sw], n = d && d.A.teclas ? d.A.teclas.length : 1;
-  if (n > 1) {
-    const zs = (T3.zonas || []).filter(z => z.sw === sw && z.pos); let perto = false;
-    if (zs.length > 1) { const cv = T3.ren.domElement, pr = z => { const v = z.pos.clone().project(T3.cam); return [(v.x + 1) / 2 * cv.clientWidth, (1 - v.y) / 2 * cv.clientHeight]; }, a = pr(zs[0]), b = pr(zs[1]); perto = Math.hypot(a[0] - b[0], a[1] - b[1]) < 22; }
-    if (perto || pergunta) {
-      const sw0 = getById(P.pontos, sw), rot = i => 'Tecla ' + i + ' — ' + (P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === i).map(l => { const q = getById(P.pontos, l.para); return q ? M.nomeDe(q) : ''; }).filter(Boolean).join(', ') || 'sem luz ligada');
-      const r = await modal(sw0 ? M.nomeDe(sw0) : 'Interruptor', [{ k: 'tecla', rot: 'Qual tecla?', tipo: 'select', val: String(t), opts: Array.from({ length: n }, (_, i) => [String(i + 1), rot(i + 1)]) }], 'Acionar');
-      if (!r) return; t = +r.tecla;
-    }
-  }
+  if (n > 1) return abreSwVirtual(sw);
   alternarTecla3(sw, t);
 }
+function abreSwVirtual(sw) { S.swv = sw; renderSwVirtual(); }
+function fechaSwVirtual() { S.swv = null; const e = document.getElementById('swVirtual'); if (e) e.remove(); }
+function renderSwVirtual() {
+  let el = document.getElementById('swVirtual'); const sw = S.swv && getById(P.pontos, S.swv);
+  if (!sw) { if (el) el.remove(); return; }
+  if (!document.getElementById('swvCss')) { const st = document.createElement('style'); st.id = 'swvCss'; st.textContent = '#swVirtual{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:60;background:#eceff3;border:1px solid #c9d0da;border-radius:20px;padding:10px 12px 14px;box-shadow:0 14px 40px rgba(0,0,0,.45);color:#1f2937;font:600 12px system-ui,sans-serif;max-width:94vw}#swVirtual .swh{display:flex;align-items:center;gap:10px;margin:0 2px 8px}#swVirtual .swh b{flex:1;font-size:13px}#swVirtual .swx{all:unset;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#dde2ea;font-size:15px}#swVirtual .swg{display:grid;gap:8px}#swVirtual .swk{all:unset;cursor:pointer;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;min-width:92px;min-height:112px;padding:10px 6px 8px;border-radius:14px;background:#fff;border:1px solid #d3d9e2;box-shadow:0 2px 0 #c4cbd6,0 6px 14px rgba(0,0,0,.12);text-align:center;line-height:1.2;-webkit-tap-highlight-color:transparent}#swVirtual .swk:active{transform:translateY(2px);box-shadow:0 0 0 #c4cbd6}#swVirtual .swk.on{background:#fff5e4;border-color:#ff7a00;box-shadow:0 0 0 2px #ff7a00 inset,0 0 16px rgba(255,122,0,.45)}#swVirtual .led{width:9px;height:9px;border-radius:50%;background:#b8c0cc}#swVirtual .swk.on .led{background:#ff7a00;box-shadow:0 0 8px #ff7a00}#swVirtual .swk.busy{opacity:.6}#swVirtual .swn{font-size:11px;font-weight:600;color:#475569;max-width:110px;overflow-wrap:anywhere}'; document.head.appendChild(st); }
+  if (!el) { el = document.createElement('div'); el.id = 'swVirtual'; (document.getElementById('v3d') || document.body).appendChild(el);
+    el.addEventListener('click', e => { if (e.target.closest('.swx')) return fechaSwVirtual(); const b = e.target.closest('[data-swk]'); if (b) alternarTecla3(S.swv, +b.dataset.swk); }); }
+  const n = sw.tipo === 'botao' ? (sw.teclas || 4) : Math.min(4, sw.teclas || 1), cols = n === 3 ? 3 : n === 1 ? 1 : n === 2 ? 2 : 2; let teclas = '';
+  for (let t = 1; t <= n; t++) {
+    const luzes = P.ligacoes.filter(l => l.de === sw.id && (l.tecla || 1) === t).map(l => getById(P.pontos, l.para)).filter(Boolean), v = vincTecla(sw.id, t);
+    let on = luzes.some(q => estaOn3(q)); if (v && v.estado && typeof v.estado.on === 'boolean') on = v.estado.on;
+    const nome = luzes.map(q => M.nomeDe(q)).join(', ') || (v ? (v.nome || 'canal') : 'sem aparelho');
+    teclas += '<button class="swk' + (on ? ' on' : '') + (v && S.tuya.busy[v.id] ? ' busy' : '') + '" data-swk="' + t + '" title="Tecla ' + t + '"><span class="swn">' + esc(nome) + '</span><span class="led"></span></button>';
+  }
+  el.innerHTML = '<div class="swh"><b>' + esc(M.nomeDe(sw)) + '</b><button class="swx" title="Fechar (Esc)">✕</button></div><div class="swg" style="grid-template-columns:repeat(' + cols + ',auto)">' + teclas + '</div>';
+}
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && S.swv) fechaSwVirtual(); });
 function alternarTecla3(sw, tec) {
   { const vt = !window.PLANTA_VIEW && vincTecla(sw, tec); if (vt) return tuyaPushTecla(vt, sw, tec); }
   const ds = P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).map(l => T3.devs[l.para]).filter(Boolean);
@@ -3106,6 +3116,7 @@ function alternarTecla3(sw, tec) {
   toast(ds.length + ' aparelho' + (ds.length > 1 ? 's' : '') + (novo ? ' ligado' : ' desligado') + (ds.length > 1 ? 's' : ''));
 }
 function atualizaTeclas3() {
+  if (S.swv) setTimeout(renderSwVirtual, 0);
   P.pontos.forEach(sw => { const d = T3.devs[sw.id]; if (!d || !d.A.teclas) return;
     d.A.teclas.forEach(k => { const ds = P.ligacoes.filter(l => l.de === sw.id && (l.tecla || 1) === k.i + 1).map(l => T3.devs[l.para]).filter(Boolean); const vt = vincTecla(sw.id, k.i + 1); d.A.setTecla(k.i, vt && vt.estado && typeof vt.estado.on === 'boolean' ? vt.estado.on : ds.some(x => estaOn3(x.p))); }); });
 }
