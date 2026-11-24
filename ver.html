@@ -2706,8 +2706,8 @@ function aparelho3D(p, o) {
       const led = new THREE.Mesh(new THREE.CircleGeometry(.28, 12), std(0x000000, { emissive: new THREE.Color(0xfb923c), emissiveIntensity: 0 })); led.position.set(0, -(kh - .35) / 2 + .6, .76); pv.add(led);
       k.userData = { tecla: { sw: p.id, t: i + 1 } }; R.hit.push(k); teclas.push({ pv, led, i });
     }
-    { const pw = W * 2 / cols, ph = H * 2 / rows, inv = new THREE.MeshBasicMaterial({ visible: false });   // zonas de toque ~2x maiores que a placa
-      for (let i = 0; i < n; i++) { const z = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, 5), inv); z.position.set(-W + pw * (i % cols) + pw / 2, rows === 2 ? (H - ph * Math.floor(i / cols) - ph / 2) : 0, 3); z.userData = { tecla: { sw: p.id, t: i + 1 } }; G3.add(z); R.hit.push(z); } }
+    { const pw = W * 3 / cols, ph = H * 3 / rows, inv = new THREE.MeshBasicMaterial({ visible: false });   // zonas de toque ~2x maiores que a placa
+      for (let i = 0; i < n; i++) { const z = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, 5), inv); z.position.set(-W * 1.5 + pw * (i % cols) + pw / 2, rows === 2 ? (H * 1.5 - ph * Math.floor(i / cols) - ph / 2) : 0, 3); z.userData = { tecla: { sw: p.id, t: i + 1 } }; G3.add(z); R.hit.push(z); } }
     R.teclas = teclas; R.setTecla = (i, on) => { const q = teclas[i]; if (!q) return; q.pv.rotation.x = on ? -.14 : .14; q.led.material.emissiveIntensity = on ? 2.2 : 0; };
     teclas.forEach(q => R.setTecla(q.i, false)); return R;
   }
@@ -2927,7 +2927,7 @@ function build3dTudo(reenquadrar) {
     const A = aparelho3D(p, { wx: px, wy: y, wz: pz, nx: cp.nx, nz: cp.nz, root: g, ceilY: topo, noite: NT, dirY, poly: c ? c.pontos : null, sujar: () => { T3.sombraSuja = true; } });
     A.g.position.set(px, yDisp, pz); if (cp.w) A.g.rotation.y = Math.atan2(cp.nx, cp.nz);
     if (NT && A.luz && permitido.has(p.id)) criaLuz3(p, A, { px, pz, y, topo, pendura, cp, c });
-    if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const z = new THREE.Mesh(new THREE.SphereGeometry(p.tipo === 'tv' ? 30 : 22, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
+    if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const z = new THREE.Mesh(new THREE.SphereGeometry(p.tipo === 'tv' ? 34 : 28, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
