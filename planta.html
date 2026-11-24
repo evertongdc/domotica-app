@@ -3101,7 +3101,8 @@ function build3dTudo(reenquadrar) {
         const id = 'teto_' + c.id, dist = (alongX ? W : D) / 2 * .94; let cur = S.movAberto[id] ? 1 : 0;
         const pos = () => folhas.forEach((f, i) => { const sg = i ? 1 : -1; f.gr.position.x = f.cx + (alongX ? sg * dist * cur : 0); f.gr.position.z = f.cz + (alongX ? 0 : sg * dist * cur); }); pos();
         tetoTicks.push(() => { const alvo = S.movAberto[id] ? 1 : 0; if (Math.abs(alvo - cur) < .002) return; cur += (alvo - cur) * .08; pos(); T3.sombraSuja = true; });
-        const bt = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 3, 20), new THREE.MeshStandardMaterial({ color: 0xff7a00, emissive: new THREE.Color(0xff7a00), emissiveIntensity: .5 })); bt.position.set((x0 + x1) / 2, y - 4, (z0 + z1) / 2); bt.userData.mov = id; g.add(bt); tetoPick.push(bt);
+        const bt = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 3, 20), new THREE.MeshStandardMaterial({ color: 0xff7a00, emissive: new THREE.Color(0xff7a00), emissiveIntensity: .5 })); bt.position.set(x0 + 32, y - 4, z0 + 32); bt.userData.mov = id; g.add(bt); tetoPick.push(bt);   // botão no canto, longe das luzes
+        const bz = new THREE.Mesh(new THREE.SphereGeometry(26, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); bz.position.copy(bt.position); bz.userData.mov = id; g.add(bz); tetoPick.push(bz);
       } else {
         const sh = new THREE.Shape(); c.pontos.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); });
         const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, vid); f.position.y = y; g.add(f);
