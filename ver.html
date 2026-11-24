@@ -2865,7 +2865,7 @@ function aparelho3D(p, o) {
       k.userData = { tecla: { sw: p.id, t: i + 1 } }; R.hit.push(k); teclas.push({ pv, led, i });
     }
     { const pw = W * 3 / cols, ph = H * 3 / rows, inv = new THREE.MeshBasicMaterial({ visible: false });   // zonas de toque ~2x maiores que a placa
-      for (let i = 0; i < n; i++) { const z = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, 5), inv); z.position.set(-W * 1.5 + pw * (i % cols) + pw / 2, rows === 2 ? (H * 1.5 - ph * Math.floor(i / cols) - ph / 2) : 0, 3); z.userData = { tecla: { sw: p.id, t: i + 1 } }; G3.add(z); R.hit.push(z); } }
+      for (let i = 0; i < n; i++) { const z = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, .8), inv); z.position.set(-W * 1.5 + pw * (i % cols) + pw / 2, rows === 2 ? (H * 1.5 - ph * Math.floor(i / cols) - ph / 2) : 0, 2.6); z.userData = { tecla: { sw: p.id, t: i + 1 } }; G3.add(z); R.hit.push(z); } }
     R.teclas = teclas; R.setTecla = (i, on) => { const q = teclas[i]; if (!q) return; q.pv.rotation.x = on ? -.14 : .14; q.led.material.emissiveIntensity = on ? 2.2 : 0; };
     teclas.forEach(q => R.setTecla(q.i, false)); return R;
   }
