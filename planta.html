@@ -228,6 +228,26 @@ window.DOMOTICA_CFG = {
       return must(await sb.from('alexa_endpoints').insert(Object.assign({ org_id: c.orgId, client_id: o.clienteId }, linha)).select('id').single());
     },
     Alexa_excluir: async function(id) { await ctx(); must(await sb.from('alexa_endpoints').delete().eq('id', id)); return { ok: true }; },
+    Tuya_vinculos: async function() { var c = await ctx(); return must(await sb.from('tuya_vinculos').select('id, plan_id, ponto_id, device_id, dp_code, nome, estado, estado_em').eq('org_id', c.orgId)); },
+    Tuya_salvar: async function(o) {
+      var c = await ctx(), linha = { plan_id: UUID.test(o.planId || '') ? o.planId : null, ponto_id: o.pontoId || null, device_id: String(o.deviceId || ''), dp_code: String(o.dpCode || ''), nome: String(o.nome || '').slice(0, 80), updated_at: new Date().toISOString() };
+      if (!linha.device_id || !linha.dp_code) throw new Error('Escolha o aparelho e o canal.');
+      if (o.id && UUID.test(o.id)) { must(await sb.from('tuya_vinculos').update(linha).eq('id', o.id)); return { id: o.id }; }
+      return must(await sb.from('tuya_vinculos').insert(Object.assign({ org_id: c.orgId }, linha)).select('id').single());
+    },
+    Tuya_excluir: async function(id) { await ctx(); must(await sb.from('tuya_vinculos').delete().eq('id', id)); return { ok: true }; },
+    Tuya_dispositivos: async function() {
+      var c = await ctx(), r = await sb.functions.invoke('tuya-api', { body: { acao: 'dispositivos', org_id: c.orgId } });
+      if (r.error) { var m = r.error.message || 'Falha ao falar com a Tuya.'; try { var j = await r.error.context.json(); if (j && j.erro) m = j.erro; } catch (e) { } throw new Error(m); }
+      return r.data.dispositivos || [];
+    },
+    Tuya_comandar: async function(id, on) {
+      var c = await ctx(), r = await sb.functions.invoke('tuya-api', { body: { acao: 'comandar', org_id: c.orgId, vinculo_id: id, on: !!on } });
+      if (r.error) { var m = r.error.message || 'Falha ao comandar o aparelho.'; try { var j = await r.error.context.json(); if (j && j.erro) m = j.erro; } catch (e) { } throw new Error(m); }
+      if (r.data && r.data.ok === false) throw new Error(r.data.erro || 'A Tuya recusou o comando.');
+      return r.data;
+    },
+    Tuya_estado: async function() { var c = await ctx(); var r = await sb.functions.invoke('tuya-api', { body: { acao: 'estado', org_id: c.orgId } }); if (r.error) throw new Error(r.error.message || 'Falha ao ler o estado.'); return r.data; },
     Alexa_alternar: async function(id, on) {
       await ctx(); var r = await sb.functions.invoke('alexa-notificar', { body: { endpoint_id: id, on: !!on } });
       if (r.error) throw new Error(r.error.message || 'Falha ao avisar a Alexa.'); return r.data;
@@ -2516,7 +2536,7 @@ function renderChecks() {
   const v = M.validar(P), n = k => v.filter(x => x.nivel === k).length; let h;
   h = '<div class="card"><b>' + (n('erro') ? n('erro') + ' pendência(s) a resolver' : 'Sem pendências críticas — projeto pronto para orçamento') + '</b><div class="note">' + n('aviso') + ' avisos · ' + n('info') + ' informações</div></div>';
   ['erro', 'aviso', 'info'].forEach(nv => { v.filter(x => x.nivel === nv).forEach((x, i) => { h += '<div class="card click" style="cursor:pointer" data-t="' + x.alvo.tipo + '" data-id="' + (x.alvo.id || '') + '"><span class="lv ' + nv + '">' + nv.toUpperCase() + '</span>' + esc(x.msg) + '</div>'; }); });
-  $('#checksBox').innerHTML = '<div id="alexaBox"></div>' + h; renderAlexa();
+  $('#checksBox').innerHTML = '<div id="tuyaBox"></div><div id="alexaBox"></div>' + h; renderAlexa(); renderTuya(); if (!window.PLANTA_VIEW) carregaTuya().then(renderTuya);
 }
 $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[data-t]'); if (!c) return; if (c.dataset.t === 'app') { mostrar('vapps'); return; } if (c.dataset.id) S.sel = { k: c.dataset.t, id: c.dataset.id }; mostrar('v2d'); refresh(); });
 
@@ -2546,7 +2566,7 @@ async function abrir3d() {
     el3.addEventListener('wheel', e => { if (!T3.fp.on) return; e.preventDefault(); T3.cam.fov = Math.max(35, Math.min(100, T3.cam.fov + e.deltaY * .03)); T3.cam.updateProjectionMatrix(); }, { passive: false });
     (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt)); if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; T3.sombraSuja = false; } const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update(); T3.ren.render(T3.scene, T3.cam); })();
   }
-  await carregaAlexa(); resize3d(); build3d(true);
+  await carregaAlexa(); await carregaTuya(); resize3d(); build3d(true);
 }
 function resize3d() { const c = $('#c3d'), w = c.clientWidth, h = c.clientHeight; if (!T3.ren || !w || !h) return; T3.ren.setSize(w, h); T3.cam.aspect = w / h; T3.cam.updateProjectionMatrix(); }
 function peDe(c) { return (c && c.pe) || P.peDireito; }
@@ -2625,6 +2645,78 @@ function renderAlexa() {
   h += '<div class="sec">Adicionar aparelho Alexa</div><div class="card"><div class="row"><input id="alNome" placeholder="Nome (ex.: Luz da sala)"><select id="alTipo">' + Object.keys(TIPOS_ALEXA).map(k => '<option value="' + k + '">' + TIPOS_ALEXA[k] + '</option>').join('') + '</select><button data-al="add">Adicionar</button></div></div>';
   box.innerHTML = h;
 }
+
+/* ===================== Tuya / Smart Life: aparelhos reais comandados pelo 3D ===================== */
+S.tuya = { lista: [], disp: null, erro: '', t: 0, busy: {} };
+async function carregaTuya() { if (window.PLANTA_VIEW) return; try { S.tuya.lista = (await gas('Tuya_vinculos')) || []; S.tuya.erro = ''; } catch (e) { S.tuya.lista = []; S.tuya.erro = e.message; } }
+function vincTuya(pontoId) { const L = S.tuya && S.tuya.lista; return L ? L.find(v => v.ponto_id === pontoId && (!S.planoId || !v.plan_id || v.plan_id === S.planoId)) : null; }
+/** liga/desliga o aparelho real; o desenho só muda quando a Tuya devolve o estado do aparelho */
+async function tuyaPush(pontoId, on) {
+  const v = vincTuya(pontoId); if (!v) return; if (S.tuya.busy[v.id]) return toast('Aguarde: o comando anterior ainda está sendo enviado.');
+  S.tuya.busy[v.id] = true; const d = T3.devs[pontoId], nome = d ? (M.nomeDe(d.p) || 'Aparelho') : 'Aparelho'; toast('Enviando ao aparelho real…', 3000);
+  try {
+    const r = await gas('Tuya_comandar', v.id, on); v.estado = { on: r.on, confirmado: !!r.confirmado };
+    if (d) { T3.on3[pontoId] = r.on; d.A.set(r.on); } atualizaTeclas3();
+    toast(nome + (r.on ? ' ligado' : ' desligado') + (r.confirmado ? ' (confirmado pelo aparelho)' : ' — comando enviado; o aparelho ainda não confirmou'), 4500);
+  } catch (e) { toast('Não consegui comandar ' + nome + ': ' + e.message, 7000); }
+  finally { S.tuya.busy[v.id] = false; }
+}
+function aplicaEstadosTuya(avisar) {
+  if (!T3.devs) return;
+  S.tuya.lista.forEach(v => { const d = v.ponto_id && T3.devs[v.ponto_id]; if (!d || !v.estado || typeof v.estado.on !== 'boolean' || S.tuya.busy[v.id]) return;
+    if (T3.on3[v.ponto_id] === v.estado.on && d.A.__on === v.estado.on) return; const mudou = estaOn3(d.p) !== v.estado.on; T3.on3[v.ponto_id] = v.estado.on; d.A.set(v.estado.on); d.A.__on = v.estado.on; if (avisar && mudou) toast((M.nomeDe(d.p) || 'Aparelho') + (v.estado.on ? ' ligado' : ' desligado') + ' (mudou no aparelho real)'); });
+  atualizaTeclas3();
+}
+setInterval(async () => { if (S.tab !== 'v3d' || !T3.ok || window.PLANTA_VIEW || document.hidden || !S.tuya.lista.length) return; try { if (Date.now() - (S.tuya.t || 0) > 12000) { S.tuya.t = Date.now(); await gas('Tuya_estado'); } S.tuya.lista = (await gas('Tuya_vinculos')) || S.tuya.lista; aplicaEstadosTuya(true); } catch (e) { } }, 3500);
+function renderTuya() {
+  const box = $('#tuyaBox'); if (!box) return; if (window.PLANTA_VIEW) { box.innerHTML = ''; return; }
+  const T = S.tuya; let h = '<div class="card"><b>🔌 Aparelhos reais (Tuya / Smart Life)</b>';
+  h += '<div class="note" style="margin:6px 0">Ligue cada ponto da planta a um canal de um aparelho real. Clicar na luz ou no interruptor no 3D liga/desliga o aparelho de verdade, e o desenho só muda depois que o aparelho responde.</div>';
+  if (T.erro) h += '<div class="note" style="color:var(--er)">' + esc(T.erro) + '</div>';
+  h += '<div class="row"><button class="pri" data-tu="buscar">' + (T.disp ? 'Atualizar a lista de aparelhos' : 'Buscar aparelhos da conta') + '</button></div>';
+  const mine = T.lista.filter(v => !S.planoId || !v.plan_id || v.plan_id === S.planoId);
+  if (mine.length) {
+    h += '<div class="sec">Vinculados</div>';
+    mine.forEach(v => { const p = getById(P.pontos, v.ponto_id), e = v.estado && typeof v.estado.on === 'boolean' ? (v.estado.on ? 'ligado' : 'desligado') + (v.estado.confirmado === false ? ' (não confirmado)' : '') : 'estado ainda desconhecido';
+      h += '<div class="card"><div class="row"><div style="flex:3"><b>' + esc(p ? M.nomeDe(p) : '(ponto removido)') + '</b> ← ' + esc(v.nome || v.device_id) + '<div class="note">' + e + '</div></div><div style="text-align:right"><button data-tu="testar" data-id="' + v.id + '">Ligar / desligar</button> <button class="danger" data-tu="desv" data-id="' + v.id + '">Desvincular</button></div></div></div>'; });
+  }
+  if (T.disp) {
+    h += '<div class="sec">Aparelhos na conta Tuya</div>';
+    T.disp.forEach(dv => {
+      h += '<div class="card"><b>' + esc(dv.nome) + '</b> <span class="note">' + esc(dv.produto) + (dv.online ? '' : ' · OFFLINE') + '</span>';
+      dv.canais.forEach(c => {
+        const ja = T.lista.find(v => v.device_id === dv.id && v.dp_code === c.code), num = c.code.replace('switch_', '').replace('switch', '1');
+        const opts = P.pontos.filter(p => !M.ehMovel(p) && !T.lista.some(v => v.ponto_id === p.id));
+        h += '<div class="row" style="margin-top:6px"><div style="flex:1;min-width:96px">canal ' + esc(num) + ' · ' + (c.value ? 'ligado' : 'desligado') + '</div>' +
+          (ja ? '<div class="note" style="flex:4">já vinculado</div>' : '<select data-tu="sel" data-d="' + esc(dv.id) + '" data-c="' + esc(c.code) + '" style="flex:3"><option value="">— ponto da planta —</option>' + opts.map(p => '<option value="' + esc(p.id) + '">' + esc(M.nomeDe(p)) + '</option>').join('') + '</select><button data-tu="vinc" data-d="' + esc(dv.id) + '" data-c="' + esc(c.code) + '" data-n="' + esc(dv.nome + ' · canal ' + num) + '">Vincular</button><button data-tu="novo" data-d="' + esc(dv.id) + '" data-c="' + esc(c.code) + '" data-n="' + esc(dv.nome + ' · canal ' + num) + '">Criar ponto</button>') + '</div>';
+      });
+      h += '</div>';
+    });
+  }
+  box.innerHTML = h + '</div>';
+}
+async function tuyaAcao(e) {
+  const b = e.target.closest('[data-tu]'); if (!b || b.tagName === 'SELECT') return; const a = b.dataset.tu, id = b.dataset.id;
+  try {
+    if (a === 'buscar') { toast('Buscando aparelhos na Tuya…', 3000); S.tuya.disp = await gas('Tuya_dispositivos'); }
+    else if (a === 'desv') { await gas('Tuya_excluir', id); toast('Desvinculado.'); }
+    else if (a === 'testar') { const v = S.tuya.lista.find(x => x.id === id); const r = await gas('Tuya_comandar', id, !(v.estado && v.estado.on)); toast(r.confirmado ? 'Feito: ' + (r.on ? 'ligado' : 'desligado') + ' (confirmado).' : 'Comando enviado; o aparelho ainda não confirmou.', 5000); }
+    else if (a === 'vinc' || a === 'novo') {
+      let pid = '';
+      if (a === 'vinc') { const sel = document.querySelector('[data-tu=sel][data-d="' + b.dataset.d + '"][data-c="' + b.dataset.c + '"]'); pid = sel && sel.value; if (!pid) return toast('Escolha o ponto da planta.'); }
+      else {
+        const c = comodo3() || getById(P.comodos, S.ativo) || P.comodos[0]; if (!c) return toast('Desenhe um cômodo primeiro.');
+        const r = await modal('Criar ponto para este canal', [{ k: 'nome', rot: 'Nome do ponto', tipo: 'text', val: (b.dataset.n || '').replace(/ · canal.*/, '') }, { k: 'tipo', rot: 'Tipo', tipo: 'select', val: 'ponto_luz', opts: [['ponto_luz', 'Ponto de luz'], ['fita_led', 'Fita / sanca LED'], ['spot', 'Spot'], ['tomada', 'Tomada']] }], 'Criar');
+        if (!r) return; snap(); const p = M.novoPonto(P, r.tipo, c.cx, c.cy, { nome: (r.nome || '').trim() }); p.comodo = c.id; P.pontos.push(p); pid = p.id; refresh(); toast('Ponto criado no centro de "' + c.nome + '". Arraste para o lugar certo.', 6000);
+      }
+      if (!S.planoId) await salvar(true);
+      await gas('Tuya_salvar', { planId: S.planoId, pontoId: pid, deviceId: b.dataset.d, dpCode: b.dataset.c, nome: b.dataset.n }); if (a === 'vinc') toast('Vinculado.');
+      if (a === 'novo') await salvar(true);
+    }
+    await carregaTuya(); renderTuya();
+  } catch (err) { toast('Erro: ' + err.message, 7000); }
+}
+document.addEventListener('click', e => { if (e.target.closest('#tuyaBox')) tuyaAcao(e); });
 async function alexaAcao(e) {
   const b = e.target.closest('[data-al]'); if (!b) return; const a = b.dataset.al, id = b.dataset.id, cli = clienteAtual();
   try {
@@ -2680,7 +2772,7 @@ $('#fpPad').addEventListener('pointerdown', e => { const b = e.target.closest('b
 /* ===================== 3D: aparelhos realistas (medidas reais em cm), interativos ===================== */
 T3.on3 = {}; T3.devs = {}; T3.ticks = []; T3.pick = [];
 const padraoLigado3 = p => { const c = M.catDe(p); return c === 'luz' || c === 'alexa' || p.tipo === 'fita_led'; };
-const estaOn3 = p => (p.id in T3.on3) ? T3.on3[p.id] : padraoLigado3(p);
+const estaOn3 = p => { const v = vincTuya(p.id); if (v && v.estado && typeof v.estado.on === 'boolean') return v.estado.on; return (p.id in T3.on3) ? T3.on3[p.id] : padraoLigado3(p); };
 function texBrilho() {
   if (T3.texB) return T3.texB; const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.25, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
@@ -2930,11 +3022,11 @@ function rotaVinculo3(a, b, ca, cb, yA, yB, tetoB) {
   return pts;
 }
 
-function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); alexaPush(id, novo); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
+function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); if (!window.PLANTA_VIEW && vincTuya(id)) { tuyaPush(id, novo); return; } T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); alexaPush(id, novo); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
 function alternarTecla3(sw, tec) {
   const ds = P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).map(l => T3.devs[l.para]).filter(Boolean);
   if (!ds.length) return toast('Esta tecla não tem aparelho vinculado.');
-  const novo = !ds.every(d => estaOn3(d.p)); ds.forEach(d => { T3.on3[d.p.id] = novo; d.A.set(novo); alexaPush(d.p.id, novo); }); atualizaTeclas3();
+  const novo = !ds.every(d => estaOn3(d.p)); ds.forEach(d => { if (!window.PLANTA_VIEW && vincTuya(d.p.id)) { tuyaPush(d.p.id, novo); return; } T3.on3[d.p.id] = novo; d.A.set(novo); alexaPush(d.p.id, novo); }); atualizaTeclas3();
   toast(ds.length + ' aparelho' + (ds.length > 1 ? 's' : '') + (novo ? ' ligado' : ' desligado') + (ds.length > 1 ? 's' : ''));
 }
 function atualizaTeclas3() {
