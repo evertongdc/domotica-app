@@ -1108,6 +1108,26 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
     return r;
   };
 
+  /* ---------- móveis (não são equipamentos: ficam fora de orçamento, pendências e checagens) ---------- */
+  M.CATS.movel = { nome: 'Móveis', cor: '#a16207' };
+  Object.assign(M.TIPOS, {
+    guarda_roupa: { nome: 'Guarda-roupa',   sigla: 'GR', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [275, 62, 237], cor3: '#7a4a1e' },
+    cama_casal:   { nome: 'Cama de casal',  sigla: 'CM', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [158, 198, 100], cor3: '#6b4a2f' },
+    sofa:         { nome: 'Sofá',           sigla: 'SF', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [220, 95, 85], cor3: '#6b7280' },
+    mesa:         { nome: 'Mesa',           sigla: 'MS', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [160, 80, 75], cor3: '#a47148' },
+    rack_tv:      { nome: 'Rack / painel',  sigla: 'RK', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [180, 40, 50], cor3: '#3f3f46' },
+    armario:      { nome: 'Armário',        sigla: 'AR', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [120, 50, 90], cor3: '#d6d3d1' },
+    bancada:      { nome: 'Bancada / balcão', sigla: 'BC', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [240, 60, 90], cor3: '#d6d3d1' },
+    movel:        { nome: 'Móvel (livre)',  sigla: 'MV', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [100, 50, 80], cor3: '#9ca3af' }
+  });
+  M.ehMovel = pt => !!(pt && M.TIPOS[pt.tipo] && M.TIPOS[pt.tipo].mov);
+  const semMov = p => Object.assign({}, p, { pontos: p.pontos.filter(x => !M.ehMovel(x)), ligacoes: (p.ligacoes || []).filter(l => { const a = p.pontos.find(x => x.id === l.de), b = p.pontos.find(x => x.id === l.para); return !M.ehMovel(a) && !M.ehMovel(b); }) });
+  { const v1 = M.validar, s1 = M.soltos, l1 = M.levantamento, n1 = M.novoPonto;
+    M.validar = function (p) { return v1(semMov(p)); };
+    M.soltos = function (p) { return s1(semMov(p)); };
+    M.levantamento = function (p) { return l1(semMov(p)); };
+    M.novoPonto = function (p, tipo, x, y, extra) { const o = n1(p, tipo, x, y, extra), T = M.TIPOS[tipo]; if (T && T.mov) { if (!o.larg) o.larg = T.mov[0]; if (!o.prof) o.prof = T.mov[1]; if (!o.alt3) o.alt3 = T.mov[2]; if (o.rot == null) o.rot = 0; if (!o.cor3) o.cor3 = T.cor3; } return o; }; }
+
   /* ---------- geometria de cômodos ---------- */
   M.espPadrao = p => (p.paredes[0] && p.paredes[0].esp) || 15;
   /** retângulo pelo VÃO LIVRE (como o app Medidas mede) → polígono pelo eixo das paredes */
@@ -1550,6 +1570,7 @@ function renderSVG() {
   const sz = Math.max(26, 19 * k);
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
+    if (M.ehMovel(p)) { s += movel2D(p, k, (sel && sel.k === 'ponto' && sel.id === p.id) || S.multi.includes(p.id)); return; }
     const lo = ladoOffset(p), cor = M.corDe(p), T = M.TIPOS[p.tipo] || M.TIPOS.outro, cat = M.catDe(p), cmd = p.tipo === 'interruptor' || p.tipo === 'botao';
     const on = (sel && sel.k === 'ponto' && sel.id === p.id) || S.multi.includes(p.id), de = S.tool === 'ligar' && S.lig.de === p.id, h = sz / 2;
     s += '<g data-k="ponto" data-id="' + p.id + '" transform="translate(' + (p.x + lo.dx) + ' ' + (p.y + lo.dy) + ')"' + (S.ativo && p.comodo !== S.ativo ? ' opacity=".35"' : '') + '>';
@@ -1877,6 +1898,16 @@ function renderPanel() {
     if (P.fundo) h += '<label>Opacidade da planta importada</label><input type="range" id="rgOp" min="10" max="100" value="' + Math.round((P.fundo.opac == null ? .55 : P.fundo.opac) * 100) + '"><div class="row" style="margin-top:6px"><button id="bIA">Ler planta com IA (Gemini)</button><button id="bRmF" class="danger">Remover fundo</button></div>';
     h += '<label>Observações gerais da obra</label><textarea data-t="planta" data-f="notas" placeholder="Texto livre">' + esc(P.notas) + '</textarea>';
     h += '<div class="note" style="margin-top:10px">Cômodos: ' + P.comodos.length + ' · Pontos: ' + P.pontos.length + ' · Ligações: ' + P.ligacoes.length + '</div>';
+  } else if (sel.k === 'ponto' && M.ehMovel(getById(P.pontos, sel.id))) {
+    const p = getById(P.pontos, sel.id), T = M.TIPOS[p.tipo], ROT = ['Frente para baixo', 'Frente para a esquerda', 'Frente para cima', 'Frente para a direita'];
+    h += '<div class="sec" style="margin-top:2px"><span class="dot" style="background:' + M.corDe(p) + '"></span>' + esc(T.nome) + ' · ' + esc(nomeCom(p.comodo)) + '</div>';
+    h += fld('Nome / identificação', 'nome', p.nome, 'placeholder="' + esc(T.nome) + '"');
+    h += '<div class="row"><div>' + fld('Largura (cm)', 'larg', p.larg || T.mov[0], 'data-n="1" type="number"') + '</div><div>' + fld('Profund. (cm)', 'prof', p.prof || T.mov[1], 'data-n="1" type="number"') + '</div><div>' + fld('Altura (cm)', 'alt3', p.alt3 || T.mov[2], 'data-n="1" type="number"') + '</div></div>';
+    h += '<div class="row"><div><label>Giro</label><select data-f="rot" data-n="1">' + [0, 90, 180, 270].map(a => '<option value="' + a + '"' + ((+p.rot || 0) === a ? ' selected' : '') + '>' + ROT[a / 90] + '</option>').join('') + '</select></div><div><label>Cor</label><input type="color" data-f="cor3" value="' + (p.cor3 || T.cor3 || '#8b6b4a') + '"></div></div>';
+    h += '<label>Cômodo</label><select data-f="comodo"><option value="">—</option>' + P.comodos.map(c => '<option value="' + c.id + '"' + (c.id === p.comodo ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>';
+    h += '<div class="note">O 3D usa exatamente estas medidas.' + (p.tipo === 'guarda_roupa' ? ' No 3D, clique nas portas para abrir e fechar.' : '') + '</div>';
+    h += '<label>Observações</label><button data-act="obs" style="width:100%;text-align:left">' + (p.obs ? '💬 ' + esc(p.obs.slice(0, 70)) : '＋ Adicionar observação') + '</button>';
+    h += '<div class="row" style="margin-top:8px"><button data-act="dup">Duplicar</button><button class="danger" data-act="delsel">Excluir</button></div>';
   } else if (sel.k === 'ponto') {
     const p = getById(P.pontos, sel.id); if (!p) { S.sel = null; return renderPanel(); }
     const T = M.TIPOS[p.tipo] || M.TIPOS.outro, cmd = p.tipo === 'interruptor' || p.tipo === 'botao';
@@ -2379,8 +2410,8 @@ function refresh(o) {
 const PROMPT_3D = 'Aja como arquiteto de interiores. Use a planta anexada como base, mantendo paredes, portas e proporções. Gere uma vista isométrica 3D realista do cômodo, com piso, iluminação e acabamento de padrão alto. Posicione apenas os dispositivos da lista abaixo, cada um em um lugar coerente com a planta (ex.: caixas de som embutidas no forro, Echo Dot embutido, interruptor ao lado da porta, sensores de presença no teto). Não invente aparelhos fora da lista. Estilo limpo, sem texto na imagem.\nLista: {LISTA}';
 function renderPontos() {
   const lev = M.levantamento(P); let h = '';
-  const tot = {}; P.pontos.forEach(p => { const c = M.catDe(p); tot[c] = (tot[c] || 0) + 1; });
-  h += '<div class="card"><b>' + P.pontos.length + ' pontos</b> · ' + Object.keys(tot).map(c => '<span class="pill" style="background:' + M.CATS[c].cor + ';color:#111;margin-right:4px">' + M.CATS[c].nome + ' ' + tot[c] + '</span>').join('') + '<div class="row" style="margin-top:8px"><button data-a="copiar">Copiar lista de pontos</button><button data-a="json">Baixar planta (JSON)</button></div></div>';
+  const tot = {}; P.pontos.filter(p => !M.ehMovel(p)).forEach(p => { const c = M.catDe(p); tot[c] = (tot[c] || 0) + 1; });
+  h += '<div class="card"><b>' + P.pontos.filter(p => !M.ehMovel(p)).length + ' pontos</b> · ' + Object.keys(tot).map(c => '<span class="pill" style="background:' + M.CATS[c].cor + ';color:#111;margin-right:4px">' + M.CATS[c].nome + ' ' + tot[c] + '</span>').join('') + '<div class="row" style="margin-top:8px"><button data-a="copiar">Copiar lista de pontos</button><button data-a="json">Baixar planta (JSON)</button></div></div>';
   if (!lev.length) h += '<div class="note">Nenhum ponto ainda.</div>';
   lev.forEach(g => {
     h += '<div class="card"><div class="row" style="margin-bottom:6px"><b style="flex:3">' + esc(g.comodo) + '</b><button data-a="prompt" data-c="' + g.comodoId + '" style="flex:none">Copiar prompt 3D (Gemini)</button></div><div style="overflow:auto"><table><tr><th>Item</th><th>Teclas</th><th>Caixa</th><th>Neutro</th><th>Fio novo</th><th>Origem</th><th>App / protocolo</th><th>Comanda</th><th>Obs.</th></tr>';
@@ -2462,9 +2493,9 @@ async function abrir3d() {
     T3.amb = new THREE.AmbientLight(0xffffff, .5); T3.scene.add(T3.amb); T3.hemi = new THREE.HemisphereLight(0x8fa4c8, 0x1a1410, 0); T3.scene.add(T3.hemi); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); d.castShadow = true; d.shadow.mapSize.set(2048, 2048); d.shadow.bias = -0.0005; T3.scene.add(d); T3.scene.add(d.target); T3.sun = d;
     T3.grp = new THREE.Group(); T3.scene.add(T3.grp); T3.ok = true;
     T3.ray = new THREE.Raycaster(); let d0 = null; const el3 = T3.ren.domElement;
-    const alvo3 = e => { const r = el3.getBoundingClientRect(); T3.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), T3.cam); const h = T3.ray.intersectObjects((T3.pick || []).concat(T3.occ || []), false)[0]; return h && (h.object.userData.tecla || h.object.userData.dev) ? h.object.userData : null; };
+    const alvo3 = e => { const r = el3.getBoundingClientRect(); T3.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), T3.cam); const h = T3.ray.intersectObjects((T3.pick || []).concat(T3.occ || []), false)[0]; return h && (h.object.userData.tecla || h.object.userData.dev || h.object.userData.mov) ? h.object.userData : null; };
     el3.addEventListener('pointerdown', e => { T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; d0 = { x: e.clientX, y: e.clientY, t: Date.now() }; });
-    el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; const u = alvo3(e); if (!u) return; if (u.tecla) alternarTecla3(u.tecla.sw, u.tecla.t); else alternarDisp3(u.dev); });
+    el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; const u = alvo3(e); if (!u) return; if (u.mov) { S.movAberto = S.movAberto || {}; S.movAberto[u.mov] = !S.movAberto[u.mov]; T3.sombraSuja = true; } else if (u.tecla) alternarTecla3(u.tecla.sw, u.tecla.t); else alternarDisp3(u.dev); });
     el3.addEventListener('pointermove', e => { if (T3.fp.on) { if (e.buttons) { const dx = e.clientX - (T3.fp.lx == null ? e.clientX : T3.fp.lx), dy = e.clientY - (T3.fp.ly == null ? e.clientY : T3.fp.ly); T3.fp.yaw -= dx * .0045; T3.fp.pitch = Math.max(-1.25, Math.min(1.25, T3.fp.pitch + dy * .0045)); T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; } else el3.style.cursor = alvo3(e) ? 'pointer' : 'grab'; return; } if (e.buttons) return; el3.style.cursor = alvo3(e) ? 'pointer' : ''; });
     el3.addEventListener('wheel', e => { if (!T3.fp.on) return; e.preventDefault(); T3.cam.fov = Math.max(35, Math.min(100, T3.cam.fov + e.deltaY * .03)); T3.cam.updateProjectionMatrix(); }, { passive: false });
     (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt)); if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; T3.sombraSuja = false; } const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update(); T3.ren.render(T3.scene, T3.cam); })();
@@ -2618,6 +2649,71 @@ function texTela() {
 const hsl3 = (h) => new THREE.Color().setHSL(((h % 1) + 1) % 1, 1, .5);
 /** monta o aparelho. Convenção local: parede → costas em z=0 e frente em +Z; teto → topo em y=0, pendura para baixo (-Y); livre → centro na origem.
  *  o = { wx, wy, wz (posição no mundo, p/ efeitos), root, ceilY, dirY (rotação p/ fita), noite } → { g, set(on), tick(t) } */
+
+/* ===================== móveis: desenho 2D e modelo 3D (medidas reais em cm; frente = para baixo na planta / +z no 3D) ===================== */
+function movel2D(p, k, on) {
+  const T = M.TIPOS[p.tipo], L = +p.larg || T.mov[0], D = +p.prof || T.mov[1], cor = p.cor3 || T.cor3 || '#8b6b4a', rot = +p.rot || 0;
+  let s = '<g data-k="ponto" data-id="' + p.id + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + rot + ')"' + (S.ativo && p.comodo !== S.ativo ? ' opacity=".35"' : '') + '>';
+  s += '<rect x="' + (-L / 2) + '" y="' + (-D / 2) + '" width="' + L + '" height="' + D + '" fill="' + cor + '" fill-opacity=".3" stroke="' + (on ? '#1e88ff' : cor) + '" stroke-width="' + (on ? 3 : 1.6) + '"' + (on ? ' stroke-dasharray="8 5"' : '') + ' vector-effect="non-scaling-stroke"/>';
+  if (p.tipo === 'guarda_roupa') for (let i = 1; i < 4; i++) s += '<line x1="' + (-L / 2 + L * i / 4) + '" y1="' + (-D / 2) + '" x2="' + (-L / 2 + L * i / 4) + '" y2="' + (D / 2) + '" stroke="' + cor + '" stroke-opacity=".8" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
+  s += '<line x1="' + (-L / 2) + '" y1="' + (D / 2) + '" x2="' + (L / 2) + '" y2="' + (D / 2) + '" stroke="' + cor + '" stroke-width="3.5" vector-effect="non-scaling-stroke"/>';
+  s += '<g transform="rotate(' + (-rot) + ')" style="pointer-events:none"><text y="' + (-1 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" font-weight="700" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome || T.nome) + '</text><text y="' + (11 * k) + '" text-anchor="middle" font-size="' + 9 * k + '" fill="#64748b" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + Math.round(L) + '×' + Math.round(D) + '</text></g>';
+  return s + '</g>';
+}
+function movel3D(p) {
+  const T = M.TIPOS[p.tipo], L = +p.larg || T.mov[0], D = +p.prof || T.mov[1], H = +p.alt3 || T.mov[2];
+  const G3 = new THREE.Group(), R = { g: G3, hits: [], tick: null };
+  S.movAberto = S.movAberto || {};
+  const std = (c, x) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .6, metalness: .02 }, x || {}));
+  const mk = (par, w, h, d, m, x, y0, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, y0 + h / 2, z); me.castShadow = true; me.receiveShadow = true; par.add(me); return me; };
+  const B = (w, h, d, m, x, y0, z) => mk(G3, w, h, d, m, x, y0, z);
+  const mad = std(p.cor3 || T.cor3 || '#8b6b4a', { roughness: .5 }), prata = std(0xc9ced6, { metalness: .6, roughness: .3 }), preto = std(0x1f2024, { roughness: .5 });
+  if (p.tipo === 'guarda_roupa') {
+    const e = 1.8, clar = std(0xd9d3c7, { roughness: .75 }), vidro = std(0xdfeaf0, { roughness: .04, metalness: .25 }), iw = L - 2 * e, cw = iw / 4, base = 6;
+    B(L, e, D, mad, 0, H - e, 0); B(L, base, D, mad, 0, 0, 0); B(e, H, D, mad, -L / 2 + e / 2, 0, 0); B(e, H, D, mad, L / 2 - e / 2, 0, 0); B(L, H, 1, clar, 0, 0, -D / 2 + .5);
+    for (let i = 1; i < 4; i++) B(1.6, H - e - base, D - 4, mad, -L / 2 + e + cw * i, base, -1);
+    const cx = i => -L / 2 + e + cw * (i + .5), cores = [0xf2efe9, 0xe8c7d6, 0xd9e2ec, 0xe9e4d4, 0xf6d3c9, 0xb9c6d6, 0xe8e8e8];
+    [0, 3].forEach(i => {
+      const x = cx(i), w = cw - 2, d = D - 6;
+      [88, 128, 168, H - 52].forEach(y => B(w, 1.4, d, clar, x, y, -1));
+      B(w * .8, 24, d * .7, std(i ? 0xe7a9c4 : 0x2b2d33), x, H - 51, -1);                                   // mala no alto
+      for (let j = 0; j < 3; j++) B(w * .28, 14, d * .7, std(0xf5f1e8), x - w * .3 + j * w * .3, 129, -1);  // toalhas dobradas
+      B(w * .7, 12, d * .6, std(i ? 0x6d5a8a : 0x3b7a5e), x, 169, -1);
+      for (let j = 0; j < 3; j++) { const gv = B(w - .6, 17.4, 2, mad, x, 24 + j * 20, D / 2 - 5); B(w * .35, 1.2, 1.2, prata, x, 24 + j * 20 + 11, D / 2 - 3.8); }  // gavetas
+      B(w, 1.2, d, clar, x, 22, -1);
+    });
+    [1, 2].forEach(i => {
+      const x = cx(i), w = cw - 2;
+      B(w, 1.4, D - 6, clar, x, H - 52, -1); B(w * .7, 12, D * .5, std(0xf6f6f6), x, H - 51, -1);        // travesseiros
+      [H - 70, 118].forEach(y => { const r = new THREE.Mesh(new THREE.CylinderGeometry(.9, .9, w, 10), prata); r.rotation.z = Math.PI / 2; r.position.set(x, y, -1); G3.add(r);
+        for (let j = 0; j < 7; j++) B(.9, y === 118 ? 45 : 80, 22, std(cores[(j + i) % cores.length]), x - w / 2 + 3 + j * (w - 6) / 6, y - (y === 118 ? 45 : 80) - 1, -1); });
+    });
+    const pw = L / 4 + 1.6, hd = H - 6, ph = [];
+    const porta = (i, z, mat, vid) => { const g = new THREE.Group(); g.position.set(-L / 2 + L / 8 + i * L / 4, 0, z); G3.add(g);
+      const pn = mk(g, pw, hd, 1.4, mat, 0, 3, 0); pn.userData.mov = p.id; R.hits.push(pn);
+      if (vid) { [[pw, 1.4, 0, hd + 3 - 1.4], [pw, 1.4, 0, 3], [1.4, hd, -pw / 2 + .7, 3], [1.4, hd, pw / 2 - .7, 3]].forEach(q => mk(g, q[0], q[1] === 1.4 && q[0] === pw ? q[1] : hd, q[0] === 1.4 ? 1.4 : 1.8, prata, q[2], q[3], .25)); }
+      else mk(g, 1.6, hd * .55, 2.4, prata, (i === 0 ? 1 : -1) * (pw / 2 - 3), hd * .22, .9);
+      return g; };
+    const gs = [porta(0, D / 2 - .9, std(p.cor3 || T.cor3, { roughness: .45 }), false), porta(1, D / 2 - 3.2, vidro, true), porta(2, D / 2 - 3.2, vidro, true), porta(3, D / 2 - .9, std(p.cor3 || T.cor3, { roughness: .45 }), false)];
+    const x1 = gs[1].position.x, x2 = gs[2].position.x; let cur = S.movAberto[p.id] ? 1 : 0; gs[1].position.x = x1 - cur * L / 4; gs[2].position.x = x2 + cur * L / 4;
+    R.tick = () => { const alvo = S.movAberto[p.id] ? 1 : 0; if (Math.abs(alvo - cur) < .002) return; cur += (alvo - cur) * .14; gs[1].position.x = x1 - cur * L / 4; gs[2].position.x = x2 + cur * L / 4; T3.sombraSuja = true; };
+  } else if (p.tipo === 'cama_casal') {
+    B(L, 28, D, mad, 0, 0, 0); B(L - 6, 20, D - 8, std(0xf1ece2, { roughness: .9 }), 0, 28, 3); B(L + 8, H, 6, mad, 0, 0, -D / 2 + 3);
+    [-1, 1].forEach(sg => B(L * .38, 10, 38, std(0xffffff, { roughness: .9 }), sg * L * .24, 48, -D / 2 + 30)); B(L - 6, 3, D * .55, std(0xdcd6c8, { roughness: .95 }), 0, 48, D * .17);
+  } else if (p.tipo === 'sofa') {
+    const ass = std(p.cor3 || T.cor3, { roughness: .9 }); B(L, 18, D, mad, 0, 8, 0); B(L - 26, 14, D - 22, ass, 0, 26, 8);
+    B(L - 26, H - 40, 18, ass, 0, 40, -D / 2 + 12); [-1, 1].forEach(sg => B(13, H * .62, D, ass, sg * (L / 2 - 6.5), 8, 0));
+  } else if (p.tipo === 'mesa') {
+    B(L, 4, D, mad, 0, H - 4, 0); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(q => B(5, H - 4, 5, mad, q[0] * (L / 2 - 6), 0, q[1] * (D / 2 - 6)));
+  } else if (p.tipo === 'rack_tv') {
+    B(L, H, D, mad, 0, 0, 0); B(L - 4, 1, D * .4, preto, 0, H * .45, D * .25); B(1, H - 4, 1, prata, 0, 2, D / 2 + .3);
+  } else if (p.tipo === 'armario' || p.tipo === 'bancada') {
+    const bc = p.tipo === 'bancada'; B(L, H - (bc ? 4 : 0), D, mad, 0, 0, 0); if (bc) B(L + 3, 4, D + 3, std(0x9ca3af, { roughness: .35 }), 0, H - 4, 1);
+    const n = Math.max(2, Math.round(L / 60)); for (let i = 1; i < n; i++) B(.6, H - 8, .6, preto, -L / 2 + L * i / n, 3, D / 2 + .3);
+    for (let i = 0; i < n; i++) B(1.2, 12, 1.4, prata, -L / 2 + L * (i + .5) / n + 5, H - 24, D / 2 + .8);
+  } else { B(L, H, D, mad, 0, 0, 0); }
+  return R;
+}
 function aparelho3D(p, o) {
   const t = p.tipo, G3 = new THREE.Group(), R = { g: G3, set: () => { }, tick: null, luz: 0, hit: [] };
   const std = (c, x) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: .5, metalness: .05 }, x || {}));
@@ -2852,6 +2948,7 @@ function build3d(reenquadrar) {
   };
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
+    if (M.ehMovel(p)) { const m3 = movel3D(p); m3.g.position.set(p.x, 0, p.y); m3.g.rotation.y = -(+p.rot || 0) * Math.PI / 180; g.add(m3.g); if (m3.tick) T3.ticks.push(m3.tick); m3.hits.forEach(m => T3.pick.push(m)); return; }
     const c = getById(P.comodos, p.comodo), cp = colaNaParede3(p), topo = tetoDe(c), y = yPonto(p), pendura = ehTeto(p) && !cp.w && p.tipo !== 'pendente';
     const yDisp = cp.w ? y : (pendura ? topo : y), px = cp.w ? cp.x : p.x, pz = cp.w ? cp.z : p.y;
     let dirY = 0; if (p.tipo === 'fita_led') { let b2 = null; P.paredes.forEach(w => { const r = G.projT(w, p.x, p.y); if (!b2 || r.d < b2.d) b2 = { d: r.d, w }; }); if (b2) { const q = wallGeo(b2.w); dirY = -Math.atan2(q.uy, q.ux); } }
