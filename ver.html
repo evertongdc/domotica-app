@@ -2470,8 +2470,8 @@ $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[da
 const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
 function loadScript(u) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = u; s.onload = ok; s.onerror = () => no(new Error('Falha ao carregar ' + u)); document.head.appendChild(s); }); }
 async function abrir3d() {
-  const prev3 = $('#com3').value; $('#pe3').value = P.peDireito; $('#com3').innerHTML = P.comodos.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('');
-  { const pref = getById(P.comodos, prev3) ? prev3 : (S.ativo || (S.sel && S.sel.k === 'comodo' ? S.sel.id : '')); if (pref && getById(P.comodos, pref)) $('#com3').value = pref; }
+  const prev3 = $('#com3').value; $('#pe3').value = P.peDireito; $('#com3').innerHTML = '<option value="">Todos os cômodos</option>' + P.comodos.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('');
+  $('#com3').value = (prev3 && getById(P.comodos, prev3)) ? prev3 : '';
   if (!T3.ok) {
     try {
       if (!window.THREE) await loadScript(window.PLANTA_THREE || 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
@@ -2587,9 +2587,23 @@ async function tuyaPush(pontoId, on) {
   } catch (e) { toast('Não consegui comandar ' + nome + ': ' + e.message, 7000); }
   finally { S.tuya.busy[v.id] = false; }
 }
+function vincTecla(sw, t) { const L = S.tuya && S.tuya.lista; return L ? L.find(v => v.interruptor_id === sw && v.tecla === t && (!S.planoId || !v.plan_id || v.plan_id === S.planoId)) : null; }
+/** tecla do interruptor ligada a um canal: o clique comanda o canal; as luzes ligadas à tecla acompanham o estado confirmado */
+async function tuyaPushTecla(v, sw, tec) {
+  if (S.tuya.busy[v.id]) return toast('Aguarde: o comando anterior ainda está sendo enviado.');
+  const novo = !(v.estado && v.estado.on); S.tuya.busy[v.id] = true; toast('Enviando ao interruptor real…', 3000);
+  try {
+    const r = await gas('Tuya_comandar', v.id, novo), est = { on: r.on, confirmado: !!r.confirmado };
+    S.tuya.lista.forEach(x => { if (x.device_id === v.device_id && x.dp_code === v.dp_code) { x.estado = est; const d = x.ponto_id && T3.devs[x.ponto_id]; if (d) { T3.on3[x.ponto_id] = r.on; d.A.set(r.on); } } });
+    P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).forEach(l => { const d = T3.devs[l.para]; if (d && !vincTuya(l.para)) { T3.on3[l.para] = r.on; d.A.set(r.on); } });
+    atualizaTeclas3(); toast('Tecla ' + tec + (r.on ? ' ligada' : ' desligada') + (r.confirmado ? ' (confirmado pelo aparelho)' : ' — comando enviado; o aparelho ainda não confirmou'), 4500);
+  } catch (e) { toast('Não consegui acionar a tecla: ' + e.message, 7000); }
+  finally { S.tuya.busy[v.id] = false; }
+}
 function aplicaEstadosTuya(avisar) {
   if (!T3.devs) return;
-  S.tuya.lista.forEach(v => { const d = v.ponto_id && T3.devs[v.ponto_id]; if (!d || !v.estado || typeof v.estado.on !== 'boolean' || S.tuya.busy[v.id]) return;
+  S.tuya.lista.forEach(v => { if (v.interruptor_id && v.estado && typeof v.estado.on === 'boolean') { P.ligacoes.filter(l => l.de === v.interruptor_id && (l.tecla || 1) === v.tecla).forEach(l => { const d = T3.devs[l.para]; if (d && !vincTuya(l.para) && estaOn3(d.p) !== v.estado.on) { T3.on3[l.para] = v.estado.on; d.A.set(v.estado.on); } }); return; }
+    const d = v.ponto_id && T3.devs[v.ponto_id]; if (!d || !v.estado || typeof v.estado.on !== 'boolean' || S.tuya.busy[v.id]) return;
     if (T3.on3[v.ponto_id] === v.estado.on && d.A.__on === v.estado.on) return; const mudou = estaOn3(d.p) !== v.estado.on; T3.on3[v.ponto_id] = v.estado.on; d.A.set(v.estado.on); d.A.__on = v.estado.on; if (avisar && mudou) toast((M.nomeDe(d.p) || 'Aparelho') + (v.estado.on ? ' ligado' : ' desligado') + ' (mudou no aparelho real)'); });
   atualizaTeclas3();
 }
@@ -2600,18 +2614,37 @@ function renderTuya() {
   h += '<div class="note" style="margin:6px 0">Ligue cada ponto da planta a um canal de um aparelho real. Clicar na luz ou no interruptor no 3D liga/desliga o aparelho de verdade, e o desenho só muda depois que o aparelho responde.</div>';
   if (T.erro) h += '<div class="note" style="color:var(--er)">' + esc(T.erro) + '</div>';
   h += '<div class="row"><button class="pri" data-tu="buscar">' + (T.disp ? 'Atualizar a lista de aparelhos' : 'Buscar aparelhos da conta') + '</button></div>';
-  const mine = T.lista.filter(v => !S.planoId || !v.plan_id || v.plan_id === S.planoId);
+  const mine = T.lista.filter(v => v.ponto_id && (!S.planoId || !v.plan_id || v.plan_id === S.planoId));
   if (mine.length) {
     h += '<div class="sec">Vinculados</div>';
     mine.forEach(v => { const p = getById(P.pontos, v.ponto_id), e = v.estado && typeof v.estado.on === 'boolean' ? (v.estado.on ? 'ligado' : 'desligado') + (v.estado.confirmado === false ? ' (não confirmado)' : '') : 'estado ainda desconhecido';
       h += '<div class="card"><div class="row"><div style="flex:3"><b>' + esc(p ? M.nomeDe(p) : '(ponto removido)') + '</b> ← ' + esc(v.nome || v.device_id) + '<div class="note">' + e + '</div></div><div style="text-align:right"><button data-tu="testar" data-id="' + v.id + '">Ligar / desligar</button> <button class="danger" data-tu="desv" data-id="' + v.id + '">Desvincular</button></div></div></div>'; });
+  }
+  const sws = P.pontos.filter(q => q.tipo === 'interruptor' || q.tipo === 'botao');
+  if (sws.length) {
+    h += '<div class="sec">Interruptores ↔ canais do aparelho real</div>';
+    if (!T.disp) h += '<div class="note">Clique em “Buscar aparelhos da conta” para escolher os canais de cada tecla.</div>';
+    const canaisOpts = T.disp ? T.disp.reduce((a, dv) => a.concat(dv.canais.map(c => ({ v: dv.id + '|' + c.code, t: dv.nome + ' · canal ' + c.code.replace('switch_', '').replace('switch', '1') }))), []) : [];
+    sws.forEach(sw => {
+      const n = sw.tipo === 'botao' ? (sw.teclas || 4) : (sw.teclas || 1), cm = getById(P.comodos, sw.comodo), maps = []; for (let t = 1; t <= n; t++) maps.push(vincTecla(sw.id, t));
+      h += '<div class="card"><b>' + esc(M.nomeDe(sw)) + '</b> <span class="note">' + esc(cm ? cm.nome : '') + ' · ' + n + ' tecla' + (n > 1 ? 's' : '') + '</span>';
+      const devs = new Set(maps.filter(Boolean).map(v => v.device_id)); if (devs.size === 1 && T.disp) { const dv = T.disp.find(x => x.id === Array.from(devs)[0]); if (dv && dv.canais.length !== n) h += '<div class="note" style="color:var(--er)">⚠ O desenho tem ' + n + ' tecla(s), mas o aparelho tem ' + dv.canais.length + ' canal(is). Confira o número de teclas ou os canais.</div>'; }
+      for (let t = 1; t <= n; t++) {
+        const v = maps[t - 1], luzes = P.ligacoes.filter(l => l.de === sw.id && (l.tecla || 1) === t).map(l => getById(P.pontos, l.para)).filter(Boolean).map(q => M.nomeDe(q));
+        h += '<div class="row" style="margin-top:6px"><div style="flex:2;min-width:110px">Tecla ' + t + '<div class="note">' + (luzes.length ? 'liga: ' + esc(luzes.join(', ')) : 'sem luz ligada') + '</div></div>' +
+          (T.disp ? '<select data-tu="tsel" data-sw="' + esc(sw.id) + '" data-t="' + t + '" style="flex:3"><option value="">— canal do aparelho —</option>' + canaisOpts.map(o => '<option value="' + esc(o.v) + '"' + (v && (v.device_id + '|' + v.dp_code) === o.v ? ' selected' : '') + '>' + esc(o.t) + '</option>').join('') + '</select><button data-tu="tvinc" data-sw="' + esc(sw.id) + '" data-t="' + t + '">Salvar</button>' : '<div class="note" style="flex:3">' + (v ? '→ ' + esc(v.nome || '') : 'sem canal') + '</div>') +
+          (v ? '<button class="danger" data-tu="tdesv" data-id="' + v.id + '">Tirar</button>' : '') + '</div>';
+      }
+      if (T.disp) h += '<div class="row" style="margin-top:8px"><select data-tu="asel" data-sw="' + esc(sw.id) + '" style="flex:3"><option value="">— mapear todas as teclas para um aparelho —</option>' + T.disp.map(dv => '<option value="' + esc(dv.id) + '">' + esc(dv.nome) + ' (' + dv.canais.length + ' canais)</option>').join('') + '</select><button data-tu="auto" data-sw="' + esc(sw.id) + '">Mapear 1…n</button></div>';
+      h += '</div>';
+    });
   }
   if (T.disp) {
     h += '<div class="sec">Aparelhos na conta Tuya</div>';
     T.disp.forEach(dv => {
       h += '<div class="card"><b>' + esc(dv.nome) + '</b> <span class="note">' + esc(dv.produto) + (dv.online ? '' : ' · OFFLINE') + '</span>';
       dv.canais.forEach(c => {
-        const ja = T.lista.find(v => v.device_id === dv.id && v.dp_code === c.code), num = c.code.replace('switch_', '').replace('switch', '1');
+        const ja = T.lista.find(v => v.ponto_id && v.device_id === dv.id && v.dp_code === c.code), num = c.code.replace('switch_', '').replace('switch', '1');
         const opts = P.pontos.filter(p => !M.ehMovel(p) && !T.lista.some(v => v.ponto_id === p.id));
         h += '<div class="row" style="margin-top:6px"><div style="flex:1;min-width:96px">canal ' + esc(num) + ' · ' + (c.value ? 'ligado' : 'desligado') + '</div>' +
           (ja ? '<div class="note" style="flex:4">já vinculado</div>' : '<select data-tu="sel" data-d="' + esc(dv.id) + '" data-c="' + esc(c.code) + '" style="flex:3"><option value="">— ponto da planta —</option>' + opts.map(p => '<option value="' + esc(p.id) + '">' + esc(M.nomeDe(p)) + '</option>').join('') + '</select><button data-tu="vinc" data-d="' + esc(dv.id) + '" data-c="' + esc(c.code) + '" data-n="' + esc(dv.nome + ' · canal ' + num) + '">Vincular</button><button data-tu="novo" data-d="' + esc(dv.id) + '" data-c="' + esc(c.code) + '" data-n="' + esc(dv.nome + ' · canal ' + num) + '">Criar ponto</button>') + '</div>';
@@ -2627,6 +2660,19 @@ async function tuyaAcao(e) {
     if (a === 'buscar') { toast('Buscando aparelhos na Tuya…', 3000); S.tuya.disp = await gas('Tuya_dispositivos'); }
     else if (a === 'desv') { await gas('Tuya_excluir', id); toast('Desvinculado.'); }
     else if (a === 'testar') { const v = S.tuya.lista.find(x => x.id === id); const r = await gas('Tuya_comandar', id, !(v.estado && v.estado.on)); toast(r.confirmado ? 'Feito: ' + (r.on ? 'ligado' : 'desligado') + ' (confirmado).' : 'Comando enviado; o aparelho ainda não confirmou.', 5000); }
+    else if (a === 'tdesv') { await gas('Tuya_excluir', id); toast('Tecla desvinculada.'); }
+    else if (a === 'tvinc' || a === 'auto') {
+      const sw = b.dataset.sw, ponto = getById(P.pontos, sw), n = ponto ? (ponto.tipo === 'botao' ? (ponto.teclas || 4) : (ponto.teclas || 1)) : 1; if (!S.planoId) await salvar(true);
+      const grava = async (t, dev, code, nome) => { const ex = vincTecla(sw, t); await gas('Tuya_salvar', { id: ex && ex.id, planId: S.planoId, interruptorId: sw, tecla: t, deviceId: dev, dpCode: code, nome }); };
+      if (a === 'tvinc') {
+        const t = +b.dataset.t, sel = document.querySelector('[data-tu=tsel][data-sw="' + sw + '"][data-t="' + t + '"]'); if (!sel || !sel.value) return toast('Escolha o canal do aparelho.');
+        const pr = sel.value.split('|'); await grava(t, pr[0], pr[1], sel.options[sel.selectedIndex].text); toast('Tecla ' + t + ' ligada ao canal.');
+      } else {
+        const sel = document.querySelector('[data-tu=asel][data-sw="' + sw + '"]'), dv = sel && sel.value && (S.tuya.disp || []).find(x => x.id === sel.value); if (!dv) return toast('Escolha o aparelho.');
+        const k = Math.min(n, dv.canais.length); for (let t = 1; t <= k; t++) await grava(t, dv.id, dv.canais[t - 1].code, dv.nome + ' · canal ' + dv.canais[t - 1].code.replace('switch_', '').replace('switch', '1'));
+        toast(n === dv.canais.length ? 'Teclas 1 a ' + k + ' ligadas aos canais 1 a ' + k + '.' : '⚠ O desenho tem ' + n + ' tecla(s) e o aparelho tem ' + dv.canais.length + ' canal(is): mapeei as primeiras ' + k + '. Confira.', 9000);
+      }
+    }
     else if (a === 'vinc' || a === 'novo') {
       let pid = '';
       if (a === 'vinc') { const sel = document.querySelector('[data-tu=sel][data-d="' + b.dataset.d + '"][data-c="' + b.dataset.c + '"]'); pid = sel && sel.value; if (!pid) return toast('Escolha o ponto da planta.'); }
@@ -2950,6 +2996,7 @@ function rotaVinculo3(a, b, ca, cb, yA, yB, tetoB) {
 
 function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); if (!window.PLANTA_VIEW && vincTuya(id)) { tuyaPush(id, novo); return; } T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); alexaPush(id, novo); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
 function alternarTecla3(sw, tec) {
+  { const vt = !window.PLANTA_VIEW && vincTecla(sw, tec); if (vt) return tuyaPushTecla(vt, sw, tec); }
   const ds = P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).map(l => T3.devs[l.para]).filter(Boolean);
   if (!ds.length) return toast('Esta tecla não tem aparelho vinculado.');
   const novo = !ds.every(d => estaOn3(d.p)); ds.forEach(d => { if (!window.PLANTA_VIEW && vincTuya(d.p.id)) { tuyaPush(d.p.id, novo); return; } T3.on3[d.p.id] = novo; d.A.set(novo); alexaPush(d.p.id, novo); }); atualizaTeclas3();
@@ -2957,11 +3004,11 @@ function alternarTecla3(sw, tec) {
 }
 function atualizaTeclas3() {
   P.pontos.forEach(sw => { const d = T3.devs[sw.id]; if (!d || !d.A.teclas) return;
-    d.A.teclas.forEach(k => { const ds = P.ligacoes.filter(l => l.de === sw.id && (l.tecla || 1) === k.i + 1).map(l => T3.devs[l.para]).filter(Boolean); d.A.setTecla(k.i, ds.some(x => estaOn3(x.p))); }); });
+    d.A.teclas.forEach(k => { const ds = P.ligacoes.filter(l => l.de === sw.id && (l.tecla || 1) === k.i + 1).map(l => T3.devs[l.para]).filter(Boolean); const vt = vincTecla(sw.id, k.i + 1); d.A.setTecla(k.i, vt && vt.estado && typeof vt.estado.on === 'boolean' ? vt.estado.on : ds.some(x => estaOn3(x.p))); }); });
 }
 window.Planta3D = { T3, alternarTecla3, alternarDisp3, estaOn3: p => estaOn3(p) };
 /* 3D sempre de UM ambiente (o escolhido em #com3): carrega só as paredes, aberturas, pontos e móveis dele */
-function comodo3() { return getById(P.comodos, $('#com3').value) || getById(P.comodos, S.ativo) || P.comodos[0] || null; }
+function comodo3() { const v = $('#com3').value; return v ? (getById(P.comodos, v) || null) : null; }   // '' = casa inteira
 function recorte3(c) {
   const tol = ((P.paredes[0] && P.paredes[0].esp) || 15) + 6, ds = (x, y, a, b) => G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, x, y).d;
   const nb = (x, y) => c.pontos.some((q, i) => ds(x, y, q, c.pontos[(i + 1) % c.pontos.length]) <= tol);
