@@ -1520,6 +1520,7 @@ const PAL_COM = ['#e8f1fb', '#fdf1e3', '#e9f7ee', '#f4e9fb', '#fff7d9', '#e6f6f8
 const NEU_COR = { a_confirmar: '#e5484d', tem: '#2ea44f', jumper: '#0ea5a4', puxar: '#f59e0b', eletricista_cliente: '#a855f7' };
 function renderSVG() {
   const r = rectOf(), W = S.view.w, H = W * r.height / Math.max(1, r.width), k = wpp(), V = S.view;
+  S.lod = k > 3.6 ? 2 : k > 2.2 ? 1 : 0;   // 0 = perto (tudo), 1 = médio (sem textos secundários), 2 = longe (só cômodos e pontos pequenos)
   svg.setAttribute('viewBox', V.x + ' ' + V.y + ' ' + W + ' ' + H);
   // grade
   let g = '<rect x="' + V.x + '" y="' + V.y + '" width="' + W + '" height="' + H + '" fill="#f4f6fa"/>';
@@ -1538,7 +1539,7 @@ function renderSVG() {
     const stk = selc ? '#1e88ff' : (at ? '#ff7a00' : (fe ? '#2ea44f' : null));
     s += '<path data-k="comodo" data-id="' + c.id + '" d="M' + c.pontos.map(p => p[0] + ' ' + p[1]).join('L') + 'Z" fill="' + (fe ? '#cfeedb' : PAL_COM[i % PAL_COM.length]) + '" fill-opacity="' + ((P.fundo ? .55 : .9) * (dim ? .45 : 1)) + '" style="pointer-events:' + (S.tool === 'sel' ? 'all' : 'none') + (S.tool === 'sel' && selc ? ';cursor:move' : '') + '"' + (stk ? ' stroke="' + stk + '" stroke-width="3" vector-effect="non-scaling-stroke"' : '') + '/>';
     s += '<text x="' + c.cx + '" y="' + c.cy + '" text-anchor="middle" font-size="' + 15 * k + '" font-weight="700" fill="' + (fe ? '#14532d' : '#334155') + '" style="pointer-events:none">' + esc(c.nome) + '</text>';
-    s += '<text x="' + c.cx + '" y="' + (c.cy + 15 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" fill="' + (fe ? '#166534' : '#64748b') + '" style="pointer-events:none">' + c.area.toFixed(1).replace('.', ',') + ' m²</text>';
+    if (!S.lod) s += '<text x="' + c.cx + '" y="' + (c.cy + 15 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" fill="' + (fe ? '#166534' : '#64748b') + '" style="pointer-events:none">' + c.area.toFixed(1).replace('.', ',') + ' m²</text>';
     if (fe) s += '<g transform="translate(' + c.cx + ' ' + (c.cy - 27 * k) + ')" style="pointer-events:none"><circle r="' + 12 * k + '" fill="#2ea44f"/><path d="M' + -5.5 * k + ' ' + 0 + 'L' + -1.5 * k + ' ' + 4.2 * k + 'L' + 6 * k + ' ' + -4.5 * k + '" stroke="#fff" stroke-width="' + 2.8 * k + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>';
   });
   // paredes
@@ -1569,7 +1570,7 @@ function renderSVG() {
     const q = { ux: (t.x2 - t.x1) / t.len, uy: (t.y2 - t.y1) / t.len }, nx = -q.uy, ny = q.ux;
     const off = Math.max(t.esp, 5 * k) / 2 + 11 * k, mx = (t.x1 + t.x2) / 2 + nx * off, my = (t.y1 + t.y2) / 2 + ny * off;
     const v = S.interna ? Math.max(0, t.len - t.esp) : t.len, on = sel && sel.k === 'trecho' && sel.parede === t.parede && Math.abs(sel.t0 - t.t0) < 1e-3;
-    s += '<text data-k="trecho" data-i="' + i + '" x="' + mx + '" y="' + (my + 4 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" font-weight="700" fill="' + (on ? '#1e88ff' : '#0b3a6b') + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + fmtM(v) + '</text>';
+    if (!S.lod || on) s += '<text data-k="trecho" data-i="' + i + '" x="' + mx + '" y="' + (my + 4 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" font-weight="700" fill="' + (on ? '#1e88ff' : '#0b3a6b') + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + fmtM(v) + '</text>';
   });
   // ligações
   if (S.ligs) P.ligacoes.forEach(l => {
@@ -1582,10 +1583,10 @@ function renderSVG() {
     }
     s += '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + 4 * k + '" fill="' + cor + '" style="pointer-events:none"/>';
     s += '<line data-k="ligacao" data-id="' + l.id + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="transparent" stroke-width="' + (COARSE ? 28 : 14) + '" vector-effect="non-scaling-stroke"/>';
-    if (l.tecla) s += '<text x="' + (a.x + (b.x - a.x) * .18) + '" y="' + (a.y + (b.y - a.y) * .18 - 4 * k) + '" text-anchor="middle" font-size="' + 11 * k + '" font-weight="800" fill="' + cor + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">T' + l.tecla + '</text>';
+    if (l.tecla && !S.lod) s += '<text x="' + (a.x + (b.x - a.x) * .18) + '" y="' + (a.y + (b.y - a.y) * .18 - 4 * k) + '" text-anchor="middle" font-size="' + 11 * k + '" font-weight="800" fill="' + cor + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">T' + l.tecla + '</text>';
   });
   // pontos
-  const sz = Math.max(26, 19 * k);
+  const sz = Math.max(26, 19 * k) * (S.lod === 2 ? .45 : S.lod === 1 ? .7 : 1);
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
     if (M.ehMovel(p)) { s += movel2D(p, k, (sel && sel.k === 'ponto' && sel.id === p.id) || S.multi.includes(p.id)); return; }
@@ -1602,8 +1603,8 @@ function renderSVG() {
     if (cmd && p.neutro) s += '<circle cx="' + h + '" cy="' + -h + '" r="' + sz * .19 + '" fill="' + (fiosDe(p, S.projeto).neutro ? (S.projeto === 'atual' ? '#2ea44f' : (NEU_COR[p.neutro.modo] || '#2ea44f')) : '#e5484d') + '" stroke="#fff" stroke-width="' + sz * .05 + '"/>';
     if (S.projeto === 'atual' && DIF_COR[p.dificuldade]) s += '<circle cx="' + h + '" cy="' + h + '" r="' + sz * .17 + '" fill="' + DIF_COR[p.dificuldade] + '" stroke="#fff" stroke-width="' + sz * .05 + '"/>';
     if (p.obs) { const r0 = sz * .26; s += '<g data-k="obs" data-id="' + p.id + '" transform="translate(' + (-h * 1.05) + ' ' + (-h * 1.05) + ')" style="cursor:pointer"><title>' + esc(p.obs.slice(0, 200)) + '</title><circle r="' + r0 * 1.7 + '" fill="transparent"/><path d="M' + -r0 + ' ' + -r0 * .8 + 'H' + r0 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + r0 * .3 + ' ' + r0 * .3 + 'V' + r0 * .5 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + -r0 * .3 + ' ' + r0 * .3 + 'H' + -r0 * .2 + 'L' + -r0 * .7 + ' ' + r0 * 1.2 + 'V' + r0 * .8 + 'H' + -r0 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + -r0 * .3 + ' ' + -r0 * .3 + 'V' + -r0 * .5 + 'a' + r0 * .3 + ' ' + r0 * .3 + ' 0 0 1 ' + r0 * .3 + ' ' + -r0 * .3 + 'Z" fill="#ffd54a" stroke="#7a5b00" stroke-width="' + sz * .05 + '"/><path d="M' + -r0 * .55 + ' ' + -r0 * .3 + 'H' + r0 * .55 + 'M' + -r0 * .55 + ' ' + r0 * .15 + 'H' + r0 * .3 + '" stroke="#7a5b00" stroke-width="' + sz * .04 + '"/></g>'; }
-    if (S.camadas.has('teto') && ehTeto(p)) s += '<text y="' + (h + (p.nome ? 22 : 11) * k) + '" text-anchor="middle" font-size="' + 10 * k + '" font-weight="800" fill="#7c3aed" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">↑ ' + (p.altura == null ? 100 : p.altura) + ' cm</text>';
-    if (p.nome) s += '<text y="' + (h + 11 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome) + '</text>';
+    if (!S.lod && S.camadas.has('teto') && ehTeto(p)) s += '<text y="' + (h + (p.nome ? 22 : 11) * k) + '" text-anchor="middle" font-size="' + 10 * k + '" font-weight="800" fill="#7c3aed" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">↑ ' + (p.altura == null ? 100 : p.altura) + ' cm</text>';
+    if (p.nome && !S.lod) s += '<text y="' + (h + 11 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome) + '</text>';
     s += '</g>';
   });
   // teclas do interruptor selecionado (toque numa tecla para vincular)
@@ -2702,7 +2703,7 @@ function movel2D(p, k, on) {
   s += '<rect x="' + (-L / 2) + '" y="' + (-D / 2) + '" width="' + L + '" height="' + D + '" fill="' + cor + '" fill-opacity=".3" stroke="' + (on ? '#1e88ff' : cor) + '" stroke-width="' + (on ? 3 : 1.6) + '"' + (on ? ' stroke-dasharray="8 5"' : '') + ' vector-effect="non-scaling-stroke"/>';
   if (p.tipo === 'guarda_roupa') for (let i = 1; i < 4; i++) s += '<line x1="' + (-L / 2 + L * i / 4) + '" y1="' + (-D / 2) + '" x2="' + (-L / 2 + L * i / 4) + '" y2="' + (D / 2) + '" stroke="' + cor + '" stroke-opacity=".8" stroke-width="1.2" vector-effect="non-scaling-stroke"/>';
   s += '<line x1="' + (-L / 2) + '" y1="' + (D / 2) + '" x2="' + (L / 2) + '" y2="' + (D / 2) + '" stroke="' + cor + '" stroke-width="3.5" vector-effect="non-scaling-stroke"/>';
-  s += '<g transform="rotate(' + (-rot) + ')" style="pointer-events:none"><text y="' + (-1 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" font-weight="700" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome || T.nome) + '</text><text y="' + (11 * k) + '" text-anchor="middle" font-size="' + 9 * k + '" fill="#64748b" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + Math.round(L) + '×' + Math.round(D) + '</text></g>';
+  if (!S.lod) s += '<g transform="rotate(' + (-rot) + ')" style="pointer-events:none"><text y="' + (-1 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" font-weight="700" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome || T.nome) + '</text><text y="' + (11 * k) + '" text-anchor="middle" font-size="' + 9 * k + '" fill="#64748b" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + Math.round(L) + '×' + Math.round(D) + '</text></g>';
   return s + '</g>';
 }
 function movel3D(p) {
