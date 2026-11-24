@@ -1357,6 +1357,21 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
   };
 
   /** MOVER CÔMODO: desloca o cômodo (paredes exclusivas, partições internas, aberturas e pontos) e refaz o perímetro no novo lugar. */
+  /** gira o cômodo (paredes, aberturas, pontos e móveis) em torno do centro; recusa se dividir parede com vizinho ou se sobrepuser outro */
+  M.girarComodo = function (p, comodoId, graus) {
+    const c = p.comodos.find(x => x.id === comodoId); if (!c) return { ok: false, motivo: 'Cômodo não encontrado.' };
+    const outros = p.comodos.filter(x => x.id !== comodoId), ids = new Set(); let compart = false;
+    p.paredes.forEach(w => { const m = meio(w); if (naBorda(c.pontos, m[0], m[1], 3)) { if (outros.some(o => naBorda(o.pontos, m[0], m[1], 3))) compart = true; else ids.add(w.id); } else if (G.dentro(c.pontos, m[0], m[1])) ids.add(w.id); });
+    if (compart) return { ok: false, motivo: 'Este cômodo divide parede com outro. Afaste-o do vizinho antes de girar.' };
+    const th = graus * Math.PI / 180, co = Math.cos(th), si = Math.sin(th), cx = c.cx, cy = c.cy;
+    const R = (x, y) => { const dx = x - cx, dy = y - cy; return [Math.round((cx + dx * co - dy * si) * 10) / 10, Math.round((cy + dx * si + dy * co) * 10) / 10]; };
+    const inv = M.sobrepoe(p, c.pontos.map(q => R(q[0], q[1])), comodoId); if (inv) return { ok: false, motivo: 'Girando, ele passaria por cima do cômodo "' + inv.nome + '". Afaste-o antes.' };
+    const meus = p.pontos.filter(pt => G.dentro(c.pontos, pt.x, pt.y) || pt.comodo === comodoId || (pt.parede && ids.has(pt.parede)));
+    p.paredes.forEach(w => { if (!ids.has(w.id)) return; const a = R(w.x1, w.y1), b = R(w.x2, w.y2); w.x1 = a[0]; w.y1 = a[1]; w.x2 = b[0]; w.y2 = b[1]; });
+    meus.forEach(pt => { const q = R(pt.x, pt.y); pt.x = q[0]; pt.y = q[1]; if (M.ehMovel && M.ehMovel(pt)) pt.rot = (((+pt.rot || 0) + graus) % 360 + 360) % 360; });
+    M.recalc(p); p.pontos.forEach(pt => { pt.comodo = G.comodoDoPonto(p.comodos, pt.x, pt.y); });
+    return { ok: true, comodoId };
+  };
   M.moverComodo = function (p, comodoId, dx, dy, opts) {
     opts = opts || {}; dx = Math.round(dx); dy = Math.round(dy);
     const c0 = p.comodos.find(c => c.id === comodoId); if (!c0) return { ok: false, motivo: 'Cômodo não encontrado.' };
@@ -1967,6 +1982,7 @@ function renderPanel() {
     h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Teto / forro</label><select data-f="forro">' + [['', 'Laje (teto liso)'], ['gesso', 'Forro de gesso rebaixado'], ['sanca', 'Sanca / sanca aberta'], ['pvc', 'Forro de PVC'], ['outro', 'Outro']].map(o => '<option value="' + o[0] + '"' + ((c.forro || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' + fld('Rebaixo do forro (cm)', 'rebaixo', c.rebaixo || 0, 'data-n="1" type="number"') + '<label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
     const lados = M.trechos(P).filter(t => t.len >= 40 && bordaDe(c.pontos, [(t.x1 + t.x2) / 2, (t.y1 + t.y2) / 2]));
     h += '<div class="sec">Medidas dos lados</div>' + (lados.length ? lados.map((t, i) => '<div class="row" style="margin:3px 0"><span style="flex:3">Lado ' + (i + 1) + ' · ' + fmtM(S.interna ? Math.max(0, t.len - t.esp) : t.len) + ' m</span><button data-act="medirlado" data-p="' + t.parede + '" data-t0="' + t.t0 + '" data-t1="' + t.t1 + '" style="flex:none">✎ Editar</button></div>').join('') : '<div class="note">Sem paredes ao redor.</div>') + '<div class="note">Para mudar a forma: clique numa parede do cômodo, depois clique duplo nela para criar um canto e arraste as bolinhas.</div>';
+    h += '<div class="sec">Girar cômodo (com móveis e pontos)</div><div class="row"><button data-act="girar" data-g="-90">↺ 90°</button><button data-act="girar" data-g="90">↻ 90°</button></div><div class="row"><input id="gGraus" type="number" value="15" step="5" style="max-width:90px"><button data-act="girar" data-g="x">Girar essa quantidade de graus ↻</button></div>';
     h += '<div class="sec">Fluxo</div><div class="row"><button data-act="ativar">' + (S.ativo === c.id ? 'Sair do cômodo' : 'Trabalhar aqui') + '</button>' + (c.feito ? '<button data-act="reabrir">Reabrir</button>' : '<button class="pri" data-act="finalizar">Finalizar ✓</button>') + '</div><button data-act="moverc" style="margin-top:6px;width:100%">↔ Mover cômodo (arraste na planta)</button><div class="note">Com o cômodo selecionado, arraste-o: ele gruda nos vizinhos, leva os pontos junto e cria a porta.</div>';
   } else if (sel.k === 'ligacao') {
     const l = getById(P.ligacoes, sel.id); if (!l) { S.sel = null; return renderPanel(); }
@@ -2012,6 +2028,7 @@ $('#panel').addEventListener('click', e => {
   if (a === 'desel') { S.sel = null; return refresh(); }
   if (a === 'delsel') return apagarSel();
   if (a === 'obs') return abrirObs(S.sel.id);
+  if (a === 'girar') { const g = b.dataset.g === 'x' ? parseFloat(($('#gGraus') || {}).value) : +b.dataset.g; if (!g) return toast('Digite os graus.'); snap(); const r = M.girarComodo(P, S.sel.id, g); if (!r.ok) { undo.pop(); return toast(r.motivo, 6000); } S.sel = { k: 'comodo', id: r.comodoId }; refresh(); return toast('Cômodo girado ' + g + '°.'); }
   if (a === 'ativar') return ativarComodo(S.ativo === S.sel.id ? null : S.sel.id, S.ativo !== S.sel.id);
   if (a === 'finalizar') return finalizarComodo(S.sel.id);
   if (a === 'reabrir') return reabrirComodo(S.sel.id);
