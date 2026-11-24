@@ -1931,7 +1931,7 @@ function renderPanel() {
   } else if (sel.k === 'comodo') {
     const c = getById(P.comodos, sel.id); if (!c) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Cômodo · ' + c.area.toFixed(1).replace('.', ',') + ' m²</div>' + fld('Nome', 'nome', c.nome);
-    h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Teto / forro</label><select data-f="forro">' + [['', 'Laje (teto liso)'], ['gesso', 'Forro de gesso rebaixado'], ['sanca', 'Sanca / sanca aberta'], ['pvc', 'Forro de PVC'], ['outro', 'Outro']].map(o => '<option value="' + o[0] + '"' + ((c.forro || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' + fld('Rebaixo do forro (cm)', 'rebaixo', c.rebaixo || 0, 'data-n="1" type="number"') + '<label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
+    h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Teto / forro</label><select data-f="forro">' + [['', 'Laje (teto liso)'], ['gesso', 'Forro de gesso rebaixado'], ['sanca', 'Sanca / sanca aberta'], ['pvc', 'Forro de PVC'], ['aberto', 'Teto aberto (sem cobertura)'], ['vidro', 'Teto de vidro'], ['retratil', 'Teto retrátil (abre e fecha)'], ['outro', 'Outro']].map(o => '<option value="' + o[0] + '"' + ((c.forro || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' + fld('Rebaixo do forro (cm)', 'rebaixo', c.rebaixo || 0, 'data-n="1" type="number"') + '<label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
     const lados = M.trechos(P).filter(t => t.len >= 40 && bordaDe(c.pontos, [(t.x1 + t.x2) / 2, (t.y1 + t.y2) / 2]));
     h += '<div class="sec">Medidas dos lados</div>' + (lados.length ? lados.map((t, i) => '<div class="row" style="margin:3px 0"><span style="flex:3">Lado ' + (i + 1) + ' · ' + fmtM(S.interna ? Math.max(0, t.len - t.esp) : t.len) + ' m</span><button data-act="medirlado" data-p="' + t.parede + '" data-t0="' + t.t0 + '" data-t1="' + t.t1 + '" style="flex:none">✎ Editar</button></div>').join('') : '<div class="note">Sem paredes ao redor.</div>') + '<div class="note">Para mudar a forma: clique numa parede do cômodo, depois clique duplo nela para criar um canto e arraste as bolinhas.</div>';
     h += '<div class="sec">Girar cômodo (com móveis e pontos)</div><div class="row"><button data-act="girar" data-g="-90">↺ 90°</button><button data-act="girar" data-g="90">↻ 90°</button></div><div class="row"><input id="gGraus" type="number" value="15" step="5" style="max-width:90px"><button data-act="girar" data-g="x">Girar essa quantidade de graus ↻</button></div>';
@@ -3005,11 +3005,41 @@ function build3dTudo(reenquadrar) {
     const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial({ map: texMarmore(), color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide, roughness: .38, metalness: .12 }) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; g.add(m);
   });
   const altP = p => p.altura == null ? 100 : p.altura;
+  const tetoTicks = [], tetoPick = [];
   if ($('#forro3') && $('#forro3').checked && modo !== 'corte') P.comodos.forEach(c => {
+    const tipoTeto = c.forro || '';
+    if (tipoTeto === 'aberto') return;                       // teto aberto: sem cobertura
+    if (tipoTeto === 'vidro' || tipoTeto === 'retratil') {   // vidro (fixo) ou retrátil (duas folhas que deslizam; clique no botão laranja do teto)
+      S.movAberto = S.movAberto || {};
+      const xs = c.pontos.map(q => q[0]), zs = c.pontos.map(q => q[1]), x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), z0 = Math.min.apply(null, zs), z1 = Math.max.apply(null, zs), y = tetoDe(c);
+      const ret = Math.abs((x1 - x0) * (z1 - z0) - G.areaPoly(c.pontos)) < 60, W = x1 - x0, D = z1 - z0;
+      const vid = new THREE.MeshStandardMaterial({ color: NT ? 0x1b2a38 : 0xbfe3f2, transparent: true, opacity: NT ? .2 : .32, roughness: .05, metalness: .25, side: THREE.DoubleSide, depthWrite: false });
+      const fr = new THREE.MeshStandardMaterial({ color: 0x8d97a3, metalness: .6, roughness: .35 });
+      const caixa = (par, w, h, d, m, x, yy, z) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); me.position.set(x, yy, z); par.add(me); return me; };
+      if (tipoTeto === 'retratil' && ret) {
+        const alongX = W >= D, folhas = [0, 1].map(i => {
+          const gr = new THREE.Group(), fw = alongX ? W / 2 : W, fd = alongX ? D : D / 2, cx = alongX ? x0 + W / 4 + i * W / 2 : (x0 + x1) / 2, cz = alongX ? (z0 + z1) / 2 : z0 + D / 4 + i * D / 2;
+          gr.position.set(cx, y, cz); g.add(gr); caixa(gr, fw, 1, fd, vid, 0, 0, 0);
+          [[fw, 3, 0, -fd / 2], [fw, 3, 0, fd / 2]].forEach(q => caixa(gr, q[0], 3, 3, fr, 0, 0, q[3])); [[-fw / 2, 0], [fw / 2, 0]].forEach(q => caixa(gr, 3, 3, fd, fr, q[0], 0, 0));
+          for (let k = 1; k < 4; k++) { if (alongX) caixa(gr, 2, 2, fd, fr, -fw / 2 + fw * k / 4, 0, 0); else caixa(gr, fw, 2, 2, fr, 0, 0, -fd / 2 + fd * k / 4); }
+          return { gr, cx, cz };
+        });
+        const id = 'teto_' + c.id, dist = (alongX ? W : D) / 2 * .94; let cur = S.movAberto[id] ? 1 : 0;
+        const pos = () => folhas.forEach((f, i) => { const sg = i ? 1 : -1; f.gr.position.x = f.cx + (alongX ? sg * dist * cur : 0); f.gr.position.z = f.cz + (alongX ? 0 : sg * dist * cur); }); pos();
+        tetoTicks.push(() => { const alvo = S.movAberto[id] ? 1 : 0; if (Math.abs(alvo - cur) < .002) return; cur += (alvo - cur) * .08; pos(); T3.sombraSuja = true; });
+        const bt = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 3, 20), new THREE.MeshStandardMaterial({ color: 0xff7a00, emissive: new THREE.Color(0xff7a00), emissiveIntensity: .5 })); bt.position.set((x0 + x1) / 2, y - 4, (z0 + z1) / 2); bt.userData.mov = id; g.add(bt); tetoPick.push(bt);
+      } else {
+        const sh = new THREE.Shape(); c.pontos.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); });
+        const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, vid); f.position.y = y; g.add(f);
+        c.pontos.forEach((q, j) => { const r = c.pontos[(j + 1) % c.pontos.length], L = Math.hypot(r[0] - q[0], r[1] - q[1]); const m = caixa(g, L, 3, 3, fr, (q[0] + r[0]) / 2, y, (q[1] + r[1]) / 2); m.rotation.y = -Math.atan2(r[1] - q[1], r[0] - q[0]); });
+        if (ret) { for (let k = 1; k < 4; k++) { caixa(g, 2, 2, D, fr, x0 + W * k / 4, y, (z0 + z1) / 2); } for (let k = 1; k < 3; k++) caixa(g, W, 2, 2, fr, (x0 + x1) / 2, y, z0 + D * k / 3); }
+      }
+      return;
+    }
     const sh = new THREE.Shape(); c.pontos.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); });
     const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: NT ? 0x0c0e12 : (c.forro ? 0xfff3d6 : 0xffffff), transparent: true, opacity: NT ? .10 : .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); g.add(f);
   });
-  T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = []; T3.sombraSuja = true;
+  T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = []; T3.sombraSuja = true; tetoTicks.forEach(f => T3.ticks.push(f)); tetoPick.forEach(m => T3.pick.push(m));
   const PRIO = { ponto_luz: 0, plafon: 0, pendente: 1, arandela: 2, spot: 3, trilho: 3, balizador: 4, fita_led: 5 }, permitido = new Set(); let nSomP = 0, nSomS = 0;
   P.pontos.filter(q => visivel(q) && PRIO[q.tipo] != null).sort((x, y) => PRIO[x.tipo] - PRIO[y.tipo]).slice(0, 18).forEach(q => permitido.add(q.id));
   // cada tipo de luz ilumina de um jeito e com uma cor; as principais (ponto de luz/plafon) cobrem o cômodo inteiro; as paredes bloqueiam a luz (sem vazar para o vizinho)
