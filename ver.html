@@ -1058,7 +1058,7 @@ window.PLANTA_CTX = {};
   M.CATS.movel = { nome: 'Móveis', cor: '#a16207' };
   Object.assign(M.TIPOS, {
     guarda_roupa: { nome: 'Guarda-roupa',   sigla: 'GR', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [275, 62, 237], cor3: '#7a4a1e' },
-    cama_casal:   { nome: 'Cama de casal',  sigla: 'CM', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [158, 198, 100], cor3: '#6b4a2f' },
+    cama_casal:   { nome: 'Cama box casal', sigla: 'CM', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [138, 188, 60], cor3: '#6b5f55' },
     sofa:         { nome: 'Sofá',           sigla: 'SF', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [220, 95, 85], cor3: '#6b7280' },
     mesa:         { nome: 'Mesa',           sigla: 'MS', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [160, 80, 75], cor3: '#a47148' },
     rack_tv:      { nome: 'Rack / painel',  sigla: 'RK', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [180, 40, 50], cor3: '#3f3f46' },
@@ -1864,6 +1864,7 @@ function renderPanel() {
     h += '<label>Posição de instalação</label><select data-f="teto" data-b="1"><option value=""' + (p.teto == null ? ' selected' : '') + '>Automático (pelo tipo' + (ehTeto(p) ? ': teto' : ': parede/piso') + ')</option><option value="1"' + (p.teto === true ? ' selected' : '') + '>Teto</option><option value="0"' + (p.teto === false ? ' selected' : '') + '>Parede / piso</option></select>';
     h += '<label>Dificuldade da instalação</label><select data-f="dificuldade">' + optSel(DIFS, p.dificuldade || '') + '</select>';
     h += '<div class="row"><div>' + fld('Altura (cm)', 'altura', p.altura, 'data-n="1" type="number"') + '</div><div><label>Cômodo</label><select data-f="comodo"><option value="">—</option>' + P.comodos.map(c => '<option value="' + c.id + '"' + (c.id === p.comodo ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select></div></div>';
+    if (p.tipo === 'tv') h += fld('Tela (polegadas) — o 3D usa a medida real', 'polegadas', p.polegadas || 50, 'data-n="1" type="number" min="20" max="110"');
     if (cmd) {
       h += '<div class="sec">Interruptor</div><div class="row"><div><label>Teclas</label><select data-f="teclas" data-n="1">' + [1, 2, 3, 4].map(n => '<option' + (n === (p.teclas || 1) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div><div><label>Caixa</label><select data-f="caixa">' + ['4x2', '4x4', 'outra'].map(c => '<option' + (c === p.caixa ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div></div>';
       const ne = p.neutro || { modo: 'a_confirmar', origem: '', fio: 'a_definir' };
@@ -2644,8 +2645,11 @@ function movel3D(p) {
     const x1 = gs[1].position.x, x2 = gs[2].position.x; let cur = S.movAberto[p.id] ? 1 : 0; gs[1].position.x = x1 - cur * L / 4; gs[2].position.x = x2 + cur * L / 4;
     R.tick = () => { const alvo = S.movAberto[p.id] ? 1 : 0; if (Math.abs(alvo - cur) < .002) return; cur += (alvo - cur) * .14; gs[1].position.x = x1 - cur * L / 4; gs[2].position.x = x2 + cur * L / 4; T3.sombraSuja = true; };
   } else if (p.tipo === 'cama_casal') {
-    B(L, 28, D, mad, 0, 0, 0); B(L - 6, 20, D - 8, std(0xf1ece2, { roughness: .9 }), 0, 28, 3); B(L + 8, H, 6, mad, 0, 0, -D / 2 + 3);
-    [-1, 1].forEach(sg => B(L * .38, 10, 38, std(0xffffff, { roughness: .9 }), sg * L * .24, 48, -D / 2 + 30)); B(L - 6, 3, D * .55, std(0xdcd6c8, { roughness: .95 }), 0, 48, D * .17);
+    // cama box: base estofada (com recuo e pés) + colchão; sem cabeceira
+    const bh = Math.max(20, H * .55), mh = H - bh, tec = std(p.cor3 || T.cor3, { roughness: .92 }), col = std(0xf3efe6, { roughness: .95 });
+    B(L - 6, 4, D - 6, preto, 0, 0, 0); B(L, bh - 4, D, tec, 0, 4, 0);
+    B(L - 1, mh - 3, D - 1, col, 0, bh, 0); B(L - 3, 3, D - 3, col, 0, bh + mh - 3, 0);
+    B(L + .2, 1.2, D + .2, std(0xd8d2c4, { roughness: .95 }), 0, bh + 2, 0);
   } else if (p.tipo === 'sofa') {
     const ass = std(p.cor3 || T.cor3, { roughness: .9 }); B(L, 18, D, mad, 0, 8, 0); B(L - 26, 14, D - 22, ass, 0, 26, 8);
     B(L - 26, H - 40, 18, ass, 0, 40, -D / 2 + 12); [-1, 1].forEach(sg => B(13, H * .62, D, ass, sg * (L / 2 - 6.5), 8, 0));
