@@ -1556,6 +1556,11 @@ function renderSVG() {
   if (sel && sel.k === 'ponto') { const sp = getById(P.pontos, sel.id); if (sp && (sp.tipo === 'interruptor' || sp.tipo === 'botao') && visivel(sp)) { const nT = sp.tipo === 'botao' ? (sp.teclas || 4) : (sp.teclas || 1);
     for (let t = 1; t <= nT; t++) { const nL = P.ligacoes.filter(l => l.de === sp.id && (l.tecla || 1) === t).length, bx = sp.x + (t - 1 - (nT - 1) / 2) * 30 * k, by = sp.y + 40 * k;
       s += '<g data-k="tecla" data-id="' + sp.id + '" data-t="' + t + '" transform="translate(' + bx + ' ' + by + ')" style="cursor:pointer"><circle r="' + 13 * k + '" fill="#fff" stroke="#ff7a00" stroke-width="' + 2.5 * k + '"/><text y="' + 4.5 * k + '" text-anchor="middle" font-size="' + 13 * k + '" font-weight="800" fill="#1f2937" style="pointer-events:none">' + t + '</text>' + (nL ? '<circle cx="' + 10 * k + '" cy="' + -10 * k + '" r="' + 6 * k + '" fill="#2ea44f"/><text x="' + 10 * k + '" y="' + -7 * k + '" text-anchor="middle" font-size="' + 8 * k + '" font-weight="800" fill="#fff" style="pointer-events:none">' + nL + '</text>' : '') + '</g>'; } } }
+  // alça de giro do cômodo ou móvel selecionado (ângulo pelo centro; ímã em 0/90/180/270, como no react-planner)
+  { let hc = null;
+    if (sel && sel.k === 'comodo') { const c = getById(P.comodos, sel.id); if (c) hc = { t: 'comodo', id: c.id, cx: c.cx, cy: c.cy, hx: c.cx, hy: Math.min.apply(null, c.pontos.map(q => q[1])) - 34 * k }; }
+    else if (sel && sel.k === 'ponto') { const q = getById(P.pontos, sel.id); if (q && M.ehMovel(q)) { const T0 = M.TIPOS[q.tipo], th = (+q.rot || 0) * Math.PI / 180, d = (+q.prof || T0.mov[1]) / 2 + 34 * k; hc = { t: 'ponto', id: q.id, cx: q.x, cy: q.y, hx: q.x + d * Math.sin(th), hy: q.y - d * Math.cos(th) }; } }
+    if (hc) s += '<g data-k="girar" data-t="' + hc.t + '" data-id="' + hc.id + '" style="cursor:grab"><line x1="' + hc.cx + '" y1="' + hc.cy + '" x2="' + hc.hx + '" y2="' + hc.hy + '" stroke="#ff7a00" stroke-width="1.5" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" style="pointer-events:none"/><circle cx="' + hc.hx + '" cy="' + hc.hy + '" r="' + (COARSE ? 26 : 17) * k + '" fill="transparent"/><circle cx="' + hc.hx + '" cy="' + hc.hy + '" r="' + (COARSE ? 15 : 11) * k + '" fill="#fff" stroke="#ff7a00" stroke-width="' + 2.5 * k + '"/><text x="' + hc.hx + '" y="' + (hc.hy + 5 * k) + '" text-anchor="middle" font-size="' + 15 * k + '" font-weight="800" fill="#ff7a00" style="pointer-events:none">↻</text></g>'; }
   // alças da parede selecionada
   if (sel && sel.k === 'parede') { const w = getById(P.paredes, sel.id); if (w) [1, 2].forEach(i => { s += '<circle data-k="handle" data-id="' + w.id + '" data-i="' + i + '" cx="' + w['x' + i] + '" cy="' + w['y' + i] + '" r="' + (COARSE ? 15 : 9) * k + '" fill="#fff" stroke="#1e88ff" stroke-width="' + 3 * k + '"/>'; }); }
   // pré-visualizações
@@ -2076,6 +2081,7 @@ svg.addEventListener('pointerdown', e => {
   gest = { mod: e.shiftKey || e.metaKey || e.ctrlKey, id: e.pointerId, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, start: w, el, tool, pts: [w], moved: false, mode: 'tap' };
   if (e.button === 1 || e.button === 2 || window.PLANTA_VIEW) gest.mode = 'pan';
   else if (tool === 'rabisco' || tool === 'parede') gest.mode = desenha ? tool : 'pan';
+  else if (tool === 'sel' && el && el.dataset.k === 'girar') { gest.mode = 'girar'; gest.gt = el.dataset.t; gest.gid = el.dataset.id; }
   else if (tool === 'sel' && el && el.dataset.k === 'ponto') {
     gest.mode = 'dragPonto'; gest.pid = el.dataset.id;
     if (!gest.mod) { const pt0 = getById(P.pontos, gest.pid); if (!S.multi.includes(gest.pid)) S.multi = pt0 && pt0.grupo ? P.pontos.filter(q => q.grupo === pt0.grupo).map(q => q.id) : []; }
@@ -2106,6 +2112,14 @@ svg.addEventListener('pointermove', e => {
     if (!gest.drag && mv > 6) { gest.drag = true; S.sel = { k: 'comodo', id: gest.cid }; prepararMoverComodo(gest); } if (!gest.drag) return;
     const e2 = M.encaixar(gest.fake, gest.poly, w.x - gest.start.x, w.y - gest.start.y, Math.max(25, wpp() * 22)), poly = deslocarPoly(gest.poly, e2.dx, e2.dy), inv = M.sobrepoe(P, poly, gest.cid);
     gest.dx = e2.dx; gest.dy = e2.dy; S.prev = { k: 'mover', poly, valid: !inv, enc: e2.x || e2.y, motivo: inv ? 'sobrepõe "' + inv.nome + '"' : '' }; renderSVG(); return;
+  }
+  if (m === 'girar') {
+    const room = gest.gt === 'comodo', o = room ? getById(P.comodos, gest.gid) : getById(P.pontos, gest.gid); if (!o) return;
+    const cx = room ? o.cx : o.x, cy = room ? o.cy : o.y, imã = a => { const r = Math.round(a / 90) * 90; return Math.abs(a - r) <= 5 ? r : Math.round(a); };
+    let ang = (Math.atan2(w.y - cy, w.x - cx) * 180 / Math.PI + 90 + 360) % 360; gest.drag = true;
+    if (room) { if (ang > 180) ang -= 360; ang = imã(ang); gest.ang = ang; const th = ang * Math.PI / 180, co = Math.cos(th), si = Math.sin(th), poly = o.pontos.map(q => [cx + (q[0] - cx) * co - (q[1] - cy) * si, cy + (q[0] - cx) * si + (q[1] - cy) * co]), inv = M.sobrepoe(P, poly, gest.gid); S.prev = { k: 'mover', poly, valid: !inv, enc: false, motivo: inv ? 'sobrepõe "' + inv.nome + '"' : ang + '°' }; }
+    else { if (!gest.feito) { snap(); gest.feito = true; } o.rot = (imã(ang) + 360) % 360; }
+    renderSVG(); return;
   }
   if (m === 'rabisco') { gest.pts.push(w); S.prev = { k: 'poly', pts: gest.pts }; renderSVG(); return; }
   if (m === 'parede') { atualizarLive(w, gest.a); return; }
@@ -2153,6 +2167,13 @@ function fimGesto(e, cancel) {
   const g = gest; gest = null; S.prev = null;
   if (cancel) return renderSVG();
   const w = toWorld(e);
+  if (g.mode === 'girar') {
+    if (!g.drag) return renderSVG();
+    if (g.gt !== 'comodo') return refresh();
+    if (!g.ang) return renderSVG();
+    snap(); const r = M.girarComodo(P, g.gid, g.ang); if (!r.ok) { undo.pop(); toast(r.motivo, 6000); return refresh(); }
+    S.sel = { k: 'comodo', id: r.comodoId }; refresh(); return toast('Cômodo girado ' + g.ang + '°.');
+  }
   if (g.mode === 'rabisco') return processarRabisco(g.pts);
   if (g.mode === 'parede') {
     if (S.p1) { concluirParede(S.p1, fimParede(S.p1, w, S.dig)); return; }
