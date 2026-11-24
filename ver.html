@@ -1064,6 +1064,8 @@ window.PLANTA_CTX = {};
     rack_tv:      { nome: 'Rack / painel',  sigla: 'RK', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [180, 40, 50], cor3: '#3f3f46' },
     armario:      { nome: 'Armário',        sigla: 'AR', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [120, 50, 90], cor3: '#d6d3d1' },
     bancada:      { nome: 'Bancada / balcão', sigla: 'BC', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [240, 60, 90], cor3: '#d6d3d1' },
+    nicho:        { nome: 'Nicho suspenso', sigla: 'NC', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [250, 35, 35], cor3: '#e5e7eb', elev: 180 },
+    piso_elevado: { nome: 'Piso elevado / tablado', sigla: 'PE', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [240, 200, 12], cor3: '#b8a58f' },
     movel:        { nome: 'Móvel (livre)',  sigla: 'MV', cat: 'movel', alt: 0, parede: 0, grupo: 'Móveis', mov: [100, 50, 80], cor3: '#9ca3af' }
   });
   M.ehMovel = pt => !!(pt && M.TIPOS[pt.tipo] && M.TIPOS[pt.tipo].mov);
@@ -1072,7 +1074,7 @@ window.PLANTA_CTX = {};
     M.validar = function (p) { return v1(semMov(p)); };
     M.soltos = function (p) { return s1(semMov(p)); };
     M.levantamento = function (p) { return l1(semMov(p)); };
-    M.novoPonto = function (p, tipo, x, y, extra) { const o = n1(p, tipo, x, y, extra), T = M.TIPOS[tipo]; if (T && T.mov) { if (!o.larg) o.larg = T.mov[0]; if (!o.prof) o.prof = T.mov[1]; if (!o.alt3) o.alt3 = T.mov[2]; if (o.rot == null) o.rot = 0; if (!o.cor3) o.cor3 = T.cor3; } return o; }; }
+    M.novoPonto = function (p, tipo, x, y, extra) { const o = n1(p, tipo, x, y, extra), T = M.TIPOS[tipo]; if (T && T.mov) { if (!o.larg) o.larg = T.mov[0]; if (!o.prof) o.prof = T.mov[1]; if (!o.alt3) o.alt3 = T.mov[2]; if (o.rot == null) o.rot = 0; if (!o.cor3) o.cor3 = T.cor3; if (o.elev == null && T.elev) o.elev = T.elev; } return o; }; }
 
   /* ---------- geometria de cômodos ---------- */
   M.espPadrao = p => (p.paredes[0] && p.paredes[0].esp) || 15;
@@ -1850,6 +1852,7 @@ function renderPanel() {
     h += fld('Nome / identificação', 'nome', p.nome, 'placeholder="' + esc(T.nome) + '"');
     h += '<div class="row"><div>' + fld('Largura (cm)', 'larg', p.larg || T.mov[0], 'data-n="1" type="number"') + '</div><div>' + fld('Profund. (cm)', 'prof', p.prof || T.mov[1], 'data-n="1" type="number"') + '</div><div>' + fld('Altura (cm)', 'alt3', p.alt3 || T.mov[2], 'data-n="1" type="number"') + '</div></div>';
     h += '<div class="row"><div><label>Giro</label><select data-f="rot" data-n="1">' + [0, 90, 180, 270].map(a => '<option value="' + a + '"' + ((+p.rot || 0) === a ? ' selected' : '') + '>' + ROT[a / 90] + '</option>').join('') + '</select></div><div><label>Cor</label><input type="color" data-f="cor3" value="' + (p.cor3 || T.cor3 || '#8b6b4a') + '"></div></div>';
+    h += fld('Distância do chão (cm) — para nicho, prateleira, móvel suspenso', 'elev', p.elev || 0, 'data-n="1" type="number" min="0"');
     h += '<label>Cômodo</label><select data-f="comodo"><option value="">—</option>' + P.comodos.map(c => '<option value="' + c.id + '"' + (c.id === p.comodo ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select>';
     h += '<div class="note">O 3D usa exatamente estas medidas.' + (p.tipo === 'guarda_roupa' ? ' No 3D, clique nas portas para abrir e fechar.' : '') + '</div>';
     h += '<label>Observações</label><button data-act="obs" style="width:100%;text-align:left">' + (p.obs ? '💬 ' + esc(p.obs.slice(0, 70)) : '＋ Adicionar observação') + '</button>';
@@ -2653,6 +2656,10 @@ function movel3D(p) {
   } else if (p.tipo === 'sofa') {
     const ass = std(p.cor3 || T.cor3, { roughness: .9 }); B(L, 18, D, mad, 0, 8, 0); B(L - 26, 14, D - 22, ass, 0, 26, 8);
     B(L - 26, H - 40, 18, ass, 0, 40, -D / 2 + 12); [-1, 1].forEach(sg => B(13, H * .62, D, ass, sg * (L / 2 - 6.5), 8, 0));
+  } else if (p.tipo === 'nicho') {
+    const e = 2; B(L, e, D, mad, 0, 0, 0); B(L, e, D, mad, 0, H - e, 0); B(e, H - 2 * e, D, mad, -L / 2 + e / 2, e, 0); B(e, H - 2 * e, D, mad, L / 2 - e / 2, e, 0); B(L - 2 * e, H - 2 * e, 1, std(0xd1d5db, { roughness: .8 }), 0, e, -D / 2 + .5);
+  } else if (p.tipo === 'piso_elevado') {
+    B(L, H, D, std(p.cor3 || T.cor3, { roughness: .8 }), 0, 0, 0);
   } else if (p.tipo === 'mesa') {
     B(L, 4, D, mad, 0, H - 4, 0); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(q => B(5, H - 4, 5, mad, q[0] * (L / 2 - 6), 0, q[1] * (D / 2 - 6)));
   } else if (p.tipo === 'rack_tv') {
@@ -2898,7 +2905,7 @@ function build3d(reenquadrar) {
   };
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
-    if (M.ehMovel(p)) { const m3 = movel3D(p); m3.g.position.set(p.x, 0, p.y); m3.g.rotation.y = -(+p.rot || 0) * Math.PI / 180; g.add(m3.g); if (m3.tick) T3.ticks.push(m3.tick); m3.hits.forEach(m => T3.pick.push(m)); return; }
+    if (M.ehMovel(p)) { const m3 = movel3D(p); m3.g.position.set(p.x, +p.elev || 0, p.y); m3.g.rotation.y = -(+p.rot || 0) * Math.PI / 180; g.add(m3.g); if (m3.tick) T3.ticks.push(m3.tick); m3.hits.forEach(m => T3.pick.push(m)); return; }
     const c = getById(P.comodos, p.comodo), cp = colaNaParede3(p), topo = tetoDe(c), y = yPonto(p), pendura = ehTeto(p) && !cp.w && p.tipo !== 'pendente';
     const yDisp = cp.w ? y : (pendura ? topo : y), px = cp.w ? cp.x : p.x, pz = cp.w ? cp.z : p.y;
     let dirY = 0; if (p.tipo === 'fita_led') { let b2 = null; P.paredes.forEach(w => { const r = G.projT(w, p.x, p.y); if (!b2 || r.d < b2.d) b2 = { d: r.d, w }; }); if (b2) { const q = wallGeo(b2.w); dirY = -Math.atan2(q.uy, q.ux); } }
