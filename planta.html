@@ -3438,7 +3438,7 @@ from mathutils import Vector
 
 NOME_GLB = "__GLB__"
 LUZES = json.loads('''__LUZES__''')
-POTENCIA_LUZ = 90        # watts de cada luz (aumente se ficar escuro)
+POTENCIA_LUZ = 250       # watts de cada luz (aumente se ficar escuro)
 FORCA_EMISSAO = 12       # brilho dos objetos que emitem luz (fitas de LED, luminárias)
 AMOSTRAS = 128           # mais amostras = menos ruído e mais demora
 RESOLUCAO = (1920, 1080)
@@ -3474,7 +3474,8 @@ for m in bpy.data.materials:
         if n.type == 'BSDF_PRINCIPLED':
             cor = n.inputs.get('Emission Color') or n.inputs.get('Emission')
             forca = n.inputs.get('Emission Strength')
-            if cor is not None and forca is not None and not cor.is_linked and (cor.default_value[0] + cor.default_value[1] + cor.default_value[2]) > 0.05:
+            # o importador deixa a cor de emissão branca com força 0 nos materiais sem brilho; só mexe nos que já emitem luz
+            if cor is not None and forca is not None and not cor.is_linked and forca.default_value > 0 and (cor.default_value[0] + cor.default_value[1] + cor.default_value[2]) > 0.05:
                 forca.default_value = FORCA_EMISSAO
 
 def rgb(h):
@@ -3488,7 +3489,7 @@ for i, l in enumerate(LUZES):
     o = bpy.data.objects.new("luz%d" % i, d); o.location = (l['x'], -l['z'], l['y']); sc.collection.objects.link(o)
 
 # luz de preenchimento suave por cima (a casa está sem teto)
-amb = bpy.data.lights.new("preenchimento", 'AREA'); amb.energy = 220; amb.size = tam; amb.color = (1.0, 0.86, 0.7)
+amb = bpy.data.lights.new("preenchimento", 'AREA'); amb.energy = 1500; amb.size = tam; amb.color = (1.0, 0.86, 0.7)
 ao = bpy.data.objects.new("preenchimento", amb); ao.location = (centro.x, centro.y, mx.z + tam * 0.7); sc.collection.objects.link(ao)
 
 mundo = bpy.data.worlds.new("Noite"); sc.world = mundo; mundo.use_nodes = True
@@ -3507,6 +3508,7 @@ for modo in ('AgX', 'Filmic'):
         sc.view_settings.view_transform = modo; break
     except TypeError:
         pass
+sc.view_settings.exposure = 0.6   # aumente se quiser mais claro
 print("Pronto. Aperte F12 para renderizar. Para mudar o ângulo, mova o objeto 'Camera'.")
 `;
 async function exportarBlender() {
