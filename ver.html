@@ -2647,7 +2647,7 @@ async function abrir3d() {
       const t0 = performance.now(); if (T3.real && T3.comp && agora < T3.moveUntil && !T3.fp.on) T3.rapido(); else T3.draw();
       T3.stats.quadros++; T3.stats.ocupado += performance.now() - t0;
       if (THREE.WEBGPU) {   // qualidade adaptativa: ajusta a resolução (e os passos do SSGI) para ficar entre 30 e 60 FPS, sem trocar de modo
-        const A = T3.adapt || (T3.adapt = { n: 0, t: agora, ult: 0 }); A.n++;
+        const A = T3.adapt || (T3.adapt = { n: 0, t: agora, ult: 0, q: agora }); if (agora - A.q > 300) { A.n = 0; A.t = agora; } A.q = agora; A.n++;   // pausa longa (sem desenhar) recomeça a medição
         if (A.n >= 24) { const ms = (agora - A.t) / A.n; A.n = 0; A.t = agora; T3.msQuadro = ms;
           if (agora - A.ult > 1500) {
             if (ms > 30 && T3.pr > .55) { T3.pr = Math.max(.55, +(T3.pr - .15).toFixed(2)); A.ult = agora; T3.ren.setPixelRatio(T3.pr); resize3d(); }
@@ -2655,7 +2655,6 @@ async function abrir3d() {
             else if (ms < 19 && T3.ssgi && T3.ssgi.stepCount.value < 8) { T3.ssgi.stepCount.value += 2; A.ult = agora; }
             else if (ms < 19 && T3.pr < T3.prMax) { T3.pr = Math.min(T3.prMax, +(T3.pr + .1).toFixed(2)); A.ult = agora; T3.ren.setPixelRatio(T3.pr); resize3d(); }
           } }
-        if (agora - T3.adapt.t > 400) { T3.adapt.n = 0; T3.adapt.t = agora; }
       }
     })();
   }
