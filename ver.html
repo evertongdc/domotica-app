@@ -721,6 +721,7 @@ window.PLANTA_CTX = {};
     qdc:             { nome: 'Quadro de energia (QDC)', sigla: 'QDC', cat: 'energia', alt: 150, parede: 1, grupo: 'Quadros' },
     quadro_automacao:{ nome: 'Quadro de automação', sigla: 'QAU', cat: 'rede',   alt: 150, parede: 1, grupo: 'Quadros' },
     quadro_rede:     { nome: 'Rack / quadro de rede', sigla: 'RK', cat: 'rede',  alt: 150, parede: 1, grupo: 'Quadros' },
+    soundbar:        { nome: 'Soundbar',         sigla: 'SB',   cat: 'som',       alt: 45,  parede: 0, grupo: 'Som' },
     outro:           { nome: 'Outro (livre)',    sigla: '?',    cat: 'outro',     alt: 100, parede: 0, grupo: 'Outro' }
   };
 
@@ -1084,6 +1085,8 @@ window.PLANTA_CTX = {};
     vaso_sanitario:{ nome: 'Vaso sanitário', sigla: 'VS', ico: '🚽', cat: 'movel', alt: 0, parede: 0, grupo: 'Banheiro', mov: [38, 65, 40], cor3: '#f4f6f8' },
     lavatorio:    { nome: 'Lavatório / pia', sigla: 'LV', ico: '🚰', cat: 'movel', alt: 0, parede: 0, grupo: 'Banheiro', mov: [60, 45, 85], cor3: '#f4f6f8' },
     box_chuveiro: { nome: 'Box de chuveiro', sigla: 'BX', ico: '🚿', cat: 'movel', alt: 0, parede: 0, grupo: 'Banheiro', mov: [90, 90, 200], cor3: '#bfe3f2' },
+    cortina_tecido:{ nome: 'Cortina de tecido', sigla: 'CO', ico: '🪟', cat: 'movel', alt: 0, parede: 0, grupo: 'Decoração e estrutura', mov: [200, 14, 250], cor3: '#d9d3c4' },
+    prateleira_vidro:{ nome: 'Prateleira de vidro', sigla: 'PV', ico: '🔹', cat: 'movel', alt: 0, parede: 0, grupo: 'Decoração e estrutura', mov: [100, 22, 1], cor3: '#bfe3f2', elev: 130 },
     planta:       { nome: 'Planta / vaso',  sigla: 'PL', ico: '🪴', cat: 'movel', alt: 0, parede: 0, grupo: 'Decoração e estrutura', mov: [40, 40, 110], cor3: '#2f7d46' },
     nicho:        { nome: 'Nicho suspenso', sigla: 'NC', ico: '🔲', cat: 'movel', alt: 0, parede: 0, grupo: 'Decoração e estrutura', mov: [250, 35, 35], cor3: '#e5e7eb', elev: 180 },
     piso_elevado: { nome: 'Piso elevado / tablado', sigla: 'PE', ico: '⬛', cat: 'movel', alt: 0, parede: 0, grupo: 'Decoração e estrutura', mov: [240, 200, 12], cor3: '#b8a58f' },
@@ -1512,7 +1515,8 @@ function renderSVG() {
   // paredes
   P.paredes.forEach(w => {
     const sw = Math.max(w.esp || 15, 5 * k), on = sel && sel.k === 'parede' && sel.id === w.id;
-    s += '<line x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="' + (on ? '#1e88ff' : '#1c2b3a') + '" stroke-width="' + sw + '" stroke-linecap="square" style="pointer-events:none"/>';
+    if (w.vidro) s += '<line x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="' + (on ? '#1e88ff' : (COR_VIDRO2D[w.vidro] || '#7dd3fc')) + '" stroke-width="' + Math.max(w.esp || 3, 4 * k) + '" stroke-linecap="butt" stroke-dasharray="' + (w.vidro === 'espelhado' ? '14 4' : '0') + '" style="pointer-events:none"/><line x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="#0e7490" stroke-width="1" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+    else s += '<line x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="' + (on ? '#1e88ff' : '#1c2b3a') + '" stroke-width="' + sw + '" stroke-linecap="square" style="pointer-events:none"/>';
     s += '<line data-k="parede" data-id="' + w.id + '" x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="transparent" stroke-width="' + (COARSE ? 36 : 18) + '" vector-effect="non-scaling-stroke"/>';
   });
   // aberturas
@@ -1521,7 +1525,21 @@ function renderSVG() {
     const q = wallGeo(w), cx = w.x1 + q.ux * q.L * a.t, cy = w.y1 + q.uy * q.L * a.t, h = a.larg / 2, sw = Math.max(w.esp || 15, 5 * k);
     const A = [cx - q.ux * h, cy - q.uy * h], B = [cx + q.ux * h, cy + q.uy * h], on = sel && sel.k === 'abertura' && sel.id === a.id;
     s += '<line x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="#f4f6fa" stroke-width="' + (sw + 2 * k) + '" style="pointer-events:none"/>';
-    if (a.tipo === 'porta') {
+    if (a.tipo === 'portal') {
+      const hw = Math.max(w.esp || 15, 8) / 2 + 3, cc = on ? '#1e88ff' : '#b45309';
+      [A, B].forEach(Q => { s += '<line x1="' + (Q[0] - q.nx * hw) + '" y1="' + (Q[1] - q.ny * hw) + '" x2="' + (Q[0] + q.nx * hw) + '" y2="' + (Q[1] + q.ny * hw) + '" stroke="' + cc + '" stroke-width="3" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; });
+      s += '<line x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="' + cc + '" stroke-width="1.4" stroke-dasharray="3 5" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+    } else if (a.tipo === 'portao' && a.modelo !== 'social') {
+      const mod = a.modelo || 'deslizante', cc = on ? '#1e88ff' : '#92400e', sd2 = a.lado || 1, dob2 = a.dobr || 1;
+      if (mod === 'duasfolhas') {
+        const half = a.larg / 2, M0 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+        [[A, 1], [B, -1]].forEach(q2 => { const H = q2[0], E = [H[0] + q.nx * half * sd2, H[1] + q.ny * half * sd2]; s += '<line x1="' + H[0] + '" y1="' + H[1] + '" x2="' + E[0] + '" y2="' + E[1] + '" stroke="' + cc + '" stroke-width="3.5" vector-effect="non-scaling-stroke" style="pointer-events:none"/><path d="M' + E[0] + ' ' + E[1] + 'A' + half + ' ' + half + ' 0 0 ' + ((sd2 * q2[1]) > 0 ? 0 : 1) + ' ' + M0[0] + ' ' + M0[1] + '" fill="none" stroke="' + cc + '" stroke-width="1.5" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; });
+      } else {
+        const off = (w.esp || 15) / 2 + 7, O = [q.nx * off * sd2, q.ny * off * sd2], dash = (mod === 'basculante' || mod === 'seccionado') ? ' stroke-dasharray="10 5"' : '';
+        s += '<line x1="' + (A[0] + O[0]) + '" y1="' + (A[1] + O[1]) + '" x2="' + (B[0] + O[0]) + '" y2="' + (B[1] + O[1]) + '" stroke="' + cc + '" stroke-width="5"' + dash + ' vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
+        if (mod === 'deslizante' || mod === 'ripado') { const F = dob2 > 0 ? B : A, T = dob2 > 0 ? A : B, x0 = F[0] + O[0] * 1.9, y0 = F[1] + O[1] * 1.9, dx = (T[0] - F[0]) * .35, dy = (T[1] - F[1]) * .35, L2 = Math.hypot(dx, dy) || 1, hx = dx / L2 * 14, hy = dy / L2 * 14; s += '<path d="M' + x0 + ' ' + y0 + 'l' + dx + ' ' + dy + 'm' + (-hx - hy * .5) + ' ' + (-hy + hx * .5) + 'l' + hx + ' ' + hy + 'l' + (-hx + hy * .5) + ' ' + (-hy - hx * .5) + '" stroke="' + cc + '" stroke-width="2" fill="none" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; }
+      }
+    } else if (a.tipo === 'porta' || (a.tipo === 'portao' && a.modelo === 'social')) {
       const side = a.lado || 1, dob = a.dobr || 1, Hn = dob > 0 ? A : B, Fr = dob > 0 ? B : A, E = [Hn[0] + q.nx * a.larg * side, Hn[1] + q.ny * a.larg * side];
       s += '<line x1="' + Hn[0] + '" y1="' + Hn[1] + '" x2="' + E[0] + '" y2="' + E[1] + '" stroke="' + (on ? '#1e88ff' : '#b45309') + '" stroke-width="3" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
       s += '<path d="M' + E[0] + ' ' + E[1] + 'A' + a.larg + ' ' + a.larg + ' 0 0 ' + (side * dob > 0 ? 0 : 1) + ' ' + Fr[0] + ' ' + Fr[1] + '" fill="none" stroke="' + (on ? '#1e88ff' : '#b45309') + '" stroke-width="1.5" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
@@ -1648,12 +1666,19 @@ document.addEventListener('click', e => {
 const FERR = [['sel', '☝ Selecionar / mover', 'Toque para editar. Arraste qualquer objeto (cômodo, parede, porta, janela, símbolo) para mover. Clique duplo numa parede cria um canto para mudar a forma. Arraste as bolinhas da parede para mudar os cantos.'],
   ['rabisco', '✎ Rabiscar parede', 'Desenhe com a Pencil: o traço vira parede reta e fecha nos cantos. Dedo = mover/zoom.'],
   ['parede', '▭ Parede reta', 'Clique para iniciar e clique de novo para terminar (a medida cresce junto do cursor). Também dá para arrastar, ou digitar a medida e Enter. Esc cancela.'],
-  ['porta', '⌂ Porta', 'Toque em cima de uma parede.'], ['janela', '▥ Janela', 'Toque em cima de uma parede.'],
+  ['vidro', '▯ Parede / box de vidro', 'Clique para iniciar e clique de novo para terminar, como a parede reta, mas em vidro. Escolha o tipo de vidro, as portas e o lado no painel de detalhes.'],
+  ['porta', '⌂ Porta', 'Toque em cima de uma parede.'], ['portal', '◫ Portal (sem porta)', 'Toque em cima de uma parede: abre um vão livre com batente, sem folha de porta.'], ['janela', '▥ Janela', 'Toque em cima de uma parede.'], ['portao', '▦ Portão', 'Toque em cima de uma parede (muro, garagem). Depois escolha o modelo do portão no painel.'],
   ['medir', '⇔ Medir trecho', 'Toque num trecho de parede e digite a medida do app Medidas. Os cantos se ajustam.'],
   ['ligar', '⟿ Ligar pontos', 'Toque na origem (interruptor/botão) e depois nos destinos. Escolha a tecla.'],
   ['del', '✕ Apagar', 'Toque no que quer apagar (símbolo, parede, porta/janela ou ligação).'],
   ['cal', '⌖ Calibrar fundo', 'Toque em 2 pontos de uma medida conhecida da planta importada.']];
 /* módulos do menu: cada um recolhe e expande (o estado fica salvo neste aparelho) */
+const TIPOS_VIDRO = [['transparente', 'Transparente'], ['escuro', 'Escuro (fumê)'], ['espelhado', 'Espelhado'], ['esverdeado', 'Esverdeado']], COR_VIDRO2D = { transparente: '#7dd3fc', escuro: '#475569', espelhado: '#e2e8f0', esverdeado: '#6ee7b7' };
+function aplicaPortasBox(w) {   // distribui N portas de vidro ao longo da parede de vidro (cada uma pode ter lado e dobradiça invertidos)
+  P.aberturas = P.aberturas.filter(a => !(a.parede === w.id && a.auto === 'box')); const n = Math.max(0, Math.min(6, Math.round(+w.portasBox) || 0)), q = wallGeo(w); if (!n || !w.vidro) return;
+  const larg = Math.max(40, Math.min(85, Math.floor(q.L / n) - 8)); for (let i = 0; i < n; i++) P.aberturas.push({ id: M.id(P, 'a'), tipo: 'porta', parede: w.id, t: (i + .5) / n, larg, alt: 210, peitoril: 0, lado: 1, auto: 'box' });
+}
+const MODELOS_PORTAO = [['deslizante', 'Deslizante (metalon)'], ['ripado', 'Ripado (madeira/alumínio)'], ['duasfolhas', 'De abrir, duas folhas'], ['social', 'Social / pedestre (uma folha)'], ['basculante', 'Basculante'], ['seccionado', 'Seccionado (garagem)']];
 const MODULOS = [['estrutura', '🏗', 'Estrutura', ['Quadros']], ['dispositivos', '🔌', 'Dispositivos', ['Comando', 'Tomadas', 'Clima / Motores', 'Segurança', 'Outro']], ['moveis', '🛋', 'Móveis', ['Sala', 'Quarto', 'Cozinha e jantar', 'Banheiro', 'Decoração e estrutura']], ['iluminacao', '💡', 'Iluminação', ['Iluminação']], ['tecnologia', '📡', 'Tecnologia', ['Som', 'TV / Mídia', 'Rede', 'Alexa']]];
 function modsFechados() { if (S.modsF) return S.modsF; try { S.modsF = JSON.parse(localStorage.getItem('planta_mods') || '{}') || {}; } catch (e) { S.modsF = {}; } return S.modsF; }
 function renderTools() {
@@ -1662,10 +1687,10 @@ function renderTools() {
   const usados = new Set(); MODULOS.forEach(m => m[3].forEach(g => usados.add(g))); const soltos = Object.keys(porGrupo).filter(g => !usados.has(g));
   const botao = t => { const T = M.TIPOS[t]; return '<button class="pal' + (S.tool === 'p:' + t ? ' on' : '') + '" data-tool="p:' + t + '" title="' + esc(T.nome) + '" data-busca="' + esc(semAcento(T.nome + ' ' + T.sigla + ' ' + T.grupo + ' ' + M.CATS[T.cat].nome + ' ' + (SIN[T.cat] || ''))) + '"><i style="border-color:' + M.CATS[T.cat].cor + '">' + (T.ico ? esc(T.ico) : esc(T.sigla)) + '</i>' + esc(T.nome) + '</button>'; };
   const grupos = gs => gs.filter(g => porGrupo[g]).map(g => '<div class="sec">' + esc(g) + '</div><div class="grid2">' + porGrupo[g].map(botao).join('') + '</div>').join('');
-  const ferr = ids => '<div style="display:grid;gap:5px">' + FERR.filter(f => ids.includes(f[0]) && !(f[0] === 'cal' && !P.fundo)).map(f => '<button class="tool' + (S.tool === f[0] ? ' on' : '') + '" data-tool="' + f[0] + '">' + f[1] + '</button>').join('') + '</div>';
+  const ferr = ids => '<div style="display:grid;gap:5px">' + FERR.filter(f => ids.includes(f[0]) && !(f[0] === 'cal' && !P.fundo)).map(f => '<button class="tool' + ((f[0] === 'vidro' ? (S.tool === 'parede' && S.vidro) : (S.tool === f[0] && !(f[0] === 'parede' && S.vidro))) ? ' on' : '') + '" data-tool="' + f[0] + '">' + f[1] + '</button>').join('') + '</div>';
   const conteudo = {
-    estrutura: '<div class="sec" style="margin-top:2px">Paredes, portas e janelas</div>' + ferr(['sel', 'rabisco', 'parede', 'porta', 'janela', 'medir', 'cal', 'del']) +
-      '<div class="sec">Cômodos</div><div style="display:grid;gap:5px"><button class="tool pri" data-room="novo">＋ Novo cômodo (por medidas)</button><button class="tool" data-room="mover">↔ Mover cômodo selecionado</button>' + (S.ativo ? '<button class="tool" data-room="fin">✓ Finalizar cômodo ativo</button>' : '') + '</div>',
+    estrutura: '<div class="sec" style="margin-top:2px">Paredes, vidro, portas, janelas e portões</div>' + ferr(['sel', 'rabisco', 'parede', 'vidro', 'porta', 'portal', 'janela', 'portao', 'medir', 'cal', 'del']) +
+      '<div class="sec">Cômodos</div><div style="display:grid;gap:5px"><button class="tool pri" data-room="novo">＋ Novo cômodo (por medidas)</button><button class="tool" data-room="boxvidro">▯ Box de vidro (por medidas)</button><button class="tool" data-room="mover">↔ Mover cômodo selecionado</button>' + (S.ativo ? '<button class="tool" data-room="fin">✓ Finalizar cômodo ativo</button>' : '') + '</div>',
     dispositivos: '<div class="sec" style="margin-top:2px">Ligações</div>' + ferr(['ligar']) + '<div class="sec">Teclas do próximo interruptor</div><div class="row">' + [1, 2, 3, 4].map(n => '<button data-teclas="' + n + '"' + (S.teclasNovo === n ? ' class="on"' : '') + '>' + n + '</button>').join('') + '</div>'
   };
   let h = '<div class="sheet-bar"><b>🛠 Ferramentas</b><button data-fecha="1">▾ Minimizar</button></div><input id="fPal" placeholder="🔎 Filtrar paleta (luz, som, sofá, cama…)" value="' + esc(S.filtro) + '" autocomplete="off">';
@@ -1687,6 +1712,7 @@ function renderHint() {
   if (f) h = f[2]; else if (S.tool.indexOf('p:') === 0) { const T = M.TIPOS[S.tool.slice(2)]; h = 'Toque na planta para colocar: ' + T.nome + (T.parede ? ' (gruda na parede mais próxima)' : '') + '.'; }
   let x = '<span>' + esc(h) + '</span>';
   if (S.tool === 'cal') x += '<span>' + S.cal.length + '/2 pontos</span>';
+  if (S.tool === 'parede' && S.vidro) x += '<span class="chips">' + TIPOS_VIDRO.map(v => '<button data-vt="' + v[0] + '"' + (S.vidro === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>').join('') + '</span>';
   if (S.tool === 'parede') x += '<span class="chips"><button data-h="cadeia"' + (S.cadeia ? ' class="on"' : '') + '>Encadear paredes: ' + (S.cadeia ? 'sim' : 'não') + '</button></span>' + (S.p1 ? '<span>Início marcado · clique no fim · digite medida + Enter · Esc cancela</span>' : '');
   if (S.ghost) { const g = S.ghost; x = '<span>Posicionando "' + esc(g.nome) + '" ' + fmtM(g.l) + ' × ' + fmtM(g.c) + ' m — ' + (g.valid ? (g.enc ? 'encaixado nas paredes vizinhas' : 'livre') : '✗ ' + esc(g.motivo)) + '</span><span class="chips"><button data-h="gok">✓ Colocar aqui</button><button data-h="grot">↻ Girar (R)</button><button data-h="gno">✕ Cancelar</button></span>'; }
   if (S.tool === 'ligar') {
@@ -1831,7 +1857,8 @@ function iconeReal(p, sz, accent) {
   else if (t === 'spot') g = '<circle r="44" fill="#e2e8f0" ' + ST + '/><circle r="31" fill="#cbd5e1"/><circle r="22" fill="#fff7cc" stroke="' + accent + '" stroke-width="3"/><circle r="9" fill="#fde047"/>';
   else if (t === 'plafon' || t === 'ponto_luz') g = '<circle r="46" fill="#f1f5f9" ' + ST + '/><circle r="36" fill="#fff"/><circle r="26" fill="#fef9c3" stroke="' + accent + '" stroke-width="2.5"/>';
   else if (t === 'pendente') g = '<circle r="46" fill="none" stroke="' + accent + '" stroke-width="3" stroke-dasharray="6 5"/><circle r="30" fill="#fde68a" ' + ST + '/><circle r="9" fill="#475569"/>';
-  else if (t === 'trilho') g = '<rect x="-48" y="-9" width="96" height="18" rx="5" fill="#e2e8f0" ' + ST + '/>' + [-30, 0, 30].map(x => '<circle cx="' + x + '" cy="0" r="9" fill="#fde047" stroke="#64748b" stroke-width="2"/>').join('');
+  else if (t === 'trilho') { const n2 = Math.max(1, Math.min(10, Math.round(+p.nSpots) || 3)), pr = p.corTrilho === 'preto'; g = '<g transform="rotate(' + (+p.giro || 0) + ')"><rect x="-48" y="-9" width="96" height="18" rx="5" fill="' + (pr ? '#334155' : '#e2e8f0') + '" ' + ST + '/>' + Array.from({ length: n2 }, (_, i) => -48 + 96 * (i + .5) / n2).map(x => '<circle cx="' + x + '" cy="0" r="' + Math.min(9, 40 / n2 + 2) + '" fill="#fde047" stroke="#64748b" stroke-width="2"/>').join('') + '</g>'; }
+  else if (t === 'soundbar') g = placa(96, 24, 8) + [-36, -18, 0, 18, 36].map(x => '<circle cx="' + x + '" cy="0" r="4" fill="#475569"/>').join('') + led(44, 0);
   else if (t === 'fita_led') g = '<rect x="-48" y="-8" width="96" height="16" rx="8" fill="' + accent + '" stroke="#fff" stroke-width="2"/>' + [-34, -17, 0, 17, 34].map(x => '<circle cx="' + x + '" cy="0" r="3" fill="#fff"/>').join('');
   else if (t === 'arandela') g = '<path d="M-40 10 A40 40 0 0 1 40 10 Z" fill="#fef9c3" ' + ST + '/><rect x="-40" y="10" width="80" height="12" rx="3" fill="#cbd5e1" ' + ST + '/>';
   else if (t === 'balizador') g = placa(70, 44, 6) + [-18, -6, 6, 18].map(x => '<rect x="' + (x - 3) + '" y="-12" width="6" height="24" fill="#fde047"/>').join('');
@@ -1923,7 +1950,15 @@ function renderPanel() {
     h += '<label>Posição de instalação</label><select data-f="teto" data-b="1"><option value=""' + (p.teto == null ? ' selected' : '') + '>Automático (pelo tipo' + (ehTeto(p) ? ': teto' : ': parede/piso') + ')</option><option value="1"' + (p.teto === true ? ' selected' : '') + '>Teto</option><option value="0"' + (p.teto === false ? ' selected' : '') + '>Parede / piso</option></select>';
     h += '<label>Dificuldade da instalação</label><select data-f="dificuldade">' + optSel(DIFS, p.dificuldade || '') + '</select>';
     h += '<div class="row"><div>' + fld('Altura (cm)', 'altura', p.altura, 'data-n="1" type="number"') + '</div><div><label>Cômodo</label><select data-f="comodo"><option value="">—</option>' + P.comodos.map(c => '<option value="' + c.id + '"' + (c.id === p.comodo ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select></div></div>';
-    if (p.tipo === 'tv') h += fld('Tela (polegadas) — o 3D usa a medida real', 'polegadas', p.polegadas || 50, 'data-n="1" type="number" min="20" max="110"');
+    if (p.tipo === 'tv') { const PL = [24, 32, 40, 43, 50, 55, 58, 60, 65, 70, 75, 77, 82, 85, 98, 100], pa = +p.polegadas || 50; if (PL.indexOf(pa) < 0) PL.push(pa); PL.sort((a, b) => a - b); h += '<label>Tela da TV (polegadas) — o 3D usa a medida real</label><select data-f="polegadas" data-n="1">' + PL.map(n => '<option value="' + n + '"' + (n === pa ? ' selected' : '') + '>' + n + '"' + (n === 50 ? ' (padrão)' : '') + '</option>').join('') + '</select>'; }
+    if (p.tipo === 'soundbar') h += fld('Comprimento (cm)', 'larg', p.larg || 100, 'data-n="1" type="number" min="40" max="200"');
+    if (p.tipo === 'trilho') h += '<div class="sec">Trilho eletrificado</div><div class="row"><div><label>Comprimento</label><select data-f="comp" data-n="1">' + [50, 100, 150, 200, 250, 300].map(c => '<option value="' + c + '"' + ((+p.comp || 100) === c ? ' selected' : '') + '>' + c + ' cm</option>').join('') + '</select></div><div><label>Spots / canhões</label><select data-f="nSpots" data-n="1">' + [1, 2, 3, 4, 5, 6, 8, 10].map(c => '<option value="' + c + '"' + ((+p.nSpots || 3) === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div></div><div class="row"><div><label>Cor do trilho</label><select data-f="corTrilho"><option value="branco"' + (p.corTrilho !== 'preto' ? ' selected' : '') + '>Branco</option><option value="preto"' + (p.corTrilho === 'preto' ? ' selected' : '') + '>Preto</option></select></div><div><label>Giro</label><select data-f="giro" data-n="1">' + [0, 45, 90, 135].map(c => '<option value="' + c + '"' + ((+p.giro || 0) === c ? ' selected' : '') + '>' + c + '°</option>').join('') + '</select></div></div>';
+    if (M.catDe(p) === 'luz') {
+      const K = +p.kelvin || 3000, D = p.dim == null ? 100 : +p.dim, nomeK = k => k <= 2500 ? 'âmbar' : k <= 3200 ? 'quente' : k <= 4500 ? 'neutra' : 'fria';
+      h += '<div class="sec">Cor e intensidade da luz</div>';
+      if (p.tipo !== 'fita_led') h += '<label>Temperatura de cor: <b>' + K + ' K</b> (' + nomeK(K) + ')</label><input type="range" data-f="kelvin" data-n="1" min="2000" max="6500" step="100" value="' + K + '" style="width:100%" oninput="this.previousElementSibling.querySelector(\'b\').textContent=this.value+\' K\'"><div class="row" style="gap:4px">' + [2200, 2700, 3000, 4000, 5000, 6500].map(k => '<button data-act="kelvin" data-k="' + k + '" style="flex:1;padding:4px 0;font-size:11px">' + k + '</button>').join('') + '</div>';
+      h += '<label>Dimerização: <b>' + D + '%</b></label><input type="range" data-f="dim" data-n="1" min="1" max="100" step="1" value="' + D + '" style="width:100%" oninput="this.previousElementSibling.querySelector(\'b\').textContent=this.value+\'%\'">';
+    }
     if (cmd) {
       h += '<div class="sec">Interruptor</div><div class="row"><div><label>Teclas</label><select data-f="teclas" data-n="1">' + [1, 2, 3, 4].map(n => '<option' + (n === (p.teclas || 1) ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div><div><label>Caixa</label><select data-f="caixa">' + ['4x2', '4x4', 'outra'].map(c => '<option' + (c === p.caixa ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div></div>';
       const ne = p.neutro || { modo: 'a_confirmar', origem: '', fio: 'a_definir' };
@@ -1947,6 +1982,8 @@ function renderPanel() {
     const w = getById(P.paredes, sel.id); if (!w) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Parede</div><div class="note">Comprimento total (eixo): ' + fmtM(M.comprimento(w)) + ' m. Para medir por cômodo use "Medir trecho" ou toque no número da medida.</div>';
     h += '<label>Espessura (cm)</label><input data-f="esp" data-n="1" type="number" value="' + (w.esp || 15) + '">';
+    h += '<div class="sec">Alvenaria ou vidro</div><label>Material da parede</label><select data-f="vidro"><option value="">Alvenaria</option>' + TIPOS_VIDRO.map(v => '<option value="' + v[0] + '"' + (w.vidro === v[0] ? ' selected' : '') + '>Vidro ' + v[1].toLowerCase() + '</option>').join('') + '</select>';
+    if (w.vidro) h += '<label>Portas de vidro nesta parede (box)</label><select data-f="portasBox" data-n="1">' + [0, 1, 2, 3, 4, 5, 6].map(n => '<option value="' + n + '"' + ((+w.portasBox || 0) === n ? ' selected' : '') + '>' + (n ? n + (n > 1 ? ' portas' : ' porta') : 'Nenhuma (vidro fixo)') + '</option>').join('') + '</select><div class="note">Selecione cada porta no desenho para inverter o lado em que abre ou a dobradiça.</div>';
     const tw = M.trechos(P).filter(t => t.parede === w.id && t.len >= 20);
     h += '<div class="sec">Medidas</div>' + tw.map((t, i) => '<div class="row" style="margin:3px 0"><span style="flex:3">Trecho ' + (i + 1) + ' · ' + fmtM(S.interna ? Math.max(0, t.len - t.esp) : t.len) + ' m</span><button data-act="medirlado" data-p="' + t.parede + '" data-t0="' + t.t0 + '" data-t1="' + t.t1 + '" style="flex:none">✎ Editar</button></div>').join('');
     h += '<div class="note">Arraste a parede para movê-la (ela anda para os lados). Arraste as bolinhas para mudar os cantos.</div>';
@@ -1958,13 +1995,14 @@ function renderPanel() {
     h += '<div class="sec" style="margin-top:2px">Trecho de parede</div><div class="note">Atual: ' + fmtM(S.interna ? t.len - t.esp : t.len) + ' m ' + (S.interna ? '(vão livre)' : '(eixo)') + '</div><button data-act="medirt" class="pri" style="width:100%;margin-top:8px">Digitar medida…</button>';
   } else if (sel.k === 'abertura') {
     const a = getById(P.aberturas, sel.id); if (!a) { S.sel = null; return renderPanel(); }
-    h += '<div class="sec" style="margin-top:2px">' + (a.tipo === 'porta' ? 'Porta' : 'Janela') + '</div><div class="row"><div>' + fld('Largura (cm)', 'larg', a.larg, 'data-n="1" type="number"') + '</div><div>' + fld('Altura (cm)', 'alt', a.alt, 'data-n="1" type="number"') + '</div></div>';
+    h += '<div class="sec" style="margin-top:2px">' + ({ porta: 'Porta', janela: 'Janela', portal: 'Portal (sem porta)', portao: 'Portão' }[a.tipo] || 'Abertura') + '</div><div class="row"><div>' + fld('Largura (cm)', 'larg', a.larg, 'data-n="1" type="number"') + '</div><div>' + fld('Altura (cm)', 'alt', a.alt, 'data-n="1" type="number"') + '</div></div>';
     if (a.tipo === 'janela') h += fld('Peitoril (cm)', 'peitoril', a.peitoril, 'data-n="1" type="number"');
-    h += '<div class="row" style="margin-top:8px"><button data-act="flip" title="Faz a porta abrir para o outro lado da parede">⇅ Abrir p/ outro lado</button>' + (a.tipo === 'porta' ? '<button data-act="flipdobr" title="Troca a dobradiça de lado (esquerda ⇄ direita)">⇄ Inverter dobradiça</button>' : '') + '<button class="danger" data-act="delsel">Excluir</button></div>';
+    if (a.tipo === 'portao') h += '<label>Modelo do portão</label><select data-f="modelo">' + MODELOS_PORTAO.map(m => '<option value="' + m[0] + '"' + ((a.modelo || 'deslizante') === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select><label>Posição no 3D</label><select data-f="pos"><option value="fechado"' + (a.pos !== 'aberto' ? ' selected' : '') + '>Fechado</option><option value="aberto"' + (a.pos === 'aberto' ? ' selected' : '') + '>Aberto</option></select>';
+    h += '<div class="row" style="margin-top:8px"><button data-act="flip" title="Faz a porta abrir para o outro lado da parede">⇅ Abrir p/ outro lado</button>' + ((a.tipo === 'porta' || a.tipo === 'portao') ? '<button data-act="flipdobr" title="Troca a dobradiça (ou o lado em que o portão desliza): esquerda ⇄ direita">⇄ Inverter dobradiça</button>' : '') + '<button class="danger" data-act="delsel">Excluir</button></div>';
   } else if (sel.k === 'comodo') {
     const c = getById(P.comodos, sel.id); if (!c) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Cômodo · ' + c.area.toFixed(1).replace('.', ',') + ' m²</div>' + fld('Nome', 'nome', c.nome);
-    h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Teto / forro</label><select data-f="forro">' + [['', 'Laje (teto liso)'], ['gesso', 'Forro de gesso rebaixado'], ['sanca', 'Sanca / sanca aberta'], ['pvc', 'Forro de PVC'], ['aberto', 'Teto aberto (sem cobertura)'], ['vidro', 'Teto de vidro'], ['retratil', 'Teto retrátil (abre e fecha)'], ['outro', 'Outro']].map(o => '<option value="' + o[0] + '"' + ((c.forro || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' + fld('Rebaixo do forro (cm)', 'rebaixo', c.rebaixo || 0, 'data-n="1" type="number"') + '<label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
+    h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Teto / forro</label><select data-f="forro">' + [['', 'Laje (teto liso)'], ['gesso', 'Forro de gesso rebaixado'], ['sanca', 'Sanca / sanca aberta'], ['pvc', 'Forro de PVC'], ['aberto', 'Teto aberto (sem cobertura)'], ['colonial', 'Telhado colonial à mostra'], ['convencional', 'Telhado convencional à mostra'], ['vidro', 'Teto de vidro'], ['retratil', 'Teto retrátil (abre e fecha)'], ['outro', 'Outro']].map(o => '<option value="' + o[0] + '"' + ((c.forro || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' + fld('Rebaixo do forro (cm)', 'rebaixo', c.rebaixo || 0, 'data-n="1" type="number"') + '<label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
     const lados = M.trechos(P).filter(t => t.len >= 40 && bordaDe(c.pontos, [(t.x1 + t.x2) / 2, (t.y1 + t.y2) / 2]));
     h += '<div class="sec">Medidas dos lados</div>' + (lados.length ? lados.map((t, i) => '<div class="row" style="margin:3px 0"><span style="flex:3">Lado ' + (i + 1) + ' · ' + fmtM(S.interna ? Math.max(0, t.len - t.esp) : t.len) + ' m</span><button data-act="medirlado" data-p="' + t.parede + '" data-t0="' + t.t0 + '" data-t1="' + t.t1 + '" style="flex:none">✎ Editar</button></div>').join('') : '<div class="note">Sem paredes ao redor.</div>') + '<div class="note">Para mudar a forma: clique numa parede do cômodo, depois clique duplo nela para criar um canto e arraste as bolinhas.</div>';
     h += '<div class="sec">Girar cômodo (com móveis e pontos)</div><div class="row"><button data-act="girar" data-g="-90">↺ 90°</button><button data-act="girar" data-g="90">↻ 90°</button></div><div class="row"><input id="gGraus" type="number" value="15" step="5" style="max-width:90px"><button data-act="girar" data-g="x">Girar essa quantidade de graus ↻</button></div>';
@@ -1998,6 +2036,8 @@ $('#panel').addEventListener('change', e => {
   if (t.dataset.t === 'planta') { setPath(P, f, v); if (f === 'nome') $('#fNome').value = v; }
   else { const o = alvoSel() && alvoSel()(); if (!o) return; if (f === 'comodo') v = v || null; setPath(o, f, v);
     if (S.sel.k === 'parede' && f === 'esp') M.recalc(P);
+    if (S.sel.k === 'parede' && f === 'vidro') { if (v && (o.esp || 15) > 6) o.esp = 3; if (!v) { if ((o.esp || 15) <= 6) o.esp = S.esp; o.portasBox = 0; delete o.vidro; } aplicaPortasBox(o); M.recalc(P); renderPanel(); }
+    if (S.sel.k === 'parede' && f === 'portasBox') { aplicaPortasBox(o); renderPanel(); }
     if (S.sel.k === 'ponto' && f === 'teclas') P.ligacoes = P.ligacoes.filter(l => !(l.de === o.id && (l.tecla || 1) > v));
     if (S.sel.k === 'ponto' && (f === 'neutro.modo' || f === 'teclas')) renderPanel();
     if (S.sel.k === 'ponto' && f === 'teto') { if (v === true) { const rc = getById(P.comodos, o.comodo); o.altura = Math.max(0, peDe(rc) - (rc && rc.rebaixo || 0) - 2); } renderPanel(); }
@@ -2031,6 +2071,7 @@ $('#panel').addEventListener('click', e => {
   if (a === 'usarprod') { snap(); const o = getById(P.pontos, S.sel.id); o.produtoId = b.dataset.id; const x = (S.catalogo || []).find(c => c.id === o.produtoId); if (x && !o.produto) o.produto = x.nome; return refresh(); }
   if (a === 'princ') { snap(); tornarPrincipal(b.dataset.id); return refresh(); }
   if (a === 'ligar') { S.tool = 'ligar'; S.lig = { de: S.sel.id, tecla: 1 }; return refresh(); }
+  if (a === 'kelvin') { snap(); const o = getById(P.pontos, S.sel.id); if (o) o.kelvin = +b.dataset.k; renderPanel(); return refresh({ panel: false }); }
   if (a === 'flipdobr') { snap(); const o = getById(P.aberturas, S.sel.id); o.dobr = -(o.dobr || 1); return refresh({ panel: false }); }
   if (a === 'flip') { snap(); const o = getById(P.aberturas, S.sel.id); o.lado = -(o.lado || 1); return refresh({ panel: false }); }
   if (a === 'dup') { snap(); const o = getById(P.pontos, S.sel.id), n = JSON.parse(JSON.stringify(o)); n.id = M.id(P, 'p'); n.x += 30; n.y += 30; n.parede = null; P.pontos.push(n); n.comodo = G.comodoDoPonto(P.comodos, n.x, n.y); S.sel = { k: 'ponto', id: n.id }; return refresh(); }
@@ -2087,7 +2128,7 @@ function jaCoberta(s) {
     const a = G.projT(w, s.x1, s.y1), b = G.projT(w, s.x2, s.y2); return a.d <= 3 && b.d <= 3;
   });
 }
-function addParede(s) { if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < 20 || jaCoberta(s)) return false; P.paredes.push({ id: M.id(P, 'w'), x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, esp: S.esp }); return true; }
+function addParede(s) { if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < 20 || jaCoberta(s)) return false; P.paredes.push(Object.assign({ id: M.id(P, 'w'), x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, esp: S.vidro ? 3 : S.esp }, S.vidro ? { vidro: S.vidro } : {})); return true; }
 function processarRabisco(pts) {
   let len = 0; for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
   if (len < 25) return;
@@ -2273,11 +2314,11 @@ function tocar(g, w) {
     const t = kind === 'trecho' ? M.trechos(P)[+el.dataset.i] : trechoMaisPerto(w, Math.max(40, k * 25));
     if (t) return pedirMedida(t.parede, t.t0, t.t1); return;
   }
-  if (tool === 'porta' || tool === 'janela') {
+  if (tool === 'porta' || tool === 'janela' || tool === 'portal' || tool === 'portao') {
     let b = null; P.paredes.forEach(ww => { const r = G.projT(ww, w.x, w.y); if (!b || r.d < b.d) b = { d: r.d, t: r.tc, w: ww }; });
     if (!b || b.d > Math.max(40, k * 25)) return toast('Toque em cima de uma parede.');
-    const q = wallGeo(b.w), porta = tool === 'porta', larg = porta ? 80 : 120, m = larg / 2 / q.L; if (q.L < larg + 10) return toast('Parede curta demais.');
-    snap(); const a = { id: M.id(P, 'a'), tipo: tool, parede: b.w.id, t: clamp(Math.round(b.t * q.L / 5) * 5 / q.L, m, 1 - m), larg, alt: porta ? 210 : 120, peitoril: porta ? 0 : 100, lado: 1 };
+    const q = wallGeo(b.w), LRG = { porta: 80, janela: 120, portal: 100, portao: 300 }, ALT = { porta: 210, janela: 120, portal: 210, portao: 200 }, larg = LRG[tool], m = larg / 2 / q.L; if (q.L < larg + 10) return toast('Parede curta demais.');
+    snap(); const a = { id: M.id(P, 'a'), tipo: tool, parede: b.w.id, t: clamp(Math.round(b.t * q.L / 5) * 5 / q.L, m, 1 - m), larg, alt: ALT[tool], peitoril: tool === 'janela' ? 100 : 0, lado: 1 }; if (tool === 'portao') { a.modelo = 'deslizante'; a.pos = 'fechado'; }
     P.aberturas.push(a); S.sel = { k: 'abertura', id: a.id }; S.tool = 'sel'; return refresh();
   }
   if (tool.indexOf('p:') === 0) {
@@ -2327,10 +2368,11 @@ $('#tools').addEventListener('click', async e => {
       { k: 'altura', rot: 'Altura do ponto (cm)', tipo: 'number', val: S.outro ? S.outro.altura : 100 }], 'Usar');
     if (!r) return; S.outro = { nome: r.nome.trim(), cat: r.cat, sigla: (r.sigla || r.nome || '?').trim().slice(0, 3).toUpperCase(), altura: parseFloat(r.altura) || 100 };
   }
-  S.tool = t; S.cal = []; if (t !== 'ligar') S.lig = { de: null, tecla: 1 }; if (t !== 'sel') S.sel = (S.sel && S.sel.k === 'ponto') ? S.sel : null;
+  if (t === 'vidro') { S.vidro = S.vidroTipo || 'transparente'; } else if (t === 'parede' || t === 'rabisco') S.vidro = '';
+  S.tool = t === 'vidro' ? 'parede' : t; S.cal = []; if (t !== 'ligar') S.lig = { de: null, tecla: 1 }; if (t !== 'sel') S.sel = (S.sel && S.sel.k === 'ponto') ? S.sel : null;
   refresh();
 });
-$('#hint').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.lt) { S.lig.tecla = +b.dataset.lt; renderHint(); } });
+$('#hint').addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.vt) { S.vidroTipo = S.vidro = b.dataset.vt; renderHint(); return; } if (b && b.dataset.lt) { S.lig.tecla = +b.dataset.lt; renderHint(); } });
 $('#zIn').onclick = () => { const r = rectOf(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 0.75); };
 $('#zOut').onclick = () => { const r = rectOf(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.33); };
 $('#zFit').onclick = () => { S.autoFit = true; fit(); };
@@ -2580,6 +2622,18 @@ function pisoProps(k) {
   if (k === 'porcelanato') return { map: T3.texP.porcelanato, roughness: .16, metalness: .04 };
   if (k === 'pedra') return { map: texMarmore(true), color: 0xb9bcc2, roughness: .85, metalness: 0 };
   return { map: texMarmore(true), roughness: .24, metalness: .2 };
+}
+function texTelha(kind) {   // 'colonial' (capa e canal, cerâmica) ou 'convencional' (telha de concreto)
+  T3.texTel = T3.texTel || {}; if (T3.texTel[kind]) return T3.texTel[kind]; const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+  if (kind === 'colonial') {
+    for (let i = 0; i < 8; i++) { const capa = i % 2 === 0, base = capa ? [196, 98, 58] : [150, 66, 38]; const gr = x.createLinearGradient(i * 32, 0, i * 32 + 32, 0); gr.addColorStop(0, 'rgb(' + base.map(v => v * .72 | 0) + ')'); gr.addColorStop(.5, 'rgb(' + base + ')'); gr.addColorStop(1, 'rgb(' + base.map(v => v * .72 | 0) + ')'); x.fillStyle = gr; x.fillRect(i * 32, 0, 32, 256); }
+    for (let r = 0; r < 4; r++) { const gy = x.createLinearGradient(0, r * 64, 0, r * 64 + 64); gy.addColorStop(0, 'rgba(0,0,0,.42)'); gy.addColorStop(.12, 'rgba(0,0,0,0)'); gy.addColorStop(1, 'rgba(255,200,150,.10)'); x.fillStyle = gy; x.fillRect(0, r * 64, 256, 64); }
+  } else {
+    x.fillStyle = '#6d625b'; x.fillRect(0, 0, 256, 256);
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { const ox = (r % 2) * 32, tom = 92 + Math.random() * 22 | 0; x.fillStyle = 'rgb(' + (tom + 14) + ',' + tom + ',' + (tom - 8) + ')'; x.fillRect(c * 64 + ox + 2, r * 64 + 2, 60, 60); x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(c * 64 + ox, r * 64, 2, 64); x.fillRect(0, r * 64, 256, 2.5); }
+  }
+  for (let i = 0; i < 1400; i++) { x.fillStyle = 'rgba(' + (Math.random() > .5 ? '255,235,210' : '30,20,15') + ',.07)'; x.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; return (T3.texTel[kind] = t);
 }
 function texGrao() {   // veios de madeira bem suaves (multiplica a cor do móvel)
   if (T3.texG) return T3.texG; const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 256, 256);
@@ -2874,6 +2928,12 @@ function texTela() {
   x.fillStyle = 'rgba(255,255,255,.18)'; x.beginPath(); x.arc(70, 100, 60, 0, 7); x.fill(); x.beginPath(); x.arc(190, 40, 40, 0, 7); x.fill();
   return (T3.texT = new THREE.CanvasTexture(cv));
 }
+function kelvinCor(K) {   // temperatura de cor (Kelvin) -> cor RGB
+  const t = Math.max(1000, Math.min(12000, K)) / 100; let r, g, b;
+  if (t <= 66) { r = 255; g = 99.4708 * Math.log(t) - 161.1196; } else { r = 329.6987 * Math.pow(t - 60, -.1332); g = 288.1222 * Math.pow(t - 60, -.0755); }
+  if (t >= 66) b = 255; else if (t <= 19) b = 0; else b = 138.5177 * Math.log(t - 10) - 305.0448;
+  const c = x => Math.max(0, Math.min(255, Math.round(x))); return (c(r) << 16) | (c(g) << 8) | c(b);
+}
 const hsl3 = (h) => new THREE.Color().setHSL(((h % 1) + 1) % 1, 1, .5);
 /** monta o aparelho. Convenção local: parede → costas em z=0 e frente em +Z; teto → topo em y=0, pendura para baixo (-Y); livre → centro na origem.
  *  o = { wx, wy, wz (posição no mundo, p/ efeitos), root, ceilY, dirY (rotação p/ fita), noite } → { g, set(on), tick(t) } */
@@ -2926,6 +2986,20 @@ function movel3D(p) {
     const gs = [porta(0, D / 2 - .9, std(p.cor3 || T.cor3, { roughness: .45 }), false), porta(1, D / 2 - 3.2, vidro, true), porta(2, D / 2 - 3.2, vidro, true), porta(3, D / 2 - .9, std(p.cor3 || T.cor3, { roughness: .45 }), false)];
     const x1 = gs[1].position.x, x2 = gs[2].position.x; let cur = S.movAberto[p.id] ? 1 : 0; gs[1].position.x = x1 - cur * L / 4; gs[2].position.x = x2 + cur * L / 4;
     R.tick = () => { const alvo = S.movAberto[p.id] ? 1 : 0; if (Math.abs(alvo - cur) < .002) return; cur += (alvo - cur) * .14; gs[1].position.x = x1 - cur * L / 4; gs[2].position.x = x2 + cur * L / 4; T3.sombraSuja = true; };
+  } else if (p.tipo === 'cortina_tecido') {   // varão com argolas e duas folhas de tecido pregueadas (a cor vem da roda de cores)
+    const cor = p.cor3 || T.cor3, tec = std(cor, { roughness: 1, side: THREE.DoubleSide, bumpMap: tecidoTex(), bumpScale: .6 }), metal = std(0x8d939b, { metalness: .85, roughness: .3 });
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, L + 8, 14), metal); rod.rotation.z = Math.PI / 2; rod.position.set(0, H - 3, 0); rod.castShadow = true; G3.add(rod);
+    [-1, 1].forEach(sg => { const fn = new THREE.Mesh(new THREE.SphereGeometry(2.2, 14, 10), metal); fn.position.set(sg * (L / 2 + 4.5), H - 3, 0); G3.add(fn); const sp = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, 8, 8), metal); sp.rotation.x = Math.PI / 2; sp.position.set(sg * (L / 2 - 8), H - 3, -4); G3.add(sp); });
+    const pw = L / 2 + 2, alt = H - 7, amp = Math.max(2.5, Math.min(7, D * .38)), pregas = Math.max(6, Math.round(pw / 11));
+    [-1, 1].forEach(sg => {
+      const geo = new THREE.PlaneGeometry(pw, alt, pregas * 8, 1), pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) / pw * pregas * Math.PI * 2) * amp * (.75 + .25 * (pos.getY(i) / alt + .5)));
+      geo.computeVertexNormals(); const pano = new THREE.Mesh(geo, tec); pano.position.set(sg * pw / 2 - sg * 1, alt / 2 + 2, 0); pano.castShadow = true; pano.receiveShadow = true; G3.add(pano);
+      for (let i = 0; i < pregas + 1; i++) { const rg = new THREE.Mesh(new THREE.TorusGeometry(1.7, .3, 6, 14), metal); rg.position.set(sg * (pw * i / pregas) - (sg > 0 ? 0 : 0) , H - 3, 0); rg.position.x = sg * (pw * i / pregas); rg.rotation.y = Math.PI / 2; G3.add(rg); }
+    });
+  } else if (p.tipo === 'prateleira_vidro') {   // lâmina de vidro presa na parede por dois suportes cromados
+    const esp = Math.max(.6, Math.min(3, H)), vd = new THREE.MeshStandardMaterial({ color: p.cor3 || T.cor3, transparent: true, opacity: .34, roughness: .04, metalness: .3, side: THREE.DoubleSide, depthWrite: false }), metal = std(0xc9ced6, { metalness: .9, roughness: .2 });
+    const lam = B(L, esp, D, vd, 0, 0, 0); lam.castShadow = false; B(L, esp * .25, D, std(0x8fd0b8, { transparent: true, opacity: .55, roughness: .2 }), 0, esp * .5, 0).castShadow = false;
+    [-.32, .32].forEach(f => { const bx = f * L; Cl(1.1, 1.1, 3.4, metal, bx, -3.4, -D / 2 + 3, 12); B(2.4, 1, 6, metal, bx, -1, -D / 2 + 3); B(1.4, 4.4, 1, metal, bx, -4.5, -D / 2 + .6); });
   } else if (p.tipo === 'cadeira') {
     const ass = std(p.cor3 || T.cor3, { roughness: .92, bumpMap: tecidoTex(), bumpScale: 1.1 }); B(L, 5, D, ass, 0, H * .48, 0); B(L - 4, H * .52, 4, ass, 0, H * .48, -D / 2 + 3); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(q => B(3, H * .48, 3, preto, q[0] * (L / 2 - 4), 0, q[1] * (D / 2 - 4)));
   } else if (p.tipo === 'poltrona') {
@@ -2999,7 +3073,14 @@ function aparelho3D(p, o) {
       fragmentShader: 'uniform vec2 uC; uniform float uR; uniform float uK; uniform vec3 uCol; varying vec2 vP; void main(){ float d = length(vP - uC) / uR; float a = pow(clamp(1.0 - d, 0.0, 1.0), 1.6) * uK; gl_FragColor = vec4(uCol * a, a); }' });
     const pl = new THREE.Mesh(geo, mat); pl.position.y = 1; pl.visible = false; pl.renderOrder = 2; o.root.add(pl); return pl;
   };
-  const luzGenerica = (mats, h) => { R.luz = 1; R.set = on => { mats.forEach(m => { m.emissiveIntensity = on ? 2.6 : 0; }); if (h) h.visible = on; if (o.sujar) o.sujar(); if (R.pl) R.pl.intensity = on ? R.plI : 0; }; };
+  const luzGenerica = (mats, h) => {
+    R.luz = 1; R.dim = 1; R.cor = null;   // R.dim (0 a 1) e R.cor (Kelvin) vêm do ponto: dimerização e temperatura de cor
+    R.set = on => {
+      const d = R.dim == null ? 1 : R.dim; mats.forEach(m => { m.emissiveIntensity = on ? 2.6 * d : 0; if (R.cor != null) m.emissive.setHex(R.cor); });
+      if (h) { h.visible = on; const u = h.material && h.material.uniforms; if (u) { if (h.userData.k0 == null) h.userData.k0 = u.uK.value; u.uK.value = h.userData.k0 * d; if (R.cor != null) u.uCol.value.setHex(R.cor); } }
+      if (o.sujar) o.sujar(); if (R.pl) { R.pl.intensity = on ? R.plI * d : 0; if (R.cor != null) R.pl.color.setHex(R.cor); }
+    };
+  };
   const ceilBack = o.ceilY != null ? o.ceilY : 270;
   if (t === 'interruptor' || t === 'botao') {
     const n = t === 'botao' ? 4 : Math.min(4, p.teclas || 1), W = n >= 4 ? 10.2 : 8.5, H = n >= 4 ? 10.2 : 8.5;
@@ -3043,16 +3124,17 @@ function aparelho3D(p, o) {
   if (t === 'balizador') {
     const l = luzMat(0xffc88a), h = halo(55, 0xffc88a, 0, 40); B(9, 9, 8, std(0x2a2e34, { metalness: .5 }), 0, 0, 4); B(7.4, 1.4, .4, l, 0, 0, 8.1); luzGenerica([l], h); return R;
   }
-  if (t === 'trilho') {
-    const l = luzMat(0xfff1dc), h = halo(120, 0xfff1dc, -8); B(100, 2.2, 3, std(0xe9ecef), 0, -1.1, 0);
-    [-32, 0, 32].forEach(x => { const c = Cy(2.6, 3.2, 8, std(0x1b1e23), x, -6, 0, 24); c.rotation.z = x * .004; Cy(2.1, 2.1, .3, l, x, -10.2, 0, 24); });
-    luzGenerica([l], h); return R;
+  if (t === 'trilho') {   // trilho eletrificado: comprimento, quantidade de spots/canhões e cor (branco ou preto)
+    const comp = Math.max(30, +p.comp || 100), n = Math.max(1, Math.min(10, Math.round(+p.nSpots) || 3)), preto = p.corTrilho === 'preto', cT = preto ? 0x14161a : 0xe9ecef, cS = preto ? 0x1b1e23 : 0xf4f5f7;
+    const l = luzMat(0xfff1dc), h = halo(Math.max(120, comp * 1.1), 0xfff1dc, -8); B(comp, 2.2, 3, std(cT, { roughness: .45, metalness: preto ? .3 : 0 }), 0, -1.1, 0);
+    for (let i = 0; i < n; i++) { const x = -comp / 2 + comp * (i + .5) / n, c = Cy(2.6, 3.2, 9, std(cS, { roughness: .4, metalness: .25 }), x, -6.5, 0, 24); c.rotation.z = Math.sin(i * 1.7) * .12; Cy(2.1, 2.1, .3, l, x, -11, 0, 24); B(1.6, 3, 1.6, std(cT), x, -2.4, 0); }
+    if (p.giro) G3.rotation.y = -(+p.giro) * Math.PI / 180; luzGenerica([l], h); return R;
   }
   if (t === 'fita_led') {
     const L = p.comp || 200, N = 48, segs = [], base = B(L, .9, 1.6, std(0xdfe3e8), 0, -.45, 0);
     for (let i = 0; i < N; i++) { const m = new THREE.MeshBasicMaterial({ color: 0x2a2d33, toneMapped: false }), s2 = new THREE.Mesh(new THREE.BoxGeometry(L / N * .96, 1.1, 2), m); s2.position.set(-L / 2 + L / N * (i + .5), -1.35, 0); G3.add(s2); segs.push(m); }
-    R.on = false; R.set = on => { R.on = on; if (!on) segs.forEach(m => m.color.set(0x2a2d33)); if (R.pl) R.pl.intensity = on ? R.plI : 0; if (o.sujar) o.sujar(); };
-    R.tick = tt => { if (!R.on) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22)).multiplyScalar(1.15)); if (R.pl) R.pl.color.copy(hsl3(.5 - tt * .22)); };
+    R.on = false; R.dim = 1; R.set = on => { R.on = on; if (!on) segs.forEach(m => m.color.set(0x2a2d33)); if (R.pl) R.pl.intensity = on ? R.plI * (R.dim == null ? 1 : R.dim) : 0; if (o.sujar) o.sujar(); };
+    R.tick = tt => { if (!R.on) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22)).multiplyScalar(1.15 * (R.dim == null ? 1 : R.dim))); if (R.pl) R.pl.color.copy(hsl3(.5 - tt * .22)); };
     if (o.dirY) G3.rotation.y = o.dirY; R.luz = 1; return R;
   }
   if (t === 'echo' || t === 'echo_dot' || t === 'echo_pop' || t === 'echo_studio') {
@@ -3074,6 +3156,12 @@ function aparelho3D(p, o) {
     return R;
   }
   if (t === 'hub') { Cy(4.6, 4.6, 3.2, branco, 0, 0, 0, 32); Cy(4.4, 4.4, .3, std(0x38bdf8, { emissive: new THREE.Color(0x38bdf8), emissiveIntensity: .6 }), 0, 1.7, 0); return R; }
+  if (t === 'soundbar') {   // barra de som: corpo em tecido escuro, grade frontal, LED de estado
+    const L = Math.max(40, +p.larg || 100), grade = std(0x15171b, { roughness: .95 }), corpo = std(0x1d2025, { roughness: .45, metalness: .2 });
+    B(L, 6.5, 9, corpo, 0, 0, 0); B(L - 2, 5, .6, grade, 0, 0, 4.7); B(L * .25, .5, .6, std(0x2b2f36), -L * .3, 2.2, 4.9);
+    const ledm = std(0x000000, { emissive: new THREE.Color(0x38bdf8), emissiveIntensity: 0 }); const ld = new THREE.Mesh(new THREE.CircleGeometry(.5, 12), ledm); ld.position.set(L / 2 - 4, -2, 5.05); G3.add(ld);
+    R.on = false; R.set = on => { R.on = on; ledm.emissiveIntensity = on ? 2.4 : 0; }; return R;
+  }
   if (t === 'tv') {
     const diag = p.polegadas || 50, W = diag * 2.54 * .8716, H = diag * 2.54 * .4903, D = 4.2, tela = std(0x050608, { roughness: .12, metalness: .55, emissive: new THREE.Color(0xffffff), emissiveIntensity: 0 });
     B(W, H, D, std(0x0d0f12, { roughness: .4, metalness: .3 }), 0, 0, D / 2); const sc = new THREE.Mesh(new THREE.PlaneGeometry(W - 1.6, H - 1.6), tela); sc.position.set(0, 0, D + .05); G3.add(sc); B(W * .5, 1, .6, std(0x1c1f24), 0, -H / 2 + 1.2, D + .02);
@@ -3207,11 +3295,17 @@ function build3dTudo(reenquadrar) {
   const altW = w => { const m = [(w.x1 + w.x2) / 2, (w.y1 + w.y2) / 2], tol = (w.esp || 15) / 2 + 4; let h = 0; P.comodos.forEach(c => { if (G.dentro(c.pontos, m[0], m[1]) || distPoly(c.pontos, m) <= tol) h = Math.max(h, peDe(c)); }); return h || Hn; };
   const tetoDe = c => peDe(c) - ((c && c.rebaixo) || 0);
   const yPonto = p => { const c = getById(P.comodos, p.comodo), lim = ehTeto(p) ? tetoDe(c) - 2 : peDe(c); return clamp(alturaDe(p), 5, Math.max(10, lim)); };
-  const RE = !!T3.real, mWall = new THREE.MeshStandardMaterial({ color: RE ? 0x1f2329 : NT ? 0x14171c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: RE ? .9 : NT ? .7 : .9 });
+  const RE = !!T3.real, mWallBase = new THREE.MeshStandardMaterial({ color: RE ? 0x1f2329 : NT ? 0x14171c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: RE ? .9 : NT ? .7 : .9 });
   const mTop = new THREE.MeshStandardMaterial({ color: NT ? 0x262b33 : 0xd5dbe5 });
   const mLed = new THREE.MeshStandardMaterial({ color: 0xff8a2a, emissive: 0xff7a14, emissiveIntensity: 1.0 });
-  const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = m.receiveShadow = true; g.add(m); };
-  P.paredes.forEach(w => {
+  const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = !mat.transparent; m.receiveShadow = true; g.add(m); };
+  const vcache = {}; const vidroMat = k => vcache[k || 'transparente'] || (vcache[k || 'transparente'] = (() => {   // tipos de vidro: transparente, escuro, espelhado, esverdeado
+    const d = { escuro: { color: 0x10151b, opacity: .62, roughness: .04, metalness: .35 }, espelhado: { color: 0xd5dce4, opacity: 1, roughness: .03, metalness: 1 }, esverdeado: { color: 0x7fc9a9, opacity: .3, roughness: .04, metalness: .15 } }[k] || { color: 0xcfe8f5, opacity: .16, roughness: .02, metalness: .1 };
+    const mv = new THREE.MeshStandardMaterial({ color: d.color, transparent: d.opacity < 1, opacity: d.opacity, roughness: d.roughness, metalness: d.metalness, side: THREE.DoubleSide, depthWrite: d.opacity >= 1, envMapIntensity: 1.6 }); mv.userData.vidro = true; return mv;
+  })());
+  const mAlum = new THREE.MeshStandardMaterial({ color: RE ? 0x1a1d22 : 0x8d97a3, metalness: .6, roughness: .35 });
+  P.paredes.forEach(w0 => {
+    const w = w0.vidro ? Object.assign({}, w0, { esp: 1.2 }) : w0, mWall = w0.vidro ? vidroMat(w0.vidro) : mWallBase;   // parede de vidro: lâmina fina e material de vidro
     const Hw = modo === 'corte' ? Math.min(110, altW(w)) : altW(w);
     const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
     let cur = -(w.esp || 15) / 2;
@@ -3220,26 +3314,56 @@ function build3dTudo(reenquadrar) {
       const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : 0, y1 = Math.min(Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
       if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
       if (y1 > y0) {
-        const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), mT = Math.max(1, (o.u1 - o.u0));
+        const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = o.a.tipo;
         const pB = (bw, bh, bd, mt, lu, ly, lz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mt); m.position.set(w.x1 + q.ux * lu - q.uy * lz, ly, w.y1 + q.uy * lu + q.ux * lz); m.rotation.y = rotW; m.castShadow = true; g.add(m); return m; };
-        if (o.a.tipo === 'janela') {
-          const mFr = new THREE.MeshStandardMaterial({ color: RE ? 0x15181d : 0x8d97a3, metalness: .55, roughness: .38 }), cx = (o.u0 + o.u1) / 2;
-          const vid = new THREE.MeshStandardMaterial({ color: RE ? 0x9ec3e8 : 0x7fc4ff, transparent: true, opacity: RE ? .2 : .35, roughness: .03, metalness: RE ? .75 : 0, depthWrite: false });
-          const gl = pB(wl - 4, hh - 4, 1, vid, cx, (y0 + y1) / 2, 0); gl.castShadow = false;
-          [[wl, 3, 0, y1 - 1.5], [wl, 3, 0, y0 + 1.5]].forEach(f => pB(f[0], f[1], esp * .6, mFr, cx, f[3], 0)); [-1, 1].forEach(sg => pB(3, hh, esp * .6, mFr, cx + sg * (wl / 2 - 1.5), (y0 + y1) / 2, 0));
-          if (wl > 110) pB(2.4, hh - 4, esp * .5, mFr, cx, (y0 + y1) / 2, 0);
+        const mAl = new THREE.MeshStandardMaterial({ color: RE ? 0x15181d : 0x8d97a3, metalness: .55, roughness: .38 }), mWd = new THREE.MeshStandardMaterial({ color: RE ? 0x6a4528 : 0xa8743b, roughness: .5, map: RE ? texGrao() : null });
+        const mMt = new THREE.MeshStandardMaterial({ color: RE ? 0x23272d : 0x59616d, metalness: .6, roughness: .45 }), mPr = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: .85, roughness: .25 }), mAcab = new THREE.MeshStandardMaterial({ color: RE ? 0x353a42 : 0xdfe3e8, roughness: .6 });
+        if (tipoA === 'janela') {
+          const gv = vidroMat(vid ? w.vidro : 'transparente'), gl = pB(wl - 4, hh - 4, 1, gv, cx, (y0 + y1) / 2, 0); gl.castShadow = false;
+          [[wl, 3, y1 - 1.5], [wl, 3, y0 + 1.5]].forEach(f => pB(f[0], f[1], esp * .6, mAl, cx, f[2], 0)); [-1, 1].forEach(sg => pB(3, hh, esp * .6, mAl, cx + sg * (wl / 2 - 1.5), (y0 + y1) / 2, 0));
+          if (wl > 110) pB(2.4, hh - 4, esp * .5, mAl, cx, (y0 + y1) / 2, 0);
           pB(wl + 6, 2.5, esp + 6, new THREE.MeshStandardMaterial({ color: RE ? 0x3a3f47 : 0xe5e7eb, roughness: .5 }), cx, y0 - 1, 1.5);   // peitoril
-        } else if (o.a.tipo === 'porta') {
-          const mWd = new THREE.MeshStandardMaterial({ color: RE ? 0x6a4528 : 0xa8743b, roughness: .5, map: RE ? texGrao() : null }), cx = (o.u0 + o.u1) / 2;
-          [-1, 1].forEach(sg => pB(4.5, hh + 3, esp + 3, mWd, cx + sg * (wl / 2 - 2.2), (y0 + y1) / 2 + 1.5, 0)); pB(wl, 4.5, esp + 3, mWd, cx, y1 - 1, 0);   // batente
-          const sd = o.a.lado || 1, db = o.a.dobr || 1, hx = db > 0 ? o.u0 : o.u1;   // lado da abertura e lado da dobradiça (iguais ao desenho 2D)
-          const lf = pB(3, hh - 3, wl - 5, mWd, hx + db * 2.5, y0 + (hh - 3) / 2, sd * (esp / 2 + (wl - 5) / 2 + 1)); lf.castShadow = true;   // folha aberta (90°)
-          pB(5, 2, 2, new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: .85, roughness: .25 }), hx + db * 6.5, y0 + hh * .48, sd * (esp / 2 + wl - 12));
+        } else if (tipoA === 'porta') {
+          const hx = db > 0 ? o.u0 : o.u1;   // dobradiça (igual ao desenho 2D)
+          if (vid) {   // porta de vidro (box): folha de vidro com perfis de alumínio e puxador
+            const mV = vidroMat(w.vidro), lz = sd * (1.2 / 2 + (wl - 5) / 2 + 1); const lf = pB(.9, hh - 3, wl - 5, mV, hx + db * 1, y0 + (hh - 3) / 2, lz); lf.castShadow = false;
+            [y0 + 2, y1 - 3].forEach(yy => pB(1.8, 3.5, wl - 5, mAl, hx + db * 1, yy, lz)); pB(1.8, hh - 3, 2.4, mAl, hx + db * 1, y0 + (hh - 3) / 2, sd * (1.2 / 2 + 2 + 1));
+            pB(2, 55, 2, mPr, hx + db * 3.2, y0 + hh * .5, sd * (1.2 / 2 + wl - 14));
+          } else {
+            [-1, 1].forEach(sg => pB(4.5, hh + 3, esp + 3, mWd, cx + sg * (wl / 2 - 2.2), (y0 + y1) / 2 + 1.5, 0)); pB(wl, 4.5, esp + 3, mWd, cx, y1 - 1, 0);   // batente
+            const lf = pB(3, hh - 3, wl - 5, mWd, hx + db * 2.5, y0 + (hh - 3) / 2, sd * (esp / 2 + (wl - 5) / 2 + 1)); lf.castShadow = true;   // folha aberta (90°)
+            pB(5, 2, 2, mPr, hx + db * 6.5, y0 + hh * .48, sd * (esp / 2 + wl - 12));
+          }
+        } else if (tipoA === 'portal') {   // vão livre com batente, sem folha
+          [-1, 1].forEach(sg => pB(5, hh + 3, esp + 4, mAcab, cx + sg * (wl / 2 - 2.5), (y0 + y1) / 2 + 1.5, 0)); pB(wl, 5, esp + 4, mAcab, cx, y1 - 1.5, 0);
+        } else if (tipoA === 'portao') {
+          const mod = o.a.modelo || 'deslizante', aberto = o.a.pos === 'aberto', hp = hh - 4, zf = sd * (esp / 2 + 3);
+          if (mod === 'deslizante' || mod === 'ripado') {
+            const mp = mod === 'ripado' ? mWd : mMt, ox = aberto ? -db * (wl - 4) : 0; pB(wl * 2 + 6, 2.2, 4, mAl, cx + (aberto ? -db * wl / 2 : 0), y0 + 1, zf);   // trilho no piso
+            pB(wl - 4, 6, 3.4, mp, cx + ox, y0 + 5, zf); pB(wl - 4, 6, 3.4, mp, cx + ox, y0 + hp, zf);
+            const n = Math.floor((wl - 8) / (mod === 'ripado' ? 7 : 9)); for (let i = 0; i < n; i++) pB(mod === 'ripado' ? 5 : 2.6, hp - 10, 2.6, mp, cx + ox - (wl - 8) / 2 + (i + .5) * (wl - 8) / n, y0 + hp / 2 + 2, zf + sd * .8);
+          } else if (mod === 'duasfolhas') {
+            const lw = wl / 2 - 1.5;
+            [[o.u0, 1], [o.u1, -1]].forEach(q2 => { const fx = q2[0], dd = q2[1]; if (!aberto) { pB(lw, hp, 3.4, mMt, fx + dd * lw / 2, y0 + hp / 2 + 2, 0); pB(lw - 6, 5, 3.6, mAl, fx + dd * lw / 2, y0 + hp * .55, 0); } else { pB(3.4, hp, lw, mMt, fx + dd * 2, y0 + hp / 2 + 2, sd * (esp / 2 + lw / 2 + 1)); pB(3.6, 5, lw - 6, mAl, fx + dd * 2, y0 + hp * .55, sd * (esp / 2 + lw / 2 + 1)); } });
+          } else if (mod === 'social') {
+            const hx = db > 0 ? o.u0 : o.u1; if (!aberto) { pB(wl - 3, hp, 3.4, mMt, cx, y0 + hp / 2 + 2, 0); pB(wl - 9, 5, 3.6, mAl, cx, y0 + hp * .55, 0); } else { pB(3.4, hp, wl - 3, mMt, hx + db * 2, y0 + hp / 2 + 2, sd * (esp / 2 + (wl - 3) / 2 + 1)); }
+            pB(2, 14, 2, mPr, cx + (aberto ? 0 : db * -(wl / 2 - 8)), y0 + hh * .5, sd * (esp / 2 + 2.5));
+          } else if (mod === 'basculante') {
+            if (!aberto) pB(wl - 2, hp, 3.6, mMt, cx, y0 + hp / 2 + 2, zf); else pB(wl - 2, 3.6, hp * .92, mMt, cx, y1 - 5, sd * (esp / 2 + hp * .46));
+            if (!aberto) pB(wl - 8, 4, 3.8, mAl, cx, y0 + hp * .55, zf);
+          } else if (mod === 'seccionado') {
+            const ns = 5, hs = hp / ns; for (let i = 0; i < ns; i++) pB(wl - 2, hs - .8, 3.2, i % 2 ? mAcab : mMt, cx, aberto ? y1 - 3 - i * 4.6 : y0 + 2 + hs * (i + .5), zf + (aberto ? sd * i * .4 : 0));
+            pB(wl, 5, 6, mAl, cx, y1 - 2.5, zf);
+          }
         }
       }
       cur = o.u1;
     });
     box(cur, q.L + (w.esp || 15) / 2, 0, Hw, w, q, mWall);
+    if (w0.vidro) {   // perfis de alumínio no topo e no pé (sem cortar a passagem das portas)
+      const wp = Object.assign({}, w, { esp: 2.6 }); box(-1.3, q.L + 1.3, Hw - 3, Hw, wp, q, mAlum); let c0 = -1.3; ops.forEach(o => { if (o.u0 > c0) box(c0, o.u0, 0, 3, wp, q, mAlum); c0 = o.u1; }); box(c0, q.L + 1.3, 0, 3, wp, q, mAlum);
+      [0, q.L].forEach(u => box(u - 1.3, u + 1.3, 0, Hw, wp, q, mAlum));
+    }
     // (sem faixas de LED na base das paredes)
   });
   T3.occ = g.children.filter(o => o.isMesh && o.geometry && o.geometry.type === 'BoxGeometry' && !o.material.transparent);
@@ -3249,7 +3373,7 @@ function build3dTudo(reenquadrar) {
     const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
     const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial(Object.assign({ color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide }, RE ? pisoProps(pisoDe(c)) : { map: texMarmore(false), roughness: .38, metalness: .12 })) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; m.userData.piso = true; g.add(m);
   });
-  if (RE && modo !== 'vidro') P.paredes.forEach(w => {   // sombra suave no piso, junto de cada parede (profundidade, como nas imagens)
+  if (RE && modo !== 'vidro') P.paredes.filter(w => !w.vidro).forEach(w => {   // sombra suave no piso, junto de cada parede (profundidade, como nas imagens)
     const q = wallGeo(w), e = (w.esp || 15) / 2, gr = new THREE.Group(); gr.position.set(w.x1 + q.ux * q.L / 2, .8, w.y1 + q.uy * q.L / 2); gr.rotation.y = -Math.atan2(q.uy, q.ux);
     [-1, 1].forEach(sg => {
       const geo = new THREE.PlaneGeometry(q.L, 46); geo.rotateX(-Math.PI / 2); if (sg < 0) geo.rotateY(Math.PI);
@@ -3259,8 +3383,26 @@ function build3dTudo(reenquadrar) {
   });
   const altP = p => p.altura == null ? 100 : p.altura;
   const tetoTicks = [], tetoPick = [];
+  const telhado3 = (c, kind) => {   // telhado de duas águas à mostra: telhas, ripas, caibros, cumeeira e tesouras de madeira
+    const xs = c.pontos.map(q => q[0]), zs = c.pontos.map(q => q[1]), x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), z0 = Math.min.apply(null, zs), z1 = Math.max.apply(null, zs), W = x1 - x0, D = z1 - z0;
+    const alongX = W >= D, span = alongX ? D : W, len = alongX ? W : D, ov = 35, tan = kind === 'colonial' ? .34 : .28, yW = peDe(c), rise = span / 2 * tan, yR = yW + rise, yE = yW - ov * tan, halfH = span / 2 + ov, Ls = Math.hypot(halfH, yR - yE), th = Math.atan2(yR - yE, halfH), LL = len + 2 * ov;
+    const madeira = new THREE.MeshStandardMaterial({ color: RE ? 0x7a4e2c : 0x8a5a2b, roughness: .55, map: RE ? texGrao() : null });
+    const grupo = new THREE.Group(); grupo.position.set((x0 + x1) / 2, yR, (z0 + z1) / 2); grupo.rotation.y = alongX ? 0 : Math.PI / 2; g.add(grupo);
+    const add = (par, w_, h_, d_, mt, x, y, z, sh) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w_, h_, d_), mt); m.position.set(x, y, z); m.castShadow = sh !== false; m.receiveShadow = true; par.add(m); return m; };
+    [-1, 1].forEach(sg => {
+      const sl = new THREE.Group(); sl.position.set(0, -(Ls / 2) * Math.sin(th), sg * (Ls / 2) * Math.cos(th)); sl.rotation.x = sg * th; grupo.add(sl);
+      const mt = new THREE.MeshStandardMaterial({ map: texTelha(kind).clone(), roughness: kind === 'colonial' ? .8 : .7, metalness: 0 }); mt.map.needsUpdate = true; mt.map.repeat.set(LL / (kind === 'colonial' ? 136 : 132), Ls / (kind === 'colonial' ? 160 : 150));
+      add(sl, LL, 3, Ls, mt, 0, 0, 0);
+      for (let k = 0; k * 32 + 8 < Ls; k++) add(sl, LL, 1.6, 3.2, madeira, 0, -2.4, -Ls / 2 + 8 + k * 32, false);   // ripas
+      const nC = Math.min(60, Math.floor(LL / 46)); for (let i = 0; i <= nC; i++) add(sl, 4.5, 7, Ls, madeira, -LL / 2 + 8 + i * (LL - 16) / nC, -6.4, 0);   // caibros
+    });
+    add(grupo, LL, 9, 9, madeira, 0, -5, 0);   // cumeeira
+    const nT = Math.max(2, Math.round(len / 160)); for (let i = 0; i <= nT; i++) { const xx = -len / 2 + len * i / nT; add(grupo, 8, 9, span + 8, madeira, xx, yW - yR - 5, 0); add(grupo, 7, rise - 2, 7, madeira, xx, -rise / 2 - 1, 0); }   // tesouras
+    [-1, 1].forEach(sg => { const sh = new THREE.Shape(); sh.moveTo(-span / 2, yW - yR); sh.lineTo(span / 2, yW - yR); sh.lineTo(0, 0); const geo = new THREE.ShapeGeometry(sh); geo.rotateY(Math.PI / 2); const mEmp = mWallBase.clone(); mEmp.side = THREE.DoubleSide; const ms = new THREE.Mesh(geo, mEmp); ms.position.x = sg * len / 2; ms.receiveShadow = true; grupo.add(ms); });   // empenas
+  };
   if ($('#forro3') && $('#forro3').checked && modo !== 'corte') P.comodos.forEach(c => {
     const tipoTeto = c.forro || '';
+    if (tipoTeto === 'colonial' || tipoTeto === 'convencional') { telhado3(c, tipoTeto); return; }
     if (tipoTeto === 'aberto') return;                       // teto aberto: sem cobertura
     if (tipoTeto === 'vidro' || tipoTeto === 'retratil') {   // vidro (fixo) ou retrátil (duas folhas que deslizam; clique no botão laranja do teto)
       S.movAberto = S.movAberto || {};
@@ -3317,7 +3459,7 @@ function build3dTudo(reenquadrar) {
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
     if (M.ehMovel(p)) { const m3 = movel3D(p); m3.g.position.set(p.x, +p.elev || 0, p.y); m3.g.rotation.y = -(+p.rot || 0) * Math.PI / 180; g.add(m3.g); if (m3.tick) T3.ticks.push(m3.tick); m3.hits.forEach(m => T3.pick.push(m));
-      if (RE && !(+p.elev) && p.tipo !== 'piso_elevado' && p.tipo !== 'tapete') { const Tm = M.TIPOS[p.tipo], Lm = +p.larg || Tm.mov[0], Dm = +p.prof || Tm.mov[1], mc = new THREE.Mesh(new THREE.PlaneGeometry(Lm * 1.3, Dm * 1.3), new THREE.MeshBasicMaterial({ map: texSombra('mancha'), transparent: true, depthWrite: false })); mc.rotation.x = -Math.PI / 2; const gm = new THREE.Group(); gm.position.set(p.x, .9, p.y); gm.rotation.y = -(+p.rot || 0) * Math.PI / 180; gm.add(mc); mc.renderOrder = 1; g.add(gm); }
+      if (RE && !(+p.elev) && p.tipo !== 'piso_elevado' && p.tipo !== 'tapete' && p.tipo !== 'cortina_tecido') { const Tm = M.TIPOS[p.tipo], Lm = +p.larg || Tm.mov[0], Dm = +p.prof || Tm.mov[1], mc = new THREE.Mesh(new THREE.PlaneGeometry(Lm * 1.3, Dm * 1.3), new THREE.MeshBasicMaterial({ map: texSombra('mancha'), transparent: true, depthWrite: false })); mc.rotation.x = -Math.PI / 2; const gm = new THREE.Group(); gm.position.set(p.x, .9, p.y); gm.rotation.y = -(+p.rot || 0) * Math.PI / 180; gm.add(mc); mc.renderOrder = 1; g.add(gm); }
       return; }
     const c = getById(P.comodos, p.comodo), cp = colaNaParede3(p), topo = tetoDe(c), y = yPonto(p), pendura = ehTeto(p) && !cp.w && p.tipo !== 'pendente';
     const yDisp = cp.w ? y : (pendura ? topo : y), px = cp.w ? cp.x : p.x, pz = cp.w ? cp.z : p.y;
@@ -3327,10 +3469,11 @@ function build3dTudo(reenquadrar) {
     if (NT && A.luz && permitido.has(p.id)) criaLuz3(p, A, { px, pz, y, topo, pendura, cp, c });
     if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const rz = p.tipo === 'tv' ? 34 : (M.catDe(p) === 'energia' ? 14 : 28), z = new THREE.Mesh(new THREE.SphereGeometry(rz, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; z.userData.proxy = true; T3.zonas.push({ m: z, base: 2 * rz }); A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
     if (modo === 'solida' && (p.tipo === 'interruptor' || p.tipo === 'botao')) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texMarcador(), depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: false })); sp.scale.set(.05, .05, 1); sp.position.set(px, yDisp, pz); sp.renderOrder = 999; sp.userData = { tecla: { sw: p.id, t: 1 }, marcador: true }; g.add(sp); T3.pick.push(sp); }   // o interruptor fica na face de dentro da parede: marcador sempre visível
+    if (A.luz) { A.dim = clamp((p.dim == null ? 100 : +p.dim) / 100, .03, 1); A.cor = (p.kelvin && p.tipo !== 'fita_led') ? kelvinCor(+p.kelvin) : null; }
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
-  if (RE) g.traverse(o => { if (!(o.isMesh && o.material && 'envMapIntensity' in o.material)) return; const m = o.material; m.envMapIntensity = m === mWall ? .25 : o.userData.piso ? 1.3 : o.userData.solo ? 0 : .45; });
+  if (RE) g.traverse(o => { if (!(o.isMesh && o.material && 'envMapIntensity' in o.material)) return; const m = o.material; if (m.userData.vidro) return; m.envMapIntensity = m === mWallBase ? .25 : o.userData.piso ? 1.3 : o.userData.solo ? 0 : .45; });
   aplicaEstadosAlexa(false); atualizaTeclas3(); T3.ticks.push(ajustaZonas);
   if ($('#lig3').checked) P.ligacoes.forEach(l => {
     const a = getById(P.pontos, l.de), b = getById(P.pontos, l.para); if (!a || !b || !visivel(a) || !visivel(b)) return;
@@ -3818,7 +3961,7 @@ function carregar(p, id, foto) {
 }
 
 /* ===================== v2: filtro da paleta ===================== */
-const SIN = { luz: 'luz lampada iluminacao', som: 'som audio musica caixa', alexa: 'alexa assistente voz echo', energia: 'tomada energia eletrica', clima: 'clima motor ar', midia: 'tv midia video', seguranca: 'seguranca camera alarme sensor', rede: 'rede wifi internet', comando: 'comando interruptor botao tecla' };
+const SIN = { luz: 'luz lampada iluminacao trilho dimmer kelvin', som: 'som barra soundbar', som: 'som audio musica caixa', alexa: 'alexa assistente voz echo', energia: 'tomada energia eletrica', clima: 'clima motor ar', midia: 'tv midia video', seguranca: 'seguranca camera alarme sensor', rede: 'rede wifi internet', comando: 'comando interruptor botao tecla' };
 const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 function aplicarFiltro() {
   const q = semAcento(S.filtro).trim(); let tot = 0;
@@ -4021,10 +4164,27 @@ function iniciarNovoComodo() {
     toast('Leve o cômodo até o lugar (mouse, ou arraste na tela) e clique/confirme. R gira · Esc cancela.', 7000);
   });
 }
+function iniciarBoxVidro() {   // box de vidro por medidas: mesmo fluxo do cômodo (medir, levar até o lugar), com paredes de vidro e portas
+  return modal('Box de vidro', [
+    { k: 'nome', rot: 'Nome', tipo: 'text', val: '', ph: 'ex.: Box do banheiro' },
+    { k: 'l', rot: 'Largura — vão livre (aceita 0,90 · 90)', tipo: 'text', val: '', ph: '0,90' },
+    { k: 'c', rot: 'Comprimento — vão livre', tipo: 'text', val: '', ph: '1,20' },
+    { k: 'tipo', rot: 'Vidro', tipo: 'select', val: 'transparente', opts: TIPOS_VIDRO },
+    { k: 'portas', rot: 'Quantidade de portas', tipo: 'select', val: '1', opts: [['0', 'Nenhuma (vidro fixo)'], ['1', '1 porta'], ['2', '2 portas'], ['3', '3 portas'], ['4', '4 portas']] }], 'Posicionar',
+    'Depois é só levar o box até onde ele fica. Cada porta pode ter o lado e a dobradiça invertidos no painel.').then(r => {
+    if (!r) return; const l = G.parseCota(r.l), c = G.parseCota(r.c); if (!l || !c || l < 40 || c < 40) return toast('Medidas inválidas (mínimo 0,40 m).');
+    S.tool = 'sel'; S.sel = null; S.p1 = null; S.live = null;
+    S.ghost = { nome: (r.nome || '').trim() || 'Box de vidro', l, c, pe: 0, porta: false, vidro: r.tipo, portas: +r.portas || 0, dx: 0, dy: 0, enc: false, valid: true, motivo: '' };
+    const rc = rectOf(), w0 = toWorldXY(rc.left + rc.width / 2, rc.top + rc.height / 2); ghostMover(w0); refresh({ panel: false });
+    toast('Leve o box até o lugar e confirme. R gira · Esc cancela.', 7000);
+  });
+}
 function colocarGhost(primeiro) {
   const g = S.ghost; if (!g) return; if (!g.valid) return toast('Não dá para colocar aqui: ' + g.motivo + '.');
-  snap(); const r = M.novoComodo(P, { nome: g.nome, largura: g.l, comprimento: g.c, dx: g.dx, dy: g.dy, porta: g.porta, esp: P.paredes.length ? undefined : S.esp });
+  snap(); const idsAntes = new Set(P.paredes.map(w => w.id)); const r = M.novoComodo(P, { nome: g.nome, largura: g.l, comprimento: g.c, dx: g.dx, dy: g.dy, porta: g.porta, esp: g.vidro ? 3 : (P.paredes.length ? undefined : S.esp) });
   if (!r.ok) { undo.pop(); return toast(r.motivo); }
+  if (g.vidro) { const novas = P.paredes.filter(w => !idsAntes.has(w.id)); novas.forEach(w => { w.vidro = g.vidro; w.esp = 3; }); M.recalc(P);
+    if (g.portas && novas.length) { const mais = novas.slice().sort((a, b) => Math.hypot(b.x2 - b.x1, b.y2 - b.y1) - Math.hypot(a.x2 - a.x1, a.y2 - a.y1))[0]; mais.portasBox = g.portas; aplicaPortasBox(mais); } }
   S.ghost = null; { const cn = getById(P.comodos, r.comodoId); if (cn && g.pe) cn.pe = g.pe; } S.ativo = r.comodoId; S.sel = r.comodoId ? { k: 'comodo', id: r.comodoId } : null; P.calibrada = true; refresh(); if (primeiro) fit();
   toast('"' + g.nome + '" colocado' + (r.portas ? ' com ' + r.portas + ' porta(s) automática(s)' : '') + '.');
 }
@@ -4032,6 +4192,7 @@ function girarGhost() { const g = S.ghost; if (!g) return; const t = g.l; g.l = 
 function cancelarGhost() { S.ghost = null; refresh({ panel: false }); }
 function roomAction(a) {
   if (a === 'novo') return iniciarNovoComodo();
+  if (a === 'boxvidro') return iniciarBoxVidro();
   if (a === 'fin') return finalizarComodo(S.ativo);
   if (a === 'mover') {
     const id = (S.sel && S.sel.k === 'comodo') ? S.sel.id : S.ativo; if (!id) return toast('Selecione um cômodo (toque nele) ou escolha na barra de baixo.');
