@@ -2576,10 +2576,20 @@ $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[da
 /* ===================== 3D ===================== */
 const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
 const KL = () => (window.THREE && THREE.NOVO) ? Math.PI : 1, DEC = d => (window.THREE && THREE.NOVO) ? 0 : d;   // motor novo: luzes em unidades físicas (x π) e sem queda por distância (a planta está em cm)
-function motorNovo() { try { return localStorage.getItem('planta_motor') === 'novo' || /[?&]motor=novo/.test(location.search); } catch (e) { return /[?&]motor=novo/.test(location.search); } }
+function motorEscolhido() { const q = (location.search.match(/[?&]motor=(classico|novo|webgpu)/) || [])[1]; if (q) return q; try { return localStorage.getItem('planta_motor') || 'classico'; } catch (e) { return 'classico'; } }
+function motorNovo() { return motorEscolhido() === 'novo'; }
+function motorWebGPU() { return motorEscolhido() === 'webgpu'; }
 function srgbTex(t) { if (window.THREE && THREE.NOVO) t.colorSpace = THREE.SRGBColorSpace; else t.encoding = THREE.sRGBEncoding; return t; }
 async function carregaThree() {
   if (window.THREE && THREE.OrbitControls) return;
+  if (motorWebGPU()) {   // motor WebGPU (experimental): SSGI + TRAA + bloom, modo único realista
+    const B = 'https://cdn.jsdelivr.net/npm/three@0.185.1';
+    if (!document.querySelector('script[type=importmap]')) { const im = document.createElement('script'); im.type = 'importmap'; im.textContent = JSON.stringify({ imports: { 'three': B + '/build/three.webgpu.js', 'three/webgpu': B + '/build/three.webgpu.js', 'three/tsl': B + '/build/three.tsl.js', 'three/addons/': B + '/examples/jsm/' } }); document.head.appendChild(im); }
+    const J = B + '/examples/jsm/', T = await import(B + '/build/three.webgpu.js'), TSL = await import(B + '/build/three.tsl.js');
+    const [oc, ge, sg, tr, bl] = await Promise.all([import(J + 'controls/OrbitControls.js'), import(J + 'exporters/GLTFExporter.js'), import(J + 'tsl/display/SSGINode.js'), import(J + 'tsl/display/TRAANode.js'), import(J + 'tsl/display/BloomNode.js')]);
+    const TH = Object.assign({}, T); TH.ColorManagement.enabled = false;
+    Object.assign(TH, { OrbitControls: oc.OrbitControls, GLTFExporter: ge.GLTFExporter, TSL, ssgi: sg.ssgi, traa: tr.traa, bloom: bl.bloom, NOVO: true, WEBGPU: true }); window.THREE = TH; return;
+  }
   if (!motorNovo()) {
     if (!window.THREE) await loadScript(window.PLANTA_THREE || 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
     if (!THREE.OrbitControls) await loadScript(window.PLANTA_ORBIT || 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'); return;
@@ -2599,7 +2609,9 @@ async function abrir3d() {
     try {
       await carregaThree();
     } catch (e) { return toast('Não consegui carregar o 3D: ' + e.message, 5000); }
-    const c = $('#c3d'); T3.ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); T3.ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    const c = $('#c3d');
+    if (THREE.WEBGPU) { T3.ren = new THREE.WebGPURenderer({ antialias: false }); await T3.ren.init(); T3.prMax = Math.min(1.5, window.devicePixelRatio || 1); T3.pr = T3.prMax; T3.ren.setPixelRatio(T3.pr); T3.backend = T3.ren.backend && T3.ren.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'; }
+    else { T3.ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); T3.ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); }
     c.insertBefore(T3.ren.domElement, c.firstChild);
     T3.ren.shadowMap.enabled = true; T3.ren.shadowMap.autoUpdate = false; T3.ren.shadowMap.type = THREE.PCFSoftShadowMap; if (THREE.NOVO) T3.ren.outputColorSpace = THREE.SRGBColorSpace; else T3.ren.outputEncoding = THREE.sRGBEncoding;
     T3.scene = new THREE.Scene(); T3.scene.background = new THREE.Color(0xe9eef5);
@@ -2616,23 +2628,34 @@ async function abrir3d() {
     el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; const u = alvo3(e); if (!u) return; if (u.mov) { S.movAberto = S.movAberto || {}; S.movAberto[u.mov] = !S.movAberto[u.mov]; T3.sombraSuja = true; } else if (u.tecla) tocaTecla3(u.tecla.sw, u.tecla.t, !!u.marcador); else alternarDisp3(u.dev); });
     el3.addEventListener('pointermove', e => { if (T3.fp.on) { if (e.buttons) { const dx = e.clientX - (T3.fp.lx == null ? e.clientX : T3.fp.lx), dy = e.clientY - (T3.fp.ly == null ? e.clientY : T3.fp.ly); T3.fp.yaw -= dx * .0045; T3.fp.pitch = Math.max(-1.25, Math.min(1.25, T3.fp.pitch + dy * .0045)); T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; } else el3.style.cursor = alvo3(e) ? 'pointer' : 'grab'; return; } if (e.buttons) return; el3.style.cursor = alvo3(e) ? 'pointer' : ''; });
     el3.addEventListener('wheel', e => { if (!T3.fp.on) return; e.preventDefault(); T3.cam.fov = Math.max(35, Math.min(100, T3.cam.fov + e.deltaY * .03)); T3.cam.updateProjectionMatrix(); }, { passive: false });
-    T3.draw = () => { if (T3.real && T3.comp) T3.comp.render(); else T3.ren.render(T3.scene, T3.cam); };
+    T3.draw = () => { if (T3.rp) T3.rp.render(); else if (T3.real && T3.comp) T3.comp.render(); else T3.ren.render(T3.scene, T3.cam); };
     /* desempenho: a cena fica na GPU; só desenha quando algo muda (câmera, aparelho, animação) e usa qualidade reduzida durante o movimento, refinando quando para */
     T3.until = 0; T3.moveUntil = 0;
     T3.wake = ms => { const t = performance.now() + (ms || 400); if (t > T3.until) T3.until = t; };
-    T3.mover = () => { T3.moveUntil = performance.now() + 220; T3.wake(520); };
+    T3.mover = () => { T3.moveUntil = performance.now() + 220; T3.wake(THREE.WEBGPU ? 1400 : 520); };
     T3.animando = () => { for (const k in (T3.devs || {})) { const d = T3.devs[k]; if (d.A && d.A.on && d.A.tick) return true; } return false; };
     T3.rapido = () => { const r = T3.ren, tm = r.toneMapping, ex = r.toneMappingExposure; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.0; r.render(T3.scene, T3.cam); r.toneMapping = tm; r.toneMappingExposure = ex; };
     T3.stats = { quadros: 0, ocupado: 0 };
     (function loop() {
       T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt));
-      if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; T3.sombraSuja = false; T3.wake(350); }
+      if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; if (THREE.WEBGPU) T3.scene.traverse(o => { if (o.isLight && o.castShadow && o.shadow) { o.shadow.autoUpdate = false; o.shadow.needsUpdate = true; } }); T3.sombraSuja = false; T3.wake(350); }
       const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update();
       const c = T3.cam, kc = c.position.x.toFixed(1) + '|' + c.position.y.toFixed(1) + '|' + c.position.z.toFixed(1) + '|' + c.quaternion.x.toFixed(4) + '|' + c.quaternion.y.toFixed(4) + '|' + c.quaternion.z.toFixed(4) + '|' + c.fov + '|' + T3.ren.domElement.width;
       if (kc !== T3.kc) { T3.kc = kc; T3.mover(); }
       const agora = performance.now(); if (!(T3.fp.on || agora < T3.until || T3.animando())) return;
       const t0 = performance.now(); if (T3.real && T3.comp && agora < T3.moveUntil && !T3.fp.on) T3.rapido(); else T3.draw();
       T3.stats.quadros++; T3.stats.ocupado += performance.now() - t0;
+      if (THREE.WEBGPU) {   // qualidade adaptativa: ajusta a resolução (e os passos do SSGI) para ficar entre 30 e 60 FPS, sem trocar de modo
+        const A = T3.adapt || (T3.adapt = { n: 0, t: agora, ult: 0 }); A.n++;
+        if (A.n >= 24) { const ms = (agora - A.t) / A.n; A.n = 0; A.t = agora; T3.msQuadro = ms;
+          if (agora - A.ult > 1500) {
+            if (ms > 30 && T3.pr > .55) { T3.pr = Math.max(.55, +(T3.pr - .15).toFixed(2)); A.ult = agora; T3.ren.setPixelRatio(T3.pr); resize3d(); }
+            else if (ms > 30 && T3.ssgi && T3.ssgi.stepCount.value > 4) { T3.ssgi.stepCount.value -= 2; A.ult = agora; }
+            else if (ms < 19 && T3.ssgi && T3.ssgi.stepCount.value < 8) { T3.ssgi.stepCount.value += 2; A.ult = agora; }
+            else if (ms < 19 && T3.pr < T3.prMax) { T3.pr = Math.min(T3.prMax, +(T3.pr + .1).toFixed(2)); A.ult = agora; T3.ren.setPixelRatio(T3.pr); resize3d(); }
+          } }
+        if (agora - T3.adapt.t > 400) { T3.adapt.n = 0; T3.adapt.t = agora; }
+      }
     })();
   }
   await carregaAlexa(); await carregaTuya(); resize3d(); build3d(true); prepararBrilho();
@@ -2712,7 +2735,22 @@ function tecidoTex() {   // trama de tecido (relevo)
 }
 /* brilho (bloom) e tom de cinema: as luzes e fitas de LED ganham halo como nas imagens de renderização */
 async function prepararBrilho() {
-  if (T3.comp || T3.brilhoTentou) return; T3.brilhoTentou = true;
+  if (T3.comp || T3.rp || T3.brilhoTentou) return; T3.brilhoTentou = true;
+  if (THREE.WEBGPU) {   // SSGI (luz indireta + oclusão) -> TRAA (anti-serrilhado temporal) -> bloom; tom de cinema e sRGB na saída do renderizador
+    try {
+      const { pass, mrt, output, normalView, diffuseColor, velocity, add, vec4, packNormalToRGB, unpackRGBToNormal, sample } = THREE.TSL;
+      const rp = new THREE.RenderPipeline(T3.ren), sp = pass(T3.scene, T3.cam);
+      sp.setMRT(mrt({ output, diffuseColor, normal: packNormalToRGB(normalView), velocity }));
+      const col = sp.getTextureNode('output'), dif = sp.getTextureNode('diffuseColor'), dep = sp.getTextureNode('depth'), nor = sp.getTextureNode('normal'), vel = sp.getTextureNode('velocity');
+      sp.getTexture('diffuseColor').type = THREE.UnsignedByteType; sp.getTexture('normal').type = THREE.UnsignedByteType;
+      const nrm = sample(uv => unpackRGBToNormal(nor.sample(uv))), gi = THREE.ssgi(col, dep, nrm, T3.cam);
+      gi.sliceCount.value = 2; gi.stepCount.value = 8; gi.radius.value = 14; gi.thickness.value = 25; gi.giIntensity.value = 6; gi.aoIntensity.value = 1.1;
+      const comp = vec4(add(col.rgb.mul(gi.getAONode().r), dif.rgb.mul(gi.getGINode().rgb)), col.a), aa = THREE.traa(comp, dep, vel, T3.cam);
+      const bl = THREE.bloom(aa, .45, .3, 1.4); rp.outputNode = aa.add(bl);
+      T3.rp = rp; T3.ssgi = gi; T3.ssao = null; T3.bloom = bl; resize3d(); aplicarVisual();
+    } catch (e) { T3.rp = null; console.warn('Pipeline WebGPU indisponível:', e && e.message); }
+    return;
+  }
   if (THREE.NOVO) {   // motor novo: GTAO (oclusão de luz de melhor qualidade), brilho e tom de cinema
     try {
       const sz = T3.ren.getDrawingBufferSize(new THREE.Vector2()), rt = new THREE.WebGLRenderTarget(sz.x, sz.y, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, samples: 4 });
@@ -3204,6 +3242,7 @@ function aparelho3D(p, o) {
   // poça de luz no piso, recortada pelo polígono do cômodo (a luz nunca vaza para outro cômodo); z = quanto a luz avança da parede
   const raioSala = () => { if (!o.poly || o.poly.length < 3) return 300; const xs = o.poly.map(q => q[0]), ys = o.poly.map(q => q[1]); return Math.hypot(Math.max.apply(null, xs) - Math.min.apply(null, xs), Math.max.apply(null, ys) - Math.min.apply(null, ys)) * .85; };
   const halo = (raio, cor, y, z) => {
+    if (THREE.WEBGPU) return new THREE.Object3D();
     const cx = o.wx + (o.nx || 0) * (z || 0), cz = o.wz + (o.nz || 0) * (z || 0); let geo;
     if (o.poly && o.poly.length > 2) { const sh = new THREE.Shape(); o.poly.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); }); geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); }
     else { geo = new THREE.CircleGeometry(raio, 48); geo.rotateX(Math.PI / 2); geo.translate(cx, 0, cz); }
@@ -3665,7 +3704,8 @@ function focarComodo(c) {
   const xs = c.pontos.map(p => p[0]), ys = c.pontos.map(p => p[1]), w = Math.max.apply(null, xs) - Math.min.apply(null, xs), h = Math.max.apply(null, ys) - Math.min.apply(null, ys), d = Math.max(w, h) * 1.05 + 180;
   T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
 }
-$('#bMotor').textContent = 'Motor: ' + (motorNovo() ? 'novo (beta)' : 'clássico'); $('#bMotor').onclick = () => { if (!confirm('Trocar o motor gráfico do 3D? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor', motorNovo() ? 'classico' : 'novo'); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=novo/, '') + location.hash; };
+{ const NOMES = { classico: 'clássico', novo: 'novo (beta)', webgpu: 'WebGPU realista (experimental)' }, PROX = { classico: 'novo', novo: 'webgpu', webgpu: 'classico' }; $('#bMotor').textContent = 'Motor: ' + NOMES[motorEscolhido()];
+  $('#bMotor').onclick = () => { const prox = PROX[motorEscolhido()]; if (!confirm('Trocar o motor gráfico do 3D para "' + NOMES[prox] + '"? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor', prox); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=(classico|novo|webgpu)/, '') + location.hash; }; }
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
 $('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   // Visão geral = casa inteira $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
