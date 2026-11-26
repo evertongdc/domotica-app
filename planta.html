@@ -52,6 +52,9 @@ section.view.on{display:flex}
 #zoombtns{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}
 #zoombtns button{width:38px;height:38px;padding:0;font-size:18px;background:rgba(11,18,32,.85);color:#fff}
 .sheet-bar{display:none}
+.pal.thumb{flex-direction:column;align-items:stretch;padding:3px;gap:0;position:relative;min-height:0}.pal.thumb img{display:block;width:100%;aspect-ratio:1;object-fit:contain;border-radius:8px;background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.10),rgba(255,255,255,.02) 70%)}
+.pal.thumb .pt-cor{position:absolute;left:5px;top:5px;width:9px;height:9px;border-radius:50%;border:2px solid;background:rgba(0,0,0,.35)}.pal.thumb:hover img{background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.2),rgba(255,255,255,.05) 70%)}
+.grid2.gthumb{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
 .mod{margin:6px 0;border:1px solid var(--gl2);border-radius:10px;overflow:hidden}.mod-h{display:flex;align-items:center;gap:7px;padding:8px 9px;cursor:pointer;user-select:none;background:rgba(127,127,127,.09);font-size:13px}.mod-h:hover{background:rgba(127,127,127,.17)}.mod-h b{flex:1;font-weight:700}.mod-h small{font-size:10px;opacity:.7;border:1px solid var(--gl2);border-radius:9px;padding:0 6px}
 .mod-seta{display:inline-block;width:12px;transition:transform .15s;font-size:11px;opacity:.7}.mod.fechado .mod-seta{transform:rotate(-90deg)}.mod-b{padding:2px 8px 8px}.mod.fechado .mod-b{display:none}.mod.busca .mod-b{display:block!important}
 .sec{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin:12px 2px 5px}
@@ -329,7 +332,7 @@ window.DOMOTICA_CFG = {
     <section id="v3d" class="view">
       <div id="bar3d">
         <label style="margin:0">Pé-direito</label><input id="pe3" type="number" style="width:84px"> <span class="note">cm</span>
-        <select id="vis3" title="Visual do 3D"><option value="real">Realista</option><option value="realleve">Realista (leve)</option><option value="noite">Noturno</option><option value="dia">Claro</option></select>
+        <button id="bMotor" title="Troca o motor gráfico do 3D: clássico (estável) ou novo (beta, com oclusão de luz GTAO)">Motor: clássico</button><select id="vis3" title="Visual do 3D"><option value="real">Realista</option><option value="realleve">Realista (leve)</option><option value="noite">Noturno</option><option value="dia">Claro</option></select>
         <select id="modo3"><option value="solida">Paredes sólidas</option><option value="vidro">Paredes translúcidas</option><option value="corte">Corte (110 cm)</option></select>
         <label style="margin:0"><input type="checkbox" id="lig3" checked style="width:auto"> ligações</label>
         <label style="margin:0"><input type="checkbox" id="forro3" checked style="width:auto"> forro/teto</label>
@@ -1759,8 +1762,9 @@ function renderTools() {
   const F = modsFechados(), porGrupo = {};
   Object.keys(M.TIPOS).forEach(t => { const g = M.TIPOS[t].grupo; (porGrupo[g] = porGrupo[g] || []).push(t); });
   const usados = new Set(); MODULOS.forEach(m => m[3].forEach(g => usados.add(g))); const soltos = Object.keys(porGrupo).filter(g => !usados.has(g));
-  const botao = t => { const T = M.TIPOS[t]; return '<button class="pal' + (S.tool === 'p:' + t ? ' on' : '') + '" data-tool="p:' + t + '" title="' + esc(T.nome) + '" data-busca="' + esc(semAcento(T.nome + ' ' + T.sigla + ' ' + T.grupo + ' ' + M.CATS[T.cat].nome + ' ' + (SIN[T.cat] || ''))) + '"><i style="border-color:' + M.CATS[T.cat].cor + '">' + (T.ico ? esc(T.ico) : esc(T.sigla)) + '</i>' + esc(T.nome) + '</button>'; };
-  const grupos = gs => gs.filter(g => porGrupo[g]).map(g => '<div class="sec">' + esc(g) + '</div><div class="grid2">' + porGrupo[g].map(botao).join('') + '</div>').join('');
+  const botao = t => { const T = M.TIPOS[t], img = M.thumbs && M.thumbs[t]; if (img) return '<button class="pal thumb' + (S.tool === 'p:' + t ? ' on' : '') + '" data-tool="p:' + t + '" title="' + esc(T.nome) + '" aria-label="' + esc(T.nome) + '" data-busca="' + esc(semAcento(T.nome + ' ' + T.sigla + ' ' + T.grupo + ' ' + M.CATS[T.cat].nome + ' ' + (SIN[T.cat] || ''))) + '"><span class="pt-cor" style="border-color:' + M.CATS[T.cat].cor + '"></span><img src="' + img + '" alt="' + esc(T.nome) + '" draggable="false"></button>';
+    return '<button class="pal' + (S.tool === 'p:' + t ? ' on' : '') + '" data-tool="p:' + t + '" title="' + esc(T.nome) + '" data-busca="' + esc(semAcento(T.nome + ' ' + T.sigla + ' ' + T.grupo + ' ' + M.CATS[T.cat].nome + ' ' + (SIN[T.cat] || ''))) + '"><i style="border-color:' + M.CATS[T.cat].cor + '">' + (T.ico ? esc(T.ico) : esc(T.sigla)) + '</i>' + esc(T.nome) + '</button>'; };
+  const grupos = gs => gs.filter(g => porGrupo[g]).map(g => '<div class="sec">' + esc(g) + '</div><div class="grid2' + (M.thumbs ? ' gthumb' : '') + '">' + porGrupo[g].map(botao).join('') + '</div>').join('');
   const ferr = ids => '<div style="display:grid;gap:5px">' + FERR.filter(f => ids.includes(f[0]) && !(f[0] === 'cal' && !P.fundo)).map(f => '<button class="tool' + ((f[0] === 'vidro' ? (S.tool === 'parede' && S.vidro) : (S.tool === f[0] && !(f[0] === 'parede' && S.vidro))) ? ' on' : '') + '" data-tool="' + f[0] + '">' + f[1] + '</button>').join('') + '</div>';
   const conteudo = {
     estrutura: '<div class="sec" style="margin-top:2px">Paredes, vidro, portas, janelas e portões</div>' + ferr(['sel', 'rabisco', 'parede', 'vidro', 'porta', 'portal', 'janela', 'portao', 'medir', 'cal', 'del']) +
@@ -1779,6 +1783,32 @@ function renderTools() {
 const BARRA_DET = '<div class="sheet-bar"><b>ⓘ Detalhes</b><button data-fecha="1">▾ Minimizar</button></div>';
 { const rp0 = renderPanel; renderPanel = function () { rp0.apply(this, arguments); const el = $('#panel'); if (el && !el.querySelector('.sheet-bar')) el.insertAdjacentHTML('afterbegin', BARRA_DET); }; }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.sheet-bar [data-fecha]'); if (b) { fechaFolhas(); } });
+/* Miniaturas: cada item do catálogo é desenhado a partir do próprio modelo 3D (como o catálogo do Floorplanner), num mini visualizador fora da tela. Ficam guardadas neste aparelho. */
+async function prepararMiniaturas() {
+  if (M.thumbs || M.thumbsTentou) return; M.thumbsTentou = true; const CH = 'planta_thumbs_v3';
+  try { const c = JSON.parse(localStorage.getItem(CH) || 'null'); if (c && c.n === Object.keys(M.TIPOS).length) { M.thumbs = c.t; renderTools(); return; } } catch (e) { }
+  try {
+    await carregaThree(); const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(176, 176); R.setClearColor(0x000000, 0); if (THREE.NOVO) R.outputColorSpace = THREE.SRGBColorSpace; else R.outputEncoding = THREE.sRGBEncoding;
+    R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = .92;
+    const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(28, 1, 1, 6000), k = KL();
+    sc.add(new THREE.HemisphereLight(0xdfe8ff, 0x5c5046, .55 * k)); const d1 = new THREE.DirectionalLight(0xffffff, .95 * k); d1.position.set(1.2, 1.6, 1.4); sc.add(d1); const d2 = new THREE.DirectionalLight(0xffe2c0, .3 * k); d2.position.set(-1.5, .6, .8); sc.add(d2);
+    const zon0 = T3.zonas, pk0 = T3.pick; T3.zonas = []; T3.pick = []; const out = {}, raiz = new THREE.Group(); sc.add(raiz);
+    for (const t of Object.keys(M.TIPOS)) {
+      const Tp = M.TIPOS[t]; while (raiz.children.length) raiz.remove(raiz.children[0]); let obj = null, A = null;
+      try {
+        if (Tp.mov) { obj = movel3D({ id: 'thumb', tipo: t, larg: Tp.mov[0], prof: Tp.mov[1], alt3: Tp.mov[2], cor3: Tp.cor3, rot: 0 }).g; }
+        else { const o = { wx: 0, wy: 0, wz: 0, nx: 0, nz: 1, root: new THREE.Group(), ceilY: 270, noite: false, dirY: 0, poly: null, sujar: () => { } }; A = aparelho3D({ id: 'thumb', tipo: t, teclas: t === 'interruptor' ? 2 : 1, polegadas: 50, altura: Tp.alt }, o); obj = A.g; try { A.set(true); if (A.setTecla && A.teclas) A.teclas.forEach((q, i) => A.setTecla(i, i === 0)); } catch (e) { } }
+      } catch (e) { (M.thumbsErro = M.thumbsErro || []).push(t + ': ' + (e && e.message)); continue; }
+      if (!obj) continue; raiz.add(obj); raiz.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(obj); if (bb.isEmpty()) continue;
+      const ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()), rad = Math.max(sz.length() / 2, 4), dir = Tp.teto ? new THREE.Vector3(1, -.55, 1.5) : (Tp.parede ? new THREE.Vector3(.9, .45, 1.7) : new THREE.Vector3(1, .85, 1.25));
+      dir.normalize(); cam.position.copy(ctr).addScaledVector(dir, rad / Math.sin(THREE.MathUtils.degToRad(28 / 2)) * .92); cam.near = rad * .05; cam.far = rad * 40; cam.updateProjectionMatrix(); cam.lookAt(ctr);
+      R.render(sc, cam); out[t] = R.domElement.toDataURL('image/png');
+    }
+    T3.zonas = zon0; T3.pick = pk0; R.dispose(); try { R.forceContextLoss(); } catch (e) { }
+    M.thumbs = out; try { localStorage.setItem(CH, JSON.stringify({ n: Object.keys(M.TIPOS).length, t: out })); } catch (e) { }
+    renderTools();
+  } catch (e) { console.warn('Miniaturas indisponíveis:', e && e.message); }
+}
 function alternaModulo(id) { const F = modsFechados(); F[id] = !F[id]; try { localStorage.setItem('planta_mods', JSON.stringify(F)); } catch (e) { } const el = document.querySelector('#tools .mod[data-modulo="' + id + '"]'); if (el) el.classList.toggle('fechado', !!F[id]); }
 function renderHint() {
   let h = '';
@@ -2618,18 +2648,33 @@ $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[da
 
 /* ===================== 3D ===================== */
 const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
+const KL = () => (window.THREE && THREE.NOVO) ? Math.PI : 1, DEC = d => (window.THREE && THREE.NOVO) ? 0 : d;   // motor novo: luzes em unidades físicas (x π) e sem queda por distância (a planta está em cm)
+function motorNovo() { try { return localStorage.getItem('planta_motor') === 'novo' || /[?&]motor=novo/.test(location.search); } catch (e) { return /[?&]motor=novo/.test(location.search); } }
+function srgbTex(t) { if (window.THREE && THREE.NOVO) t.colorSpace = THREE.SRGBColorSpace; else t.encoding = THREE.sRGBEncoding; return t; }
+async function carregaThree() {
+  if (window.THREE && THREE.OrbitControls) return;
+  if (!motorNovo()) {
+    if (!window.THREE) await loadScript(window.PLANTA_THREE || 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+    if (!THREE.OrbitControls) await loadScript(window.PLANTA_ORBIT || 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'); return;
+  }
+  const B = 'https://cdn.jsdelivr.net/npm/three@0.185.1';   // versão fixada (a mesma que o gerador de lightmaps aceita)
+  if (!document.querySelector('script[type=importmap]')) { const im = document.createElement('script'); im.type = 'importmap'; im.textContent = JSON.stringify({ imports: { 'three': B + '/build/three.module.js', 'three/addons/': B + '/examples/jsm/' } }); document.head.appendChild(im); }
+  const J = B + '/examples/jsm/', T = await import(B + '/build/three.module.js');
+  const [oc, ec, rp, sp, ub, ga, ge] = await Promise.all([import(J + 'controls/OrbitControls.js'), import(J + 'postprocessing/EffectComposer.js'), import(J + 'postprocessing/RenderPass.js'), import(J + 'postprocessing/ShaderPass.js'), import(J + 'postprocessing/UnrealBloomPass.js'), import(J + 'postprocessing/GTAOPass.js'), import(J + 'exporters/GLTFExporter.js')]);
+  const TH = Object.assign({}, T); TH.ColorManagement.enabled = false;   // mantém o mesmo tratamento de cor do motor clássico
+  Object.assign(TH, { OrbitControls: oc.OrbitControls, EffectComposer: ec.EffectComposer, RenderPass: rp.RenderPass, ShaderPass: sp.ShaderPass, UnrealBloomPass: ub.UnrealBloomPass, GTAOPass: ga.GTAOPass, GLTFExporter: ge.GLTFExporter, NOVO: true }); window.THREE = TH;
+}
 function loadScript(u) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = u; s.onload = ok; s.onerror = () => no(new Error('Falha ao carregar ' + u)); document.head.appendChild(s); }); }
 async function abrir3d() {
   const prev3 = $('#com3').value; $('#pe3').value = P.peDireito; $('#com3').innerHTML = '<option value="">Todos os cômodos</option>' + P.comodos.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('');
   $('#com3').value = (prev3 && getById(P.comodos, prev3)) ? prev3 : '';
   if (!T3.ok) {
     try {
-      if (!window.THREE) await loadScript(window.PLANTA_THREE || 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
-      if (!THREE.OrbitControls) await loadScript(window.PLANTA_ORBIT || 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js');
+      await carregaThree();
     } catch (e) { return toast('Não consegui carregar o 3D: ' + e.message, 5000); }
     const c = $('#c3d'); T3.ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); T3.ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     c.insertBefore(T3.ren.domElement, c.firstChild);
-    T3.ren.shadowMap.enabled = true; T3.ren.shadowMap.autoUpdate = false; T3.ren.shadowMap.type = THREE.PCFSoftShadowMap; T3.ren.outputEncoding = THREE.sRGBEncoding;
+    T3.ren.shadowMap.enabled = true; T3.ren.shadowMap.autoUpdate = false; T3.ren.shadowMap.type = THREE.PCFSoftShadowMap; if (THREE.NOVO) T3.ren.outputColorSpace = THREE.SRGBColorSpace; else T3.ren.outputEncoding = THREE.sRGBEncoding;
     T3.scene = new THREE.Scene(); T3.scene.background = new THREE.Color(0xe9eef5);
     T3.cam = new THREE.PerspectiveCamera(40, 1, 5, 12000); T3.ctl = new THREE.OrbitControls(T3.cam, T3.ren.domElement); T3.ctl.enableDamping = true;
     T3.amb = new THREE.AmbientLight(0xffffff, .5); T3.scene.add(T3.amb); T3.hemi = new THREE.HemisphereLight(0x8fa4c8, 0x1a1410, 0); T3.scene.add(T3.hemi); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); d.castShadow = true; d.shadow.mapSize.set(2048, 2048); d.shadow.bias = -0.0005; T3.scene.add(d); T3.scene.add(d.target); T3.sun = d;
@@ -2675,9 +2720,10 @@ function texMarmore(claro) {
   for (let i = 0; i < 900 * k; i++) { const b = claro ? 18 : 0; x.fillStyle = 'rgba(' + (50 + b + Math.random() * 34 | 0) + ',' + (52 + b + Math.random() * 34 | 0) + ',' + (58 + b + Math.random() * 34 | 0) + ',.12)'; x.fillRect(Math.random() * N, Math.random() * N, (2 + Math.random() * 40) * k, (2 + Math.random() * 40) * k); }
   for (let v = 0; v < 14 * (claro ? 2 : 1); v++) { x.beginPath(); let px = Math.random() * N, py = Math.random() * N; x.moveTo(px, py); for (let q = 0; q < 8; q++) { px += (Math.random() - .5) * 150 * k; py += (Math.random() - .5) * 150 * k; x.lineTo(px, py); } x.strokeStyle = 'rgba(210,214,224,' + (.06 + Math.random() * (claro ? .2 : .12)) + ')'; x.lineWidth = (.5 + Math.random() * 1.6) * k; x.stroke(); }
   x.strokeStyle = 'rgba(0,0,0,.28)'; x.lineWidth = 2 * k; x.strokeRect(0, 0, N, N);
-  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / (claro ? 200 : 160), 1 / (claro ? 200 : 160)); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; return (T3[ch] = t);
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / (claro ? 200 : 160), 1 / (claro ? 200 : 160)); t.anisotropy = 8; srgbTex(t); return (T3[ch] = t);
 }
 /* reflexos: um "estúdio" com painéis de luz quente e fria é convertido em mapa de ambiente; piso, vidro e metal passam a refletir */
+const re_env = () => !!T3.env;
 function criaAmbiente() {
   if (T3.env || T3.envTentou) return T3.env; T3.envTentou = true;
   try {
@@ -2699,14 +2745,14 @@ function pisoProps(k) {
     for (let r = 0; r < N / H; r++) { let px = -Math.random() * 400; while (px < N) { const w = 300 + Math.random() * 380, tom = 100 + Math.random() * 38 | 0; x.fillStyle = 'rgb(' + (tom + 40) + ',' + (tom - 6) + ',' + (tom - 38) + ')'; x.fillRect(px, r * H, w, H);
       for (let g = 0; g < 26; g++) { x.fillStyle = 'rgba(40,22,10,' + (.04 + Math.random() * .1) + ')'; x.fillRect(px, r * H + Math.random() * H, w, .8 + Math.random() * 1.6); }
       x.fillStyle = 'rgba(15,8,3,.55)'; x.fillRect(px, r * H, 2, H); px += w; } x.fillStyle = 'rgba(15,8,3,.6)'; x.fillRect(0, r * H, N, 2.5); }
-    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 260, 1 / 260); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; T3.texP.madeira = t;
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 260, 1 / 260); t.anisotropy = 8; srgbTex(t); T3.texP.madeira = t;
   }
   if (k === 'porcelanato' && !T3.texP.porcelanato) {
     const N = 512, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'); x.fillStyle = '#a3a9b1'; x.fillRect(0, 0, N, N);
     for (let i = 0; i < 700; i++) { x.fillStyle = 'rgba(' + (150 + Math.random() * 40 | 0) + ',' + (155 + Math.random() * 40 | 0) + ',' + (162 + Math.random() * 40 | 0) + ',.12)'; x.fillRect(Math.random() * N, Math.random() * N, 3 + Math.random() * 40, 3 + Math.random() * 40); }
     for (let v = 0; v < 8; v++) { x.beginPath(); let px = Math.random() * N, py = Math.random() * N; x.moveTo(px, py); for (let q = 0; q < 6; q++) { px += (Math.random() - .5) * 120; py += (Math.random() - .5) * 120; x.lineTo(px, py); } x.strokeStyle = 'rgba(255,255,255,' + (.1 + Math.random() * .2) + ')'; x.lineWidth = .6 + Math.random(); x.stroke(); }
     x.fillStyle = '#4b5057'; x.fillRect(0, 0, N, 3); x.fillRect(0, 0, 3, N); x.fillRect(0, N / 2 - 1.5, N, 3); x.fillRect(N / 2 - 1.5, 0, 3, N);
-    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 120, 1 / 120); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; T3.texP.porcelanato = t;
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 120, 1 / 120); t.anisotropy = 8; srgbTex(t); T3.texP.porcelanato = t;
   }
   if (k === 'madeira') return { map: T3.texP.madeira, roughness: .36, metalness: 0 };
   if (k === 'porcelanato') return { map: T3.texP.porcelanato, roughness: .16, metalness: .04 };
@@ -2723,13 +2769,13 @@ function texTelha(kind) {   // 'colonial' (capa e canal, cerâmica) ou 'convenci
     for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { const ox = (r % 2) * 32, tom = 92 + Math.random() * 22 | 0; x.fillStyle = 'rgb(' + (tom + 14) + ',' + tom + ',' + (tom - 8) + ')'; x.fillRect(c * 64 + ox + 2, r * 64 + 2, 60, 60); x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(c * 64 + ox, r * 64, 2, 64); x.fillRect(0, r * 64, 256, 2.5); }
   }
   for (let i = 0; i < 1400; i++) { x.fillStyle = 'rgba(' + (Math.random() > .5 ? '255,235,210' : '30,20,15') + ',.07)'; x.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 1 + Math.random() * 2); }
-  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; return (T3.texTel[kind] = t);
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; srgbTex(t); return (T3.texTel[kind] = t);
 }
 function texGrao() {   // veios de madeira bem suaves (multiplica a cor do móvel)
   if (T3.texG) return T3.texG; const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 190; i++) { const px = Math.random() * 256, w = .6 + Math.random() * 2.4; x.fillStyle = 'rgba(0,0,0,' + (.03 + Math.random() * .09) + ')'; x.fillRect(px, 0, w, 256); }
   for (let i = 0; i < 26; i++) { const px = Math.random() * 256, py = Math.random() * 256; x.strokeStyle = 'rgba(0,0,0,.10)'; x.lineWidth = 1; x.beginPath(); x.ellipse(px, py, 3 + Math.random() * 6, 14 + Math.random() * 30, 0, 0, 6.3); x.stroke(); }
-  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return (T3.texG = t);
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; srgbTex(t); t.anisotropy = 4; return (T3.texG = t);
 }
 function tecidoTex() {   // trama de tecido (relevo)
   if (T3.texT) return T3.texT; const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'); x.fillStyle = '#808080'; x.fillRect(0, 0, 128, 128);
@@ -2740,6 +2786,18 @@ function tecidoTex() {   // trama de tecido (relevo)
 /* brilho (bloom) e tom de cinema: as luzes e fitas de LED ganham halo como nas imagens de renderização */
 async function prepararBrilho() {
   if (T3.comp || T3.brilhoTentou) return; T3.brilhoTentou = true;
+  if (THREE.NOVO) {   // motor novo: GTAO (oclusão de luz de melhor qualidade), brilho e tom de cinema
+    try {
+      const sz = T3.ren.getDrawingBufferSize(new THREE.Vector2()), rt = new THREE.WebGLRenderTarget(sz.x, sz.y, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, samples: 4 });
+      const co = new THREE.EffectComposer(T3.ren, rt); co.addPass(new THREE.RenderPass(T3.scene, T3.cam));
+      try { const ga = new THREE.GTAOPass(T3.scene, T3.cam, sz.x, sz.y); ga.updateGtaoMaterial({ radius: 38, distanceExponent: 1.5, thickness: 28, scale: 1.25, samples: 14, distanceFallOff: 1, screenSpaceRadius: false }); ga.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, radiusExponent: 1, rings: 2, samples: 14 }); co.addPass(ga); T3.ssao = ga; } catch (e) { T3.ssao = null; console.warn('GTAO indisponível:', e && e.message); }
+      T3.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x / 2, sz.y / 2), .5, .3, 1.4); co.addPass(T3.bloom);
+      T3.fin = new THREE.ShaderPass({ uniforms: { tDiffuse: { value: null }, exp: { value: 1.0 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform sampler2D tDiffuse; uniform float exp; varying vec2 vUv; vec3 aces(vec3 x){ x *= exp; return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); } void main(){ vec3 c = aces(texture2D(tDiffuse, vUv).rgb); gl_FragColor = vec4(pow(c, vec3(1.0 / 2.2)), 1.0); }' });
+      co.addPass(T3.fin); T3.comp = co; resize3d(); aplicarVisual();
+    } catch (e) { T3.comp = null; console.warn('Pós-processamento indisponível:', e && e.message); }
+    return;
+  }
   try {
     const B = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/';
     for (const f of ['shaders/CopyShader', 'shaders/LuminosityHighPassShader', 'postprocessing/EffectComposer']) if (!(f === 'postprocessing/EffectComposer' && THREE.EffectComposer)) await loadScript(B + f + '.js');
@@ -2768,7 +2826,8 @@ function aplicarVisual() {
   const comBrilho = re && !!T3.comp;   // com o brilho ligado, o tom de cinema é aplicado no passe final
   T3.scene.background.set(re ? 0x0a0c10 : n ? 0x050608 : 0xe9eef5); T3.ren.toneMapping = (n && !comBrilho) ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; T3.ren.toneMappingExposure = re ? 1.1 : n ? 1.15 : 1; if (T3.fin) T3.fin.uniforms.exp.value = 1.0;
   T3.amb.intensity = re ? .1 : n ? .10 : .5; T3.hemi.intensity = re ? .16 : n ? .16 : 0; T3.hemi.color.set(re ? 0xa9b8d6 : 0x8fa4c8); T3.hemi.groundColor.set(re ? 0x3a2a1e : 0x1a1410); T3.sun.intensity = re ? .38 : n ? .32 : .5; T3.sun.color.set(n ? 0xffe2c0 : 0xffffff);
-  T3.scene.environment = re ? criaAmbiente() : null;
+  if (THREE.NOVO) { T3.amb.intensity *= Math.PI; T3.hemi.intensity *= Math.PI; T3.sun.intensity *= Math.PI; }
+  { const envT = re ? criaAmbiente() : null; T3.scene.environment = THREE.NOVO ? null : envT; }
   const cz = $('#c3d'); if (cz) { cz.classList.toggle('real', re); cz.style.background = re ? '#0a0c10' : n ? '#050608' : ''; }
   const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, r = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300), sc = T3.sun.shadow.camera;
   T3.sun.position.set(cx + r * .5, r * 1.6, cy + r * .35); T3.sun.target.position.set(cx, 0, cy); sc.left = sc.bottom = -r * .85; sc.right = sc.top = r * .85; sc.near = 10; sc.far = r * 4; sc.updateProjectionMatrix();
@@ -3559,13 +3618,13 @@ function build3dTudo(reenquadrar) {
     const t = p.tipo, ang = (k.cp.w ? [k.cp.nx, k.cp.nz] : [0, 0]); let L, alvo = new THREE.Vector3(k.px, 0, k.pz), sombra = false;
     const raio = k.c && k.c.pontos ? (() => { const xs = k.c.pontos.map(q => q[0]), ys = k.c.pontos.map(q => q[1]); return Math.hypot(Math.max.apply(null, xs) - Math.min.apply(null, xs), Math.max.apply(null, ys) - Math.min.apply(null, ys)); })() : 500;
     const yL = k.pendura ? k.topo - 10 : k.y;
-    if (t === 'ponto_luz' || t === 'plafon') { L = new THREE.PointLight(0xffe8cc, 0, Math.max(520, raio * 1.6), 1.0); L.position.set(k.px, yL, k.pz); A.plI = 1.9; sombra = nSomP < 8 && ++nSomP; }
-    else if (t === 'pendente') { L = new THREE.PointLight(0xffbf78, 0, 420, 1.1); L.position.set(k.px, k.y - 6, k.pz); A.plI = 1.5; sombra = nSomP < 8 && ++nSomP; }
-    else if (t === 'spot') { L = new THREE.SpotLight(0xffdba6, 0, 460, .5, .45, 1.3); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 3.4, k.pz); A.plI = 3.2; sombra = nSomS < 10 && ++nSomS; }
-    else if (t === 'trilho') { L = new THREE.SpotLight(0xfff1dc, 0, 520, .8, .65, 1.2); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 12.5, k.pz); alvo.set(k.px + ang[0] * -90, 0, k.pz + ang[1] * -90); A.plI = 3; sombra = nSomS < 10 && ++nSomS; }
-    else if (t === 'arandela') { L = new THREE.SpotLight(0xffb870, 0, 300, 1.0, .95, 1.3); L.position.set(k.px + ang[0] * 10, k.y, k.pz + ang[1] * 10); alvo.set(k.px + ang[0] * 25, 0, k.pz + ang[1] * 25); A.plI = 2.6; sombra = nSomS < 10 && ++nSomS; }
-    else if (t === 'balizador') { L = new THREE.SpotLight(0xffc88a, 0, 220, .9, .85, 1.4); L.position.set(k.px + ang[0] * 12, k.y + 4, k.pz + ang[1] * 12); alvo.set(k.px + ang[0] * 45, 0, k.pz + ang[1] * 45); A.plI = 2.2; }
-    else if (t === 'fita_led') { L = new THREE.PointLight(0xff3366, 0, 300, 1.4); L.position.set(k.px, yL - 6, k.pz); A.plI = 1.1; }
+    if (t === 'ponto_luz' || t === 'plafon') { L = new THREE.PointLight(0xffe8cc, 0, Math.max(520, raio * 1.6), DEC(1.0)); L.position.set(k.px, yL, k.pz); A.plI = 1.9 * KL(); sombra = nSomP < 8 && ++nSomP; }
+    else if (t === 'pendente') { L = new THREE.PointLight(0xffbf78, 0, 420, DEC(1.1)); L.position.set(k.px, k.y - 6, k.pz); A.plI = 1.5 * KL(); sombra = nSomP < 8 && ++nSomP; }
+    else if (t === 'spot') { L = new THREE.SpotLight(0xffdba6, 0, 460, .5, .45, DEC(1.3)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 3.4, k.pz); A.plI = 3.2 * KL(); sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'trilho') { L = new THREE.SpotLight(0xfff1dc, 0, 520, .8, .65, DEC(1.2)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 12.5, k.pz); alvo.set(k.px + ang[0] * -90, 0, k.pz + ang[1] * -90); A.plI = 3 * KL(); sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'arandela') { L = new THREE.SpotLight(0xffb870, 0, 300, 1.0, .95, DEC(1.3)); L.position.set(k.px + ang[0] * 10, k.y, k.pz + ang[1] * 10); alvo.set(k.px + ang[0] * 25, 0, k.pz + ang[1] * 25); A.plI = 2.6 * KL(); sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'balizador') { L = new THREE.SpotLight(0xffc88a, 0, 220, .9, .85, DEC(1.4)); L.position.set(k.px + ang[0] * 12, k.y + 4, k.pz + ang[1] * 12); alvo.set(k.px + ang[0] * 45, 0, k.pz + ang[1] * 45); A.plI = 2.2 * KL(); }
+    else if (t === 'fita_led') { L = new THREE.PointLight(0xff3366, 0, 300, DEC(1.4)); L.position.set(k.px, yL - 6, k.pz); A.plI = 1.1 * KL(); }
     else return;
     if (L.isSpotLight) { const tg = new THREE.Object3D(); tg.position.copy(alvo); g.add(tg); L.target = tg; }
     if (sombra) { L.castShadow = true; L.shadow.mapSize.set(512, 512); L.shadow.camera.near = 4; L.shadow.camera.far = L.distance || 600; L.shadow.bias = -0.0025; L.shadow.radius = 3; }
@@ -3590,7 +3649,7 @@ function build3dTudo(reenquadrar) {
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
-  if (RE) g.traverse(o => { if (!(o.isMesh && o.material && 'envMapIntensity' in o.material)) return; const m = o.material; if (m.userData.vidro) return; m.envMapIntensity = m === mWallBase ? .25 : o.userData.piso ? 1.3 : o.userData.solo ? 0 : .45; });
+  if (RE) g.traverse(o => { if (!(o.isMesh && o.material && 'envMapIntensity' in o.material)) return; const m = o.material; if (re_env()) m.envMap = T3.env; if (m.userData.vidro) return; m.envMapIntensity = m === mWallBase ? .25 : o.userData.piso ? 1.3 : o.userData.solo ? 0 : .45; });
   aplicaEstadosAlexa(false); atualizaTeclas3(); T3.ticks.push(ajustaZonas);
   if ($('#lig3').checked) P.ligacoes.forEach(l => {
     const a = getById(P.pontos, l.de), b = getById(P.pontos, l.para); if (!a || !b || !visivel(a) || !visivel(b)) return;
@@ -3615,6 +3674,7 @@ function focarComodo(c) {
   const xs = c.pontos.map(p => p[0]), ys = c.pontos.map(p => p[1]), w = Math.max.apply(null, xs) - Math.min.apply(null, xs), h = Math.max.apply(null, ys) - Math.min.apply(null, ys), d = Math.max(w, h) * 1.05 + 180;
   T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
 }
+$('#bMotor').textContent = 'Motor: ' + (motorNovo() ? 'novo (beta)' : 'clássico'); $('#bMotor').onclick = () => { if (!confirm('Trocar o motor gráfico do 3D? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor', motorNovo() ? 'classico' : 'novo'); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=novo/, '') + location.hash; };
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
 $('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   // Visão geral = casa inteira $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
@@ -3716,7 +3776,8 @@ async function exportarBlender() {
   if (!raiz.children.length) return toast('Nada para exportar.');
   raiz.scale.setScalar(0.01);   // o editor usa centímetros; o Blender usa metros
   const nome = String(P.nome || 'planta').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_') || 'planta', arq = nome + '_3d.glb';
-  new THREE.GLTFExporter().parse(raiz, async res => {
+  const parseGLB = (cb) => { const ex = new THREE.GLTFExporter(); if (THREE.NOVO) ex.parse(raiz, cb, e => toast('Falha ao exportar: ' + (e && e.message || e), 6000), { binary: true }); else ex.parse(raiz, cb, { binary: true }); };
+  parseGLB(async res => {
     const py = SCRIPT_BLENDER.split('__GLB__').join(arq).split('__LUZES__').join(JSON.stringify(luzes)), arqPy = nome + '_render_blender.py';
     try {   // um único arquivo .zip: o navegador costuma bloquear dois downloads seguidos
       if (!window.JSZip) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
@@ -3727,7 +3788,7 @@ async function exportarBlender() {
       baixaArq(new Blob([res], { type: 'model/gltf-binary' }), arq); setTimeout(() => baixaArq(new Blob([py], { type: 'text/x-python' }), arqPy), 900);
       toast('Baixando ' + arq + ' e ' + arqPy + '. Se o navegador pedir, permita os dois downloads.', 9000);
     }
-  }, { binary: true });
+  });
 }
 $('#bBlender').onclick = exportarBlender;
 $('#bPng').onclick = () => { T3.draw(); const a = document.createElement('a'); a.href = T3.ren.domElement.toDataURL('image/png'); a.download = (P.nome || 'planta') + '_3d.png'; a.click(); };
@@ -4325,7 +4386,7 @@ $('#hint').addEventListener('click', e => {
 /* ===================== início ===================== */
 function iniciar() {
   if (CTX.clienteId) { $('#fCliente').value = CTX.clienteId; $('#fCliente').readOnly = true; } if (CTX.imovel) $('#fImovel').value = CTX.imovel;
-  $('#fNome').value = P.nome; if (S.estilo === 'real') { $('#bEstilo').textContent = 'Ícones: aparelho real'; $('#bEstilo').classList.add('on'); } renderTools(); renderPanel(); renderHint();
+  $('#fNome').value = P.nome; if (S.estilo === 'real') { $('#bEstilo').textContent = 'Ícones: aparelho real'; $('#bEstilo').classList.add('on'); } renderTools(); renderPanel(); renderHint(); setTimeout(prepararMiniaturas, 700);
   const iniciaVazio = () => { if (CTX.nova) { try { localStorage.removeItem('planta_rascunho'); history.replaceState(null, '', location.pathname + location.search.replace(/[?&]nova=1/, '').replace(/^&/, '?')); } catch (e) { } return; } try { const r = JSON.parse(localStorage.getItem('planta_rascunho') || 'null'); if (r && r.P && r.P.paredes && r.P.paredes.length && (!CTX.plantaId) && (r.ctx || '') === (CTX.clienteId || '')) { P = M.migrar(r.P); S.planoId = r.planoId || null; $('#fNome').value = P.nome; } } catch (e) { } };
   if (CTX.plantaId) { gas('Planta_abrir', CTX.plantaId).then(pl => { const f = pl.fotoDataUrl || null; delete pl.fotoDataUrl; carregar(M.migrar(pl), CTX.plantaId, f); }).catch(e => { toast('Erro ao abrir: ' + e.message, 5000); }); }
   else if (!window.PLANTA_VIEW) iniciaVazio();
