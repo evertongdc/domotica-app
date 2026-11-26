@@ -1711,7 +1711,7 @@ const BARRA_DET = '<div class="sheet-bar"><b>ⓘ Detalhes</b><button data-fecha=
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.sheet-bar [data-fecha]'); if (b) { fechaFolhas(); } });
 /* Miniaturas: cada item do catálogo é desenhado a partir do próprio modelo 3D (como o catálogo do Floorplanner), num mini visualizador fora da tela. Ficam guardadas neste aparelho. */
 async function prepararMiniaturas() {
-  if (M.thumbs || M.thumbsTentou) return; M.thumbsTentou = true; const CH = 'planta_thumbs_v3';
+  if (M.thumbs || M.thumbsTentou) return; M.thumbsTentou = true; const CH = 'planta_thumbs_v4';
   try { const c = JSON.parse(localStorage.getItem(CH) || 'null'); if (c && c.n === Object.keys(M.TIPOS).length) { M.thumbs = c.t; renderTools(); return; } } catch (e) { }
   try {
     await carregaThree(); const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(176, 176); R.setClearColor(0x000000, 0); if (THREE.NOVO) R.outputColorSpace = THREE.SRGBColorSpace; else R.outputEncoding = THREE.sRGBEncoding;
@@ -1731,6 +1731,7 @@ async function prepararMiniaturas() {
       R.render(sc, cam); out[t] = R.domElement.toDataURL('image/png');
     }
     T3.zonas = zon0; T3.pick = pk0; R.dispose(); try { R.forceContextLoss(); } catch (e) { }
+    Object.keys(MODELOS3D).forEach(t => { out[t] = URL_MODELOS + 'thumbs/' + MODELOS3D[t][0] + '.png'; });
     M.thumbs = out; try { localStorage.setItem(CH, JSON.stringify({ n: Object.keys(M.TIPOS).length, t: out })); } catch (e) { }
     renderTools();
   } catch (e) { console.warn('Miniaturas indisponíveis:', e && e.message); }
@@ -3023,7 +3024,32 @@ function movel2D(p, k, on) {
   if (!S.lod) s += '<g transform="rotate(' + (-rot) + ')" style="pointer-events:none"><text y="' + (-1 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" font-weight="700" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome || T.nome) + '</text><text y="' + (11 * k) + '" text-anchor="middle" font-size="' + 9 * k + '" fill="#64748b" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + Math.round(L) + '×' + Math.round(D) + '</text></g>';
   return s + '</g>';
 }
+/* Modelos 3D realistas (Poly Haven, CC0), hospedados junto do app. 'ajusta' estica para as medidas do móvel; 'uniforme' mantém a proporção. */
+const MODELOS3D = { sofa: ['sofa_02', 'ajusta'], poltrona: ['modern_arm_chair_01', 'uniforme'], mesa_centro: ['modern_coffee_table_01', 'ajusta'], rack_tv: ['modern_wooden_cabinet', 'ajusta'], criado_mudo: ['side_table_01', 'ajusta'], cadeira: ['dining_chair_02', 'uniforme'], mesa_redonda: ['round_wooden_table_01', 'ajusta'], planta: ['potted_plant_02', 'uniforme'] };
+const URL_MODELOS = (() => { try { return new URL('modelos/', location.href).href; } catch (e) { return 'modelos/'; } })();
+async function carregaModelos3D(tipos) {
+  if (window.PLANTA_SEM_MODELOS) return false; T3.modelos = T3.modelos || {}; T3.modFalhou = T3.modFalhou || {};
+  const faltam = [...new Set(tipos)].filter(t => MODELOS3D[t] && !T3.modelos[t] && !T3.modFalhou[t]); if (!faltam.length) return false;
+  try { if (!THREE.GLTFLoader) { if (THREE.NOVO) { const m = await import('https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/loaders/GLTFLoader.js'); THREE.GLTFLoader = m.GLTFLoader; } else await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'); } } catch (e) { faltam.forEach(t => { T3.modFalhou[t] = 1; }); return false; }
+  const ld = new THREE.GLTFLoader(); let algum = false;
+  await Promise.all(faltam.map(t => new Promise(ok => ld.load(URL_MODELOS + MODELOS3D[t][0] + '.glb', gl => {
+    const cena = gl.scene; cena.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(cena), sz = bb.getSize(new THREE.Vector3()), ct = bb.getCenter(new THREE.Vector3());
+    cena.position.set(-ct.x, -bb.min.y, -ct.z); const raiz = new THREE.Group(); raiz.add(cena);
+    cena.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    T3.modelos[t] = { obj: raiz, sx: sz.x, sy: sz.y, sz: sz.z, modo: MODELOS3D[t][1] }; algum = true; ok();
+  }, undefined, () => { T3.modFalhou[t] = 1; ok(); }))));
+  return algum;
+}
 function movel3D(p) {
+  { const MD = T3.modelos && T3.modelos[p.tipo], T0 = M.TIPOS[p.tipo];
+    if (MD && !window.PLANTA_SEM_MODELOS) {   // móvel com modelo realista: encaixa nas medidas do móvel da planta
+      const L = +p.larg || T0.mov[0], D = +p.prof || T0.mov[1], H = +p.alt3 || T0.mov[2], G3 = new THREE.Group(), c = MD.obj.clone(true);
+      const gira = (L >= D) !== (MD.sx >= MD.sz) && Math.max(MD.sx, MD.sz) / Math.max(1e-6, Math.min(MD.sx, MD.sz)) > 1.15, wx = gira ? MD.sz : MD.sx, wz = gira ? MD.sx : MD.sz;
+      if (gira) c.rotation.y = Math.PI / 2;
+      if (MD.modo === 'uniforme') c.scale.setScalar(Math.min(L / wx, D / wz, H / MD.sy));
+      else if (gira) c.scale.set(D / MD.sx, H / MD.sy, L / MD.sz); else c.scale.set(L / MD.sx, H / MD.sy, D / MD.sz);
+      G3.add(c); return { g: G3, hits: [], tick: null };
+    } }
   const T = M.TIPOS[p.tipo], L = +p.larg || T.mov[0], D = +p.prof || T.mov[1], H = +p.alt3 || T.mov[2];
   const G3 = new THREE.Group(), R = { g: G3, hits: [], tick: null };
   S.movAberto = S.movAberto || {};
@@ -3365,7 +3391,7 @@ function recorte3(c) {
    Dispositivos, móveis com animação e tudo o que se clica ficam separados e continuam sendo atualizados individualmente. */
 function fundirEstaticos(g) {
   g.updateMatrixWorld(true); const occSet = new Set(T3.occ || []), canon = new Map(), lotes = new Map(), remover = [];
-  const chave = m => [m.type, m.color && m.color.getHex(), m.emissive && m.emissive.getHex(), m.emissiveIntensity, m.roughness, m.metalness, m.opacity, m.transparent ? 1 : 0, m.side, m.depthWrite ? 1 : 0, m.envMapIntensity, m.map && m.map.uuid, m.bumpMap && m.bumpMap.uuid, m.bumpScale, m.userData && m.userData.vidro ? 1 : 0].join('|');
+  const chave = m => [m.type, m.color && m.color.getHex(), m.emissive && m.emissive.getHex(), m.emissiveIntensity, m.roughness, m.metalness, m.opacity, m.transparent ? 1 : 0, m.side, m.depthWrite ? 1 : 0, m.envMapIntensity, m.map && m.map.uuid, m.bumpMap && m.bumpMap.uuid, m.bumpScale, m.normalMap && m.normalMap.uuid, m.roughnessMap && m.roughnessMap.uuid, m.metalnessMap && m.metalnessMap.uuid, m.aoMap && m.aoMap.uuid, m.alphaMap && m.alphaMap.uuid, m.alphaTest, m.userData && m.userData.vidro ? 1 : 0].join('|');
   const c = new THREE.Vector3();
   g.traverse(o => {
     if (!o.isMesh || !o.userData.estatico || Array.isArray(o.material) || !o.geometry || o.isInstancedMesh) return; const at = o.geometry.attributes; if (!at.position || !at.normal || !at.uv) return;
@@ -3389,7 +3415,8 @@ function fundirEstaticos(g) {
 }
 function build3d(reenquadrar) { const c = comodo3(); if (!c) return build3dTudo(reenquadrar); const P0 = P; P = recorte3(c); try { return build3dTudo(reenquadrar); } finally { P = P0; } }
 function build3dTudo(reenquadrar) {
-  if (!T3.ok) return; const g = T3.grp; g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); while (g.children.length) g.children.pop();
+  if (!T3.ok) return;
+  if (!T3.modCarregando && !window.PLANTA_SEM_MODELOS) { const usados = P.pontos.map(q => q.tipo).filter(t => MODELOS3D[t] && !(T3.modelos && T3.modelos[t]) && !(T3.modFalhou && T3.modFalhou[t])); if (usados.length) { T3.modCarregando = true; carregaModelos3D(usados).then(novo => { T3.modCarregando = false; if (novo) build3d(false); }); } } const g = T3.grp; g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); while (g.children.length) g.children.pop();
   aplicarVisual(); const NT = T3.noite, modo = $('#modo3').value, Hn = P.peDireito;
   // cada parede tem a altura do pé-direito do cômodo ao lado; ponto de teto fica sob o forro (pé-direito menos o rebaixo)
   const distPoly = (poly, m) => { let d = 1e9; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; d = Math.min(d, G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, m[0], m[1]).d); } return d; };

@@ -1,0 +1,3 @@
+Modelos 3D desta pasta: Poly Haven (https://polyhaven.com), licença CC0 (domínio público).
+sofa_02, modern_arm_chair_01, modern_coffee_table_01, modern_wooden_cabinet, side_table_01, dining_chair_02, round_wooden_table_01, potted_plant_02.
+Convertidos de glTF 1k para GLB com o Blender 5.3 (sem alteração de geometria ou textura).
