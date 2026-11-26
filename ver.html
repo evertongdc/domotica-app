@@ -3451,10 +3451,17 @@ async function exportarBlender() {
   if (!raiz.children.length) return toast('Nada para exportar.');
   raiz.scale.setScalar(0.01);   // o editor usa centímetros; o Blender usa metros
   const nome = String(P.nome || 'planta').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_') || 'planta', arq = nome + '_3d.glb';
-  new THREE.GLTFExporter().parse(raiz, res => {
-    baixaArq(new Blob([res], { type: 'model/gltf-binary' }), arq);
-    setTimeout(() => baixaArq(new Blob([SCRIPT_BLENDER.split('__GLB__').join(arq).split('__LUZES__').join(JSON.stringify(luzes))], { type: 'text/x-python' }), nome + '_render_blender.py'), 600);
-    toast('Baixados: ' + arq + ' e ' + nome + '_render_blender.py. Veja as instruções no topo do .py.', 9000);
+  new THREE.GLTFExporter().parse(raiz, async res => {
+    const py = SCRIPT_BLENDER.split('__GLB__').join(arq).split('__LUZES__').join(JSON.stringify(luzes)), arqPy = nome + '_render_blender.py';
+    try {   // um único arquivo .zip: o navegador costuma bloquear dois downloads seguidos
+      if (!window.JSZip) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      const z = new JSZip(); z.file(arq, res); z.file(arqPy, py);
+      baixaArq(await z.generateAsync({ type: 'blob', compression: 'DEFLATE' }), nome + '_blender.zip');
+      toast('Baixado: ' + nome + '_blender.zip. Descompacte e siga as instruções no topo do arquivo .py.', 9000);
+    } catch (e) {
+      baixaArq(new Blob([res], { type: 'model/gltf-binary' }), arq); setTimeout(() => baixaArq(new Blob([py], { type: 'text/x-python' }), arqPy), 900);
+      toast('Baixando ' + arq + ' e ' + arqPy + '. Se o navegador pedir, permita os dois downloads.', 9000);
+    }
   }, { binary: true });
 }
 $('#bBlender').onclick = exportarBlender;
