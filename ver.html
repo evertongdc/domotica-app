@@ -14,7 +14,7 @@
   --svgf:invert(1) hue-rotate(180deg) brightness(1.35);--imgf:brightness(.74) invert(1) hue-rotate(180deg);--cvbg:#0b1220;color-scheme:dark}
 html[data-tema=claro]{--bg1:#eef2f9;--bg2:#dbe4f2;--gl:rgba(255,255,255,.75);--gl2:rgba(15,23,42,.08);--tx:#0f172a;--mu:#52607a;--bd:rgba(15,23,42,.2);--inb:#fff;--inbd:rgba(15,23,42,.22);--th:#e6ecf6;--mbox:#fff;--sheet:#fff;--dgr:#b42318;--svgf:none;--imgf:none;--cvbg:#f4f6fa;color-scheme:light}
 @media (prefers-color-scheme:light){html:not([data-tema=escuro]){--bg1:#eef2f9;--bg2:#dbe4f2;--gl:rgba(255,255,255,.75);--gl2:rgba(15,23,42,.08);--tx:#0f172a;--mu:#52607a;--bd:rgba(15,23,42,.2);--inb:#fff;--inbd:rgba(15,23,42,.22);--th:#e6ecf6;--mbox:#fff;--sheet:#fff;--dgr:#b42318;--svgf:none;--imgf:none;--cvbg:#f4f6fa;color-scheme:light}}
-#svg{filter:var(--svgf)}#imgF{filter:var(--imgf)}#svg image.topo{filter:var(--imgf)}
+#svg{filter:var(--svgf)}#imgF{filter:var(--imgf)}#svg image.topo,#svg .entorno{filter:var(--imgf)}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:var(--tx);font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
@@ -1496,7 +1496,7 @@ function renderSVG() {
   S.lod = k > 3.6 ? 2 : k > 2.2 ? 1 : 0;   // 0 = perto (tudo), 1 = médio (sem textos secundários), 2 = longe (só cômodos e pontos pequenos)
   svg.setAttribute('viewBox', V.x + ' ' + V.y + ' ' + W + ' ' + H);
   // grade
-  let g = '<rect x="' + V.x + '" y="' + V.y + '" width="' + W + '" height="' + H + '" fill="#f4f6fa"/>';
+  let g = '<rect x="' + V.x + '" y="' + V.y + '" width="' + W + '" height="' + H + '" fill="#f4f6fa"/>' + (P.entornoCor ? '<rect class="entorno" x="' + V.x + '" y="' + V.y + '" width="' + W + '" height="' + H + '" fill="' + P.entornoCor + '"/>' : '');
   const grade = (step, cor) => { let s = ''; const a = Math.floor(V.x / step) * step, b = Math.floor(V.y / step) * step;
     for (let x = a; x < V.x + W; x += step) s += 'M' + x + ' ' + V.y + 'V' + (V.y + H);
     for (let y = b; y < V.y + H; y += step) s += 'M' + V.x + ' ' + y + 'H' + (V.x + W);
@@ -1700,7 +1700,7 @@ function renderTools() {
   const conteudo = {
     estrutura: '<div class="sec" style="margin-top:2px">Paredes, vidro, portas, janelas e portões</div>' + ferr(['sel', 'rabisco', 'parede', 'vidro', 'porta', 'portal', 'janela', 'portao', 'medir', 'cal', 'del']) +
       '<div class="sec">Cômodos</div><div style="display:grid;gap:5px"><button class="tool pri" data-room="novo">＋ Novo cômodo (por medidas)</button><button class="tool" data-room="boxvidro">▯ Box de vidro (por medidas)</button><button class="tool" data-room="mover">↔ Mover cômodo selecionado</button>' + (S.ativo ? '<button class="tool" data-room="fin">✓ Finalizar cômodo ativo</button>' : '') + '</div>',
-    pisos: '<div class="note" style="margin:4px 0 6px">Escolha o piso e a cor e toque dentro do cômodo.</div><div class="grid2 gthumb">' + PISOS.map(q => '<button class="pal thumb' + (S.tool === 'piso:' + q[0] ? ' on' : '') + '" data-tool="piso:' + q[0] + '" title="' + q[1] + '" aria-label="' + q[1] + '">' + (M.pisoAmostra && M.pisoAmostra[q[0]] ? '<img src="' + M.pisoAmostra[q[0]] + '" alt="' + q[1] + '">' : '<i style="border-color:#a16207">' + q[1].slice(0, 2) + '</i>') + '<span style="font-size:10.5px;text-align:center;opacity:.85">' + q[1] + '</span></button>').join('') + '</div><div class="row" style="margin-top:8px;align-items:end"><div><label>Cor do piso</label><input type="color" id="corPisoPal" value="' + (S.pisoCor || '#ffffff') + '"></div><div><button id="corPisoOrig" class="' + (S.pisoCor ? '' : 'on') + '">Cor original</button></div></div>',
+    pisos: '<div class="note" style="margin:4px 0 6px">Escolha o piso e a cor e toque dentro do cômodo.</div><div class="grid2 gthumb">' + PISOS.map(q => '<button class="pal thumb' + (S.tool === 'piso:' + q[0] ? ' on' : '') + '" data-tool="piso:' + q[0] + '" title="' + q[1] + '" aria-label="' + q[1] + '">' + (M.pisoAmostra && M.pisoAmostra[q[0]] ? '<img src="' + M.pisoAmostra[q[0]] + '" alt="' + q[1] + '">' : '<i style="border-color:#a16207">' + q[1].slice(0, 2) + '</i>') + '<span style="font-size:10.5px;text-align:center;opacity:.85">' + q[1] + '</span></button>').join('') + '</div><div class="row" style="margin-top:8px;align-items:end"><div><label>Cor do piso</label><input type="color" id="corPisoPal" value="' + (S.pisoCor || '#ffffff') + '"></div><div><button id="corPisoOrig" class="' + (S.pisoCor ? '' : 'on') + '">Cor original</button></div></div><div class="sec">Ao redor da planta</div><div class="row" style="align-items:end"><div><label>Cor do entorno (2D e 3D)</label><input type="color" id="corEntorno" value="' + (P.entornoCor || '#1c2430') + '"></div><div><button id="corEntorno0" class="' + (P.entornoCor ? '' : 'on') + '">Padrão</button></div></div>',
     dispositivos: '<div class="sec" style="margin-top:2px">Ligações</div>' + ferr(['ligar']) + '<div class="sec">Teclas do próximo interruptor</div><div class="row">' + [1, 2, 3, 4].map(n => '<button data-teclas="' + n + '"' + (S.teclasNovo === n ? ' class="on"' : '') + '>' + n + '</button>').join('') + '</div>'
   };
   let h = '<div class="sheet-bar"><b>🛠 Ferramentas</b><button data-fecha="1">▾ Minimizar</button></div><input id="fPal" placeholder="🔎 Filtrar paleta (luz, som, sofá, cama…)" value="' + esc(S.filtro) + '" autocomplete="off">';
@@ -3600,7 +3600,7 @@ function build3dTudo(reenquadrar) {
     // (sem faixas de LED na base das paredes)
   });
   T3.occ = g.children.filter(o => o.isMesh && o.geometry && o.geometry.type === 'BoxGeometry' && !o.material.transparent);
-  if (NT) { const b0 = bbox(), gp = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x0a0b0e, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.set((b0.x0 + b0.x1) / 2, -.5, (b0.y0 + b0.y1) / 2); gp.receiveShadow = true; gp.userData.solo = true; gp.userData.estatico = true; g.add(gp); }
+  if (NT) { const b0 = bbox(), gp = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: P.entornoCor ? new THREE.Color(P.entornoCor) : 0x0a0b0e, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.set((b0.x0 + b0.x1) / 2, -.5, (b0.y0 + b0.y1) / 2); gp.receiveShadow = true; gp.userData.solo = true; gp.userData.estatico = true; g.add(gp); }
   const cores = [0xb9d3f0, 0xf0d2a8, 0xb8e0c6, 0xd6bfee, 0xf2dc8c, 0xa9dde6];
   P.comodos.forEach((c, i) => {
     const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
@@ -4245,8 +4245,8 @@ function aplicarFiltro() {
   document.querySelectorAll('#tools .mod').forEach(md => { const n = [...md.querySelectorAll('.pal')].filter(b => b.style.display !== 'none' && b.dataset.tool !== 'p:outro').length; md.style.display = q && !n ? 'none' : ''; md.classList.toggle('busca', !!q && n > 0); });
   const m = $('#palVazio'); if (m) m.style.display = q && tot <= 1 ? '' : 'none';
 }
-$('#tools').addEventListener('click', e => { const h = e.target.closest('.mod-h'); if (h) alternaModulo(h.dataset.mod); if (e.target.id === 'corPisoOrig') { S.pisoCor = ''; renderTools(); renderHint(); } });
-$('#tools').addEventListener('change', e => { if (e.target.id === 'corPisoPal') { S.pisoCor = e.target.value; renderTools(); renderHint(); } });
+$('#tools').addEventListener('click', e => { const h = e.target.closest('.mod-h'); if (h) alternaModulo(h.dataset.mod); if (e.target.id === 'corPisoOrig') { S.pisoCor = ''; renderTools(); renderHint(); } if (e.target.id === 'corEntorno0') { snap(); delete P.entornoCor; refresh(); } });
+$('#tools').addEventListener('change', e => { if (e.target.id === 'corPisoPal') { S.pisoCor = e.target.value; renderTools(); renderHint(); } if (e.target.id === 'corEntorno') { snap(); P.entornoCor = e.target.value; refresh(); } });
 $('#tools').addEventListener('keydown', e => { const h = e.target.closest && e.target.closest('.mod-h'); if (h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alternaModulo(h.dataset.mod); } });
 $('#tools').addEventListener('input', e => { if (e.target.id === 'fPal') { S.filtro = e.target.value; aplicarFiltro(); } });
 
