@@ -1790,11 +1790,12 @@ const BARRA_DET = '<div class="sheet-bar"><b>ⓘ Detalhes</b><button data-fecha=
 { const rp0 = renderPanel; renderPanel = function () { rp0.apply(this, arguments); const el = $('#panel'); if (el && !el.querySelector('.sheet-bar')) el.insertAdjacentHTML('afterbegin', BARRA_DET); }; }
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.sheet-bar [data-fecha]'); if (b) { fechaFolhas(); } });
 /* Miniaturas: cada item do catálogo é desenhado a partir do próprio modelo 3D (como o catálogo do Floorplanner), num mini visualizador fora da tela. Ficam guardadas neste aparelho. */
+async function garantirWebGL() { if (!THREE.WebGLRenderer && THREE.WEBGPU) { const m = await import('https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js'); THREE.WebGLRenderer = m.WebGLRenderer; } }
 async function prepararMiniaturas() {
   if (M.thumbs || M.thumbsTentou) return; M.thumbsTentou = true; const CH = 'planta_thumbs_v4';
   try { const c = JSON.parse(localStorage.getItem(CH) || 'null'); if (c && c.n === Object.keys(M.TIPOS).length) { M.thumbs = c.t; renderTools(); return; } } catch (e) { }
   try {
-    await carregaThree(); const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(176, 176); R.setClearColor(0x000000, 0); if (THREE.NOVO) R.outputColorSpace = THREE.SRGBColorSpace; else R.outputEncoding = THREE.sRGBEncoding;
+    await carregaThree(); await garantirWebGL(); const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(176, 176); R.setClearColor(0x000000, 0); if (THREE.NOVO) R.outputColorSpace = THREE.SRGBColorSpace; else R.outputEncoding = THREE.sRGBEncoding;
     R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = .92;
     const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(28, 1, 1, 6000), k = KL();
     sc.add(new THREE.HemisphereLight(0xdfe8ff, 0x5c5046, .55 * k)); const d1 = new THREE.DirectionalLight(0xffffff, .95 * k); d1.position.set(1.2, 1.6, 1.4); sc.add(d1); const d2 = new THREE.DirectionalLight(0xffe2c0, .3 * k); d2.position.set(-1.5, .6, .8); sc.add(d2);
@@ -2662,7 +2663,11 @@ $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[da
 /* ===================== 3D ===================== */
 const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
 const KL = () => (window.THREE && THREE.NOVO) ? Math.PI : 1, DEC = d => (window.THREE && THREE.WEBGPU) ? 2 : (window.THREE && THREE.NOVO) ? 0 : d, KLD = () => (window.THREE && THREE.WEBGPU) ? Math.PI * 220000 : KL();   // WebGPU: queda física (1/d², planta em cm) e luzes fortes   // motor novo: luzes em unidades físicas (x π) e sem queda por distância (a planta está em cm)
-function motorEscolhido() { const q = (location.search.match(/[?&]motor=(classico|novo|webgpu)/) || [])[1]; if (q) return q; try { return localStorage.getItem('planta_motor') || 'classico'; } catch (e) { return 'classico'; } }
+function motorEscolhido() {   // padrão: WebGPU onde o navegador suporta; sem WebGPU, motor clássico
+  const q = (location.search.match(/[?&]motor=(classico|novo|webgpu)/) || [])[1], pad = (typeof navigator !== 'undefined' && navigator.gpu) ? 'webgpu' : 'classico'; let v = q;
+  if (!v) { try { v = localStorage.getItem('planta_motor2'); } catch (e) { } }
+  if (v === 'webgpu' && !(typeof navigator !== 'undefined' && navigator.gpu)) v = 'classico'; return v || pad;
+}
 function motorNovo() { return motorEscolhido() === 'novo'; }
 function motorWebGPU() { return motorEscolhido() === 'webgpu'; }
 function srgbTex(t) { if (window.THREE && THREE.NOVO) t.colorSpace = THREE.SRGBColorSpace; else t.encoding = THREE.sRGBEncoding; return t; }
@@ -3164,7 +3169,7 @@ function topoDe(t) {
 async function gerarTopos() {
   const lista = [...(S.topFaltam || [])]; S.topFaltam = new Set(); let novos = 0;
   try {
-    await carregaThree(); const mods = lista.filter(t => MODELOS3D[t]); if (mods.length) await carregaModelos3D(mods);
+    await carregaThree(); await garantirWebGL(); const mods = lista.filter(t => MODELOS3D[t]); if (mods.length) await carregaModelos3D(mods);
     if (!S.rTopo) { const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setClearColor(0x000000, 0); if (THREE.NOVO) R.outputColorSpace = THREE.SRGBColorSpace; else R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.0;
       const sc = new THREE.Scene(), k = KL(); sc.add(new THREE.HemisphereLight(0xffffff, 0x6a6a6a, 1.15 * k)); const d = new THREE.DirectionalLight(0xffffff, .55 * k); d.position.set(1, .45, .7); sc.add(d); const d2 = new THREE.DirectionalLight(0xffffff, .25 * k); d2.position.set(-.8, .4, -.6); sc.add(d2); /* luz rasante: sem reflexo estourado nas superfícies brilhantes */ S.rTopo = { R, sc, raiz: new THREE.Group() }; sc.add(S.rTopo.raiz); }
     const { R, sc, raiz } = S.rTopo;
@@ -3807,7 +3812,7 @@ function focarComodo(c) {
   T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
 }
 { const NOMES = { classico: 'clássico', novo: 'novo (beta)', webgpu: 'WebGPU realista (experimental)' }, PROX = { classico: 'novo', novo: 'webgpu', webgpu: 'classico' }; $('#bMotor').textContent = 'Motor: ' + NOMES[motorEscolhido()];
-  $('#bMotor').onclick = () => { const prox = PROX[motorEscolhido()]; if (!confirm('Trocar o motor gráfico do 3D para "' + NOMES[prox] + '"? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor', prox); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=(classico|novo|webgpu)/, '') + location.hash; }; }
+  $('#bMotor').onclick = () => { const prox = PROX[motorEscolhido()]; if (!confirm('Trocar o motor gráfico do 3D para "' + NOMES[prox] + '"? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor2', prox); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=(classico|novo|webgpu)/, '') + location.hash; }; }
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
 $('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   // Visão geral = casa inteira $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
