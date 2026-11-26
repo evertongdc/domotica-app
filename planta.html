@@ -339,6 +339,7 @@ window.DOMOTICA_CFG = {
         <button id="bIso">Visão geral</button>
         <button id="bDentro" title="Ver de dentro do ambiente (arraste para olhar, W A S D ou setas para andar)">👁 Dentro do ambiente</button>
         <button id="bPng">Baixar PNG</button>
+        <button id="bBlender" title="Gera um arquivo 3D (.glb) e um script para renderizar a casa com raytracing no Blender (grátis)">Exportar p/ Blender</button>
         <button id="bImgs" class="pri">Gerar imagens p/ orçamento</button>
       </div>
       <div id="c3d"><div id="leg3d"></div><div id="fpPad"><button data-k="w">▲</button><button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button></div></div>
@@ -2628,6 +2629,31 @@ function criaAmbiente() {
   } catch (e) { T3.env = null; console.warn('Reflexos indisponíveis:', e && e.message); }
   return T3.env;
 }
+function pisoDe(c) {   // tipo de piso: escolhido no cômodo (c.piso) ou deduzido do nome
+  if (c && c.piso) return c.piso; const n = semAcento((c && c.nome) || '');
+  if (/quarto|closet|suite|escrit/.test(n)) return 'madeira'; if (/banheiro|lavabo|wc|toalete/.test(n)) return 'porcelanato'; if (/externa|garagem|quintal|varanda|area de servico/.test(n)) return 'pedra'; return 'marmore';
+}
+function pisoProps(k) {
+  T3.texP = T3.texP || {};
+  if (k === 'madeira' && !T3.texP.madeira) {
+    const N = 1024, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'), H = 128; x.fillStyle = '#6e5238'; x.fillRect(0, 0, N, N);
+    for (let r = 0; r < N / H; r++) { let px = -Math.random() * 400; while (px < N) { const w = 300 + Math.random() * 380, tom = 100 + Math.random() * 38 | 0; x.fillStyle = 'rgb(' + (tom + 40) + ',' + (tom - 6) + ',' + (tom - 38) + ')'; x.fillRect(px, r * H, w, H);
+      for (let g = 0; g < 26; g++) { x.fillStyle = 'rgba(40,22,10,' + (.04 + Math.random() * .1) + ')'; x.fillRect(px, r * H + Math.random() * H, w, .8 + Math.random() * 1.6); }
+      x.fillStyle = 'rgba(15,8,3,.55)'; x.fillRect(px, r * H, 2, H); px += w; } x.fillStyle = 'rgba(15,8,3,.6)'; x.fillRect(0, r * H, N, 2.5); }
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 260, 1 / 260); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; T3.texP.madeira = t;
+  }
+  if (k === 'porcelanato' && !T3.texP.porcelanato) {
+    const N = 512, cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d'); x.fillStyle = '#a3a9b1'; x.fillRect(0, 0, N, N);
+    for (let i = 0; i < 700; i++) { x.fillStyle = 'rgba(' + (150 + Math.random() * 40 | 0) + ',' + (155 + Math.random() * 40 | 0) + ',' + (162 + Math.random() * 40 | 0) + ',.12)'; x.fillRect(Math.random() * N, Math.random() * N, 3 + Math.random() * 40, 3 + Math.random() * 40); }
+    for (let v = 0; v < 8; v++) { x.beginPath(); let px = Math.random() * N, py = Math.random() * N; x.moveTo(px, py); for (let q = 0; q < 6; q++) { px += (Math.random() - .5) * 120; py += (Math.random() - .5) * 120; x.lineTo(px, py); } x.strokeStyle = 'rgba(255,255,255,' + (.1 + Math.random() * .2) + ')'; x.lineWidth = .6 + Math.random(); x.stroke(); }
+    x.fillStyle = '#4b5057'; x.fillRect(0, 0, N, 3); x.fillRect(0, 0, 3, N); x.fillRect(0, N / 2 - 1.5, N, 3); x.fillRect(N / 2 - 1.5, 0, 3, N);
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 120, 1 / 120); t.anisotropy = 8; t.encoding = THREE.sRGBEncoding; T3.texP.porcelanato = t;
+  }
+  if (k === 'madeira') return { map: T3.texP.madeira, roughness: .36, metalness: 0 };
+  if (k === 'porcelanato') return { map: T3.texP.porcelanato, roughness: .16, metalness: .04 };
+  if (k === 'pedra') return { map: texMarmore(true), color: 0xb9bcc2, roughness: .85, metalness: 0 };
+  return { map: texMarmore(true), roughness: .24, metalness: .2 };
+}
 function texGrao() {   // veios de madeira bem suaves (multiplica a cor do móvel)
   if (T3.texG) return T3.texG; const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 190; i++) { const px = Math.random() * 256, w = .6 + Math.random() * 2.4; x.fillStyle = 'rgba(0,0,0,' + (.03 + Math.random() * .09) + ')'; x.fillRect(px, 0, w, 256); }
@@ -3293,7 +3319,7 @@ function build3dTudo(reenquadrar) {
   const cores = [0xb9d3f0, 0xf0d2a8, 0xb8e0c6, 0xd6bfee, 0xf2dc8c, 0xa9dde6];
   P.comodos.forEach((c, i) => {
     const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
-    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial({ map: texMarmore(RE), color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide, roughness: RE ? .24 : .38, metalness: RE ? .2 : .12 }) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; m.userData.piso = true; g.add(m);
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial(Object.assign({ color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide }, RE ? pisoProps(pisoDe(c)) : { map: texMarmore(false), roughness: .38, metalness: .12 })) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; m.userData.piso = true; g.add(m);
   });
   if (RE && modo !== 'vidro') P.paredes.forEach(w => {   // sombra suave no piso, junto de cada parede (profundidade, como nas imagens)
     const q = wallGeo(w), e = (w.esp || 15) / 2, gr = new THREE.Group(); gr.position.set(w.x1 + q.ux * q.L / 2, .8, w.y1 + q.uy * q.L / 2); gr.rotation.y = -Math.atan2(q.uy, q.ux);
@@ -3337,7 +3363,7 @@ function build3dTudo(reenquadrar) {
       return;
     }
     const sh = new THREE.Shape(); c.pontos.forEach((q, j) => { if (j) sh.lineTo(q[0], q[1]); else sh.moveTo(q[0], q[1]); });
-    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: NT ? 0x0c0e12 : (c.forro ? 0xfff3d6 : 0xffffff), transparent: true, opacity: NT ? .10 : .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); g.add(f);
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: NT ? 0x0c0e12 : (c.forro ? 0xfff3d6 : 0xffffff), transparent: true, opacity: NT ? .10 : .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); f.userData.teto = true; g.add(f);
   });
   T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = []; T3.zonas = []; T3.zKey = ''; T3.sombraSuja = true; tetoTicks.forEach(f => T3.ticks.push(f)); tetoPick.forEach(m => T3.pick.push(m));
   const PRIO = { ponto_luz: 0, plafon: 0, pendente: 1, arandela: 2, spot: 3, trilho: 3, balizador: 4, fita_led: 5 }, permitido = new Set(); let nSomP = 0, nSomS = 0;
@@ -3403,6 +3429,109 @@ function focarComodo(c) {
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
 $('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   // Visão geral = casa inteira $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
+const baixaArq = (blob, nome) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
+const SCRIPT_BLENDER = `# Gerado pelo Domótica ERP: monta a cena no Blender (3.6 ou mais novo) para renderizar a casa com raytracing.
+# Como usar: instale o Blender (gratuito, blender.org), deixe este arquivo e o .glb na MESMA pasta,
+# abra o Blender > aba "Scripting" > Open > escolha este arquivo > Run Script. Depois aperte F12 para renderizar.
+import bpy, os, math, json
+from mathutils import Vector
+
+NOME_GLB = "__GLB__"
+LUZES = json.loads('''__LUZES__''')
+POTENCIA_LUZ = 90        # watts de cada luz (aumente se ficar escuro)
+FORCA_EMISSAO = 12       # brilho dos objetos que emitem luz (fitas de LED, luminárias)
+AMOSTRAS = 128           # mais amostras = menos ruído e mais demora
+RESOLUCAO = (1920, 1080)
+
+def pasta():
+    try:
+        return os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        t = bpy.context.space_data.text if bpy.context.space_data else None
+        return os.path.dirname(bpy.path.abspath(t.filepath)) if t and t.filepath else os.getcwd()
+
+caminho = os.path.join(pasta(), NOME_GLB)
+if not os.path.exists(caminho):
+    raise SystemExit("Arquivo não encontrado: " + caminho + " (deixe o .glb na mesma pasta deste script)")
+
+bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.ops.import_scene.gltf(filepath=caminho)
+sc = bpy.context.scene
+objs = [o for o in sc.objects if o.type == 'MESH']
+mn = Vector((1e9, 1e9, 1e9)); mx = Vector((-1e9, -1e9, -1e9))
+for o in objs:
+    for c in o.bound_box:
+        w = o.matrix_world @ Vector(c)
+        mn = Vector((min(mn.x, w.x), min(mn.y, w.y), min(mn.z, w.z))); mx = Vector((max(mx.x, w.x), max(mx.y, w.y), max(mx.z, w.z)))
+centro = (mn + mx) / 2
+tam = max(mx.x - mn.x, mx.y - mn.y, 3.0)
+
+# objetos que emitem luz (fitas, luminárias) ganham brilho de verdade
+for m in bpy.data.materials:
+    if not m.use_nodes:
+        continue
+    for n in m.node_tree.nodes:
+        if n.type == 'BSDF_PRINCIPLED':
+            cor = n.inputs.get('Emission Color') or n.inputs.get('Emission')
+            forca = n.inputs.get('Emission Strength')
+            if cor is not None and forca is not None and not cor.is_linked and (cor.default_value[0] + cor.default_value[1] + cor.default_value[2]) > 0.05:
+                forca.default_value = FORCA_EMISSAO
+
+def rgb(h):
+    h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+for i, l in enumerate(LUZES):
+    d = bpy.data.lights.new("luz%d" % i, l.get('tipo', 'POINT'))
+    d.energy = POTENCIA_LUZ; d.color = rgb(l.get('cor', '#ffe2b0')); d.shadow_soft_size = 0.06
+    if d.type == 'SPOT':
+        d.spot_size = math.radians(80); d.spot_blend = 0.6
+    o = bpy.data.objects.new("luz%d" % i, d); o.location = (l['x'], -l['z'], l['y']); sc.collection.objects.link(o)
+
+# luz de preenchimento suave por cima (a casa está sem teto)
+amb = bpy.data.lights.new("preenchimento", 'AREA'); amb.energy = 220; amb.size = tam; amb.color = (1.0, 0.86, 0.7)
+ao = bpy.data.objects.new("preenchimento", amb); ao.location = (centro.x, centro.y, mx.z + tam * 0.7); sc.collection.objects.link(ao)
+
+mundo = bpy.data.worlds.new("Noite"); sc.world = mundo; mundo.use_nodes = True
+bg = mundo.node_tree.nodes['Background']; bg.inputs[0].default_value = (0.012, 0.014, 0.02, 1); bg.inputs[1].default_value = 1.0
+
+cam = bpy.data.cameras.new("Camera"); cam.lens = 30
+co = bpy.data.objects.new("Camera", cam); co.location = (centro.x + tam * 0.08, centro.y - tam * 0.6, mx.z + tam * 0.9); sc.collection.objects.link(co)
+alvo = bpy.data.objects.new("Alvo", None); alvo.location = (centro.x, centro.y, 0.3); sc.collection.objects.link(alvo)
+t = co.constraints.new('TRACK_TO'); t.target = alvo; t.track_axis = 'TRACK_NEGATIVE_Z'; t.up_axis = 'UP_Y'
+sc.camera = co
+
+sc.render.engine = 'CYCLES'; sc.cycles.samples = AMOSTRAS; sc.cycles.use_denoising = True
+sc.render.resolution_x, sc.render.resolution_y = RESOLUCAO
+for modo in ('AgX', 'Filmic'):
+    try:
+        sc.view_settings.view_transform = modo; break
+    except TypeError:
+        pass
+print("Pronto. Aperte F12 para renderizar. Para mudar o ângulo, mova o objeto 'Camera'.")
+`;
+async function exportarBlender() {
+  if (!T3.ok) return toast('Abra a aba 3D primeiro.');
+  try { if (!THREE.GLTFExporter) await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js'); } catch (e) { return toast('Não consegui carregar o exportador: ' + e.message, 5000); }
+  toast('Preparando o arquivo para o Blender…', 4000);
+  const antes = Object.values(T3.devs || {}).map(d => [d, estaOn3(d.p)]); Object.values(T3.devs || {}).forEach(d => { try { d.A.set(true); } catch (e) { } });   // render com as luzes ligadas
+  T3.grp.updateMatrixWorld(true); const raiz = new THREE.Group(), luzes = [];
+  T3.grp.traverse(o => {
+    if (o.isPointLight || o.isSpotLight) { if (o.intensity > 0) { const v = new THREE.Vector3(); o.getWorldPosition(v); luzes.push({ x: +(v.x / 100).toFixed(3), y: +(v.y / 100).toFixed(3), z: +(v.z / 100).toFixed(3), cor: '#' + o.color.getHexString(), tipo: o.isSpotLight ? 'SPOT' : 'POINT' }); } return; }
+    if (!o.isMesh || !o.geometry) return; const m = o.material; if (!m || Array.isArray(m) || m.isShaderMaterial || m.isMeshBasicMaterial || m.visible === false || o.userData.solo || o.userData.teto) return;
+    for (let v = o; v; v = v.parent) if (!v.visible) return;
+    const c = new THREE.Mesh(o.geometry, m); o.matrixWorld.decompose(c.position, c.quaternion, c.scale); raiz.add(c);
+  });
+  antes.forEach(q => { try { q[0].A.set(q[1]); } catch (e) { } });
+  if (!raiz.children.length) return toast('Nada para exportar.');
+  raiz.scale.setScalar(0.01);   // o editor usa centímetros; o Blender usa metros
+  const nome = String(P.nome || 'planta').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_') || 'planta', arq = nome + '_3d.glb';
+  new THREE.GLTFExporter().parse(raiz, res => {
+    baixaArq(new Blob([res], { type: 'model/gltf-binary' }), arq);
+    setTimeout(() => baixaArq(new Blob([SCRIPT_BLENDER.split('__GLB__').join(arq).split('__LUZES__').join(JSON.stringify(luzes))], { type: 'text/x-python' }), nome + '_render_blender.py'), 600);
+    toast('Baixados: ' + arq + ' e ' + nome + '_render_blender.py. Veja as instruções no topo do .py.', 9000);
+  }, { binary: true });
+}
+$('#bBlender').onclick = exportarBlender;
 $('#bPng').onclick = () => { T3.draw(); const a = document.createElement('a'); a.href = T3.ren.domElement.toDataURL('image/png'); a.download = (P.nome || 'planta') + '_3d.png'; a.click(); };
 $('#bImgs').onclick = async () => {
   if (!P.comodos.length) return toast('Sem cômodos.');
