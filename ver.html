@@ -53,6 +53,7 @@ section.view.on{display:flex}
 #hint .chips button{padding:3px 9px;border-radius:8px}
 #zoombtns{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}
 #zoombtns button{width:38px;height:38px;padding:0;font-size:18px;background:rgba(11,18,32,.85);color:#fff}
+.sheet-bar{display:none}
 .mod{margin:6px 0;border:1px solid var(--gl2);border-radius:10px;overflow:hidden}.mod-h{display:flex;align-items:center;gap:7px;padding:8px 9px;cursor:pointer;user-select:none;background:rgba(127,127,127,.09);font-size:13px}.mod-h:hover{background:rgba(127,127,127,.17)}.mod-h b{flex:1;font-weight:700}.mod-h small{font-size:10px;opacity:.7;border:1px solid var(--gl2);border-radius:9px;padding:0 6px}
 .mod-seta{display:inline-block;width:12px;transition:transform .15s;font-size:11px;opacity:.7}.mod.fechado .mod-seta{transform:rotate(-90deg)}.mod-b{padding:2px 8px 8px}.mod.fechado .mod-b{display:none}.mod.busca .mod-b{display:block!important}
 .sec{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin:12px 2px 5px}
@@ -106,6 +107,7 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
   #cwrap{flex:1;height:auto;min-height:0}
   #tools,#panel{position:fixed;left:8px;right:8px;bottom:8px;width:auto;max-height:64vh;z-index:40;display:none;background:var(--sheet);box-shadow:0 -10px 34px rgba(0,0,0,.55)}
   body.sheet-tools #tools,body.sheet-panel #panel{display:block}
+  .sheet-bar{display:flex;position:sticky;top:-8px;z-index:3;margin:-8px -8px 8px;padding:9px 10px;background:var(--sheet);justify-content:space-between;align-items:center;border-bottom:1px solid var(--gl2)}.sheet-bar button{padding:6px 12px;font-size:13px;font-weight:700}
   #fabs{display:flex;position:absolute;top:10px;right:10px;flex-direction:column;gap:6px;z-index:4}
   #fabs button{padding:7px 10px;font-size:12.5px;background:rgba(11,18,32,.88);color:#fff;white-space:nowrap}
   #fabs button.tem{outline:2px solid var(--or)}
@@ -1665,7 +1667,7 @@ function renderTools() {
       '<div class="sec">Cômodos</div><div style="display:grid;gap:5px"><button class="tool pri" data-room="novo">＋ Novo cômodo (por medidas)</button><button class="tool" data-room="mover">↔ Mover cômodo selecionado</button>' + (S.ativo ? '<button class="tool" data-room="fin">✓ Finalizar cômodo ativo</button>' : '') + '</div>',
     dispositivos: '<div class="sec" style="margin-top:2px">Ligações</div>' + ferr(['ligar']) + '<div class="sec">Teclas do próximo interruptor</div><div class="row">' + [1, 2, 3, 4].map(n => '<button data-teclas="' + n + '"' + (S.teclasNovo === n ? ' class="on"' : '') + '>' + n + '</button>').join('') + '</div>'
   };
-  let h = '<input id="fPal" placeholder="🔎 Filtrar paleta (luz, som, sofá, cama…)" value="' + esc(S.filtro) + '" autocomplete="off">';
+  let h = '<div class="sheet-bar"><b>🛠 Ferramentas</b><button data-fecha="1">▾ Minimizar</button></div><input id="fPal" placeholder="🔎 Filtrar paleta (luz, som, sofá, cama…)" value="' + esc(S.filtro) + '" autocomplete="off">';
   MODULOS.forEach(m => {
     const id = m[0], gs = id === 'dispositivos' ? m[3].concat(soltos) : m[3], n = gs.reduce((a, g) => a + (porGrupo[g] ? porGrupo[g].length : 0), 0);
     h += '<div class="mod' + (F[id] ? ' fechado' : '') + '" data-modulo="' + id + '"><div class="mod-h" data-mod="' + id + '" role="button" tabindex="0"><span class="mod-seta">▾</span><span class="mod-ic">' + m[1] + '</span><b>' + m[2] + '</b>' + (n ? '<small>' + n + '</small>' : '') + '</div><div class="mod-b">' + (conteudo[id] || '') + grupos(gs) + '</div></div>';
@@ -1674,6 +1676,9 @@ function renderTools() {
   h += '<div id="palVazio" style="display:none">Nada na paleta com esse nome — use <b>Outro (livre)</b>.</div>';
   $('#tools').innerHTML = h; aplicarFiltro();
 }
+const BARRA_DET = '<div class="sheet-bar"><b>ⓘ Detalhes</b><button data-fecha="1">▾ Minimizar</button></div>';
+{ const rp0 = renderPanel; renderPanel = function () { rp0.apply(this, arguments); const el = $('#panel'); if (el && !el.querySelector('.sheet-bar')) el.insertAdjacentHTML('afterbegin', BARRA_DET); }; }
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.sheet-bar [data-fecha]'); if (b) { fechaFolhas(); } });
 function alternaModulo(id) { const F = modsFechados(); F[id] = !F[id]; try { localStorage.setItem('planta_mods', JSON.stringify(F)); } catch (e) { } const el = document.querySelector('#tools .mod[data-modulo="' + id + '"]'); if (el) el.classList.toggle('fechado', !!F[id]); }
 function renderHint() {
   let h = '';
