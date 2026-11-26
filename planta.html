@@ -2107,7 +2107,7 @@ function renderPanel() {
   } else if (sel.k === 'comodo') {
     const c = getById(P.comodos, sel.id); if (!c) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Cômodo · ' + c.area.toFixed(1).replace('.', ',') + ' m²</div>' + fld('Nome', 'nome', c.nome);
-    h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Teto / forro</label><select data-f="forro">' + [['', 'Laje (teto liso)'], ['gesso', 'Forro de gesso rebaixado'], ['sanca', 'Sanca / sanca aberta'], ['pvc', 'Forro de PVC'], ['aberto', 'Teto aberto (sem cobertura)'], ['colonial', 'Telhado colonial à mostra'], ['convencional', 'Telhado convencional à mostra'], ['vidro', 'Teto de vidro'], ['retratil', 'Teto retrátil (abre e fecha)'], ['outro', 'Outro']].map(o => '<option value="' + o[0] + '"' + ((c.forro || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' + fld('Rebaixo do forro (cm)', 'rebaixo', c.rebaixo || 0, 'data-n="1" type="number"') + '<label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
+    h += '<label>Pé-direito deste cômodo (0 = padrão)</label><input data-f="pe" data-n="1" type="number" value="' + (c.pe || 0) + '"><label>Piso (3D realista)</label><select data-f="piso">' + [['', 'Automático (pelo nome: ' + ({ marmore: 'mármore', madeira: 'madeira', porcelanato: 'porcelanato', pedra: 'pedra', cimento: 'cimento' }[pisoDe(Object.assign({}, c, { piso: '' }))] || '') + ')'], ['marmore', 'Mármore'], ['madeira', 'Madeira'], ['porcelanato', 'Porcelanato'], ['cimento', 'Cimento queimado'], ['pedra', 'Pedra']].map(o => '<option value="' + o[0] + '"' + ((c.piso || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select><div class="row"><div><label>Cor do piso</label><input type="color" data-f="pisoCor" value="' + (c.pisoCor || '#ffffff') + '"></div><div><label>&nbsp;</label><button data-act="pisocor0" title="Volta para a cor original da textura">Cor original</button></div></div><label>Teto / forro</label><select data-f="forro">' + [['', 'Laje (teto liso)'], ['gesso', 'Forro de gesso rebaixado'], ['sanca', 'Sanca / sanca aberta'], ['pvc', 'Forro de PVC'], ['aberto', 'Teto aberto (sem cobertura)'], ['colonial', 'Telhado colonial à mostra'], ['convencional', 'Telhado convencional à mostra'], ['vidro', 'Teto de vidro'], ['retratil', 'Teto retrátil (abre e fecha)'], ['outro', 'Outro']].map(o => '<option value="' + o[0] + '"' + ((c.forro || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' + fld('Rebaixo do forro (cm)', 'rebaixo', c.rebaixo || 0, 'data-n="1" type="number"') + '<label>Observações</label><textarea data-f="obs">' + esc(c.obs || '') + '</textarea>';
     const lados = M.trechos(P).filter(t => t.len >= 40 && bordaDe(c.pontos, [(t.x1 + t.x2) / 2, (t.y1 + t.y2) / 2]));
     h += '<div class="sec">Medidas dos lados</div>' + (lados.length ? lados.map((t, i) => '<div class="row" style="margin:3px 0"><span style="flex:3">Lado ' + (i + 1) + ' · ' + fmtM(S.interna ? Math.max(0, t.len - t.esp) : t.len) + ' m</span><button data-act="medirlado" data-p="' + t.parede + '" data-t0="' + t.t0 + '" data-t1="' + t.t1 + '" style="flex:none">✎ Editar</button></div>').join('') : '<div class="note">Sem paredes ao redor.</div>') + '<div class="note">Para mudar a forma: clique numa parede do cômodo, depois clique duplo nela para criar um canto e arraste as bolinhas.</div>';
     h += '<div class="sec">Girar cômodo (com móveis e pontos)</div><div class="row"><button data-act="girar" data-g="-90">↺ 90°</button><button data-act="girar" data-g="90">↻ 90°</button></div><div class="row"><input id="gGraus" type="number" value="15" step="5" style="max-width:90px"><button data-act="girar" data-g="x">Girar essa quantidade de graus ↻</button></div>';
@@ -2176,6 +2176,7 @@ $('#panel').addEventListener('click', e => {
   if (a === 'usarprod') { snap(); const o = getById(P.pontos, S.sel.id); o.produtoId = b.dataset.id; const x = (S.catalogo || []).find(c => c.id === o.produtoId); if (x && !o.produto) o.produto = x.nome; return refresh(); }
   if (a === 'princ') { snap(); tornarPrincipal(b.dataset.id); return refresh(); }
   if (a === 'ligar') { S.tool = 'ligar'; S.lig = { de: S.sel.id, tecla: 1 }; return refresh(); }
+  if (a === 'pisocor0') { snap(); const o = getById(P.comodos, S.sel.id); if (o) delete o.pisoCor; renderPanel(); return refresh({ panel: false }); }
   if (a === 'kelvin') { snap(); const o = getById(P.pontos, S.sel.id); if (o) o.kelvin = +b.dataset.k; renderPanel(); return refresh({ panel: false }); }
   if (a === 'flipdobr') { snap(); const o = getById(P.aberturas, S.sel.id); o.dobr = -(o.dobr || 1); return refresh({ panel: false }); }
   if (a === 'flip') { snap(); const o = getById(P.aberturas, S.sel.id); o.lado = -(o.lado || 1); return refresh({ panel: false }); }
@@ -2649,7 +2650,7 @@ $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[da
 
 /* ===================== 3D ===================== */
 const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
-const KL = () => (window.THREE && THREE.NOVO) ? Math.PI : 1, DEC = d => (window.THREE && THREE.NOVO) ? 0 : d;   // motor novo: luzes em unidades físicas (x π) e sem queda por distância (a planta está em cm)
+const KL = () => (window.THREE && THREE.NOVO) ? Math.PI : 1, DEC = d => (window.THREE && THREE.WEBGPU) ? 2 : (window.THREE && THREE.NOVO) ? 0 : d, KLD = () => (window.THREE && THREE.WEBGPU) ? Math.PI * 220000 : KL();   // WebGPU: queda física (1/d², planta em cm) e luzes fortes   // motor novo: luzes em unidades físicas (x π) e sem queda por distância (a planta está em cm)
 function motorEscolhido() { const q = (location.search.match(/[?&]motor=(classico|novo|webgpu)/) || [])[1]; if (q) return q; try { return localStorage.getItem('planta_motor') || 'classico'; } catch (e) { return 'classico'; } }
 function motorNovo() { return motorEscolhido() === 'novo'; }
 function motorWebGPU() { return motorEscolhido() === 'webgpu'; }
@@ -2781,6 +2782,7 @@ function pisoProps(k) {
   if (k === 'madeira') return { map: T3.texP.madeira, roughness: .36, metalness: 0 };
   if (k === 'porcelanato') return { map: T3.texP.porcelanato, roughness: .16, metalness: .04 };
   if (k === 'pedra') return { map: texMarmore(true), color: 0xb9bcc2, roughness: .85, metalness: 0 };
+  if (k === 'cimento') return { map: texMarmore(true), color: 0xa3a6ab, roughness: .55, metalness: .05 };
   return { map: texMarmore(true), roughness: .24, metalness: .2 };
 }
 function texTelha(kind) {   // 'colonial' (capa e canal, cerâmica) ou 'convencional' (telha de concreto)
@@ -2818,7 +2820,7 @@ async function prepararBrilho() {
       const col = sp.getTextureNode('output'), dif = sp.getTextureNode('diffuseColor'), dep = sp.getTextureNode('depth'), nor = sp.getTextureNode('normal'), vel = sp.getTextureNode('velocity');
       sp.getTexture('diffuseColor').type = THREE.UnsignedByteType; sp.getTexture('normal').type = THREE.UnsignedByteType;
       const nrm = sample(uv => unpackRGBToNormal(nor.sample(uv))), gi = THREE.ssgi(col, dep, nrm, T3.cam);
-      gi.sliceCount.value = 2; gi.stepCount.value = 8; gi.radius.value = 14; gi.thickness.value = 25; gi.giIntensity.value = 6; gi.aoIntensity.value = 1.1;
+      gi.sliceCount.value = 2; gi.stepCount.value = 8; gi.radius.value = 14; gi.thickness.value = 25; gi.giIntensity.value = 14; gi.aoIntensity.value = 1.2;
       const comp = vec4(add(col.rgb.mul(gi.getAONode().r), dif.rgb.mul(gi.getGINode().rgb)), col.a), aa = THREE.traa(comp, dep, vel, T3.cam);
       const bl = THREE.bloom(aa, .45, .3, 1.4); rp.outputNode = aa.add(bl);
       T3.rp = rp; T3.ssgi = gi; T3.ssao = null; T3.bloom = bl; resize3d(); aplicarVisual();
@@ -2866,6 +2868,7 @@ function aplicarVisual() {
   T3.scene.background.set(re ? 0x0a0c10 : n ? 0x050608 : 0xe9eef5); T3.ren.toneMapping = (n && !comBrilho) ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; T3.ren.toneMappingExposure = re ? 1.1 : n ? 1.15 : 1; if (T3.fin) T3.fin.uniforms.exp.value = 1.0;
   T3.amb.intensity = re ? .1 : n ? .10 : .5; T3.hemi.intensity = re ? .16 : n ? .16 : 0; T3.hemi.color.set(re ? 0xa9b8d6 : 0x8fa4c8); T3.hemi.groundColor.set(re ? 0x3a2a1e : 0x1a1410); T3.sun.intensity = re ? .38 : n ? .32 : .5; T3.sun.color.set(n ? 0xffe2c0 : 0xffffff);
   if (THREE.NOVO) { T3.amb.intensity *= Math.PI; T3.hemi.intensity *= Math.PI; T3.sun.intensity *= Math.PI; }
+  if (THREE.WEBGPU && re) { T3.amb.intensity = .04 * Math.PI; T3.hemi.intensity = .06 * Math.PI; T3.sun.intensity = .1 * Math.PI; T3.ren.toneMappingExposure = 1.0; }
   { const envT = re ? criaAmbiente() : null; T3.scene.environment = THREE.NOVO ? null : envT; }
   const cz = $('#c3d'); if (cz) { cz.classList.toggle('real', re); cz.style.background = re ? '#0a0c10' : n ? '#050608' : ''; }
   const b = bbox(), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2, r = Math.max(b.x1 - b.x0, b.y1 - b.y0, 300), sc = T3.sun.shadow.camera;
@@ -3185,7 +3188,7 @@ async function carregaModelos3D(tipos) {
   await Promise.all(faltam.map(t => new Promise(ok => ld.load(URL_MODELOS + MODELOS3D[t][0] + '.glb', async gl => {
     await esperaTexturas(gl.scene); const cena = gl.scene; cena.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(cena), sz = bb.getSize(new THREE.Vector3()), ct = bb.getCenter(new THREE.Vector3());
     cena.position.set(-ct.x, -bb.min.y, -ct.z); const raiz = new THREE.Group(); raiz.add(cena);
-    cena.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    cena.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.geometry) o.geometry.userData.compartilhada = true; } });   // geometria compartilhada pelas cópias: nunca apagar da GPU
     T3.modelos[t] = { obj: raiz, sx: sz.x, sy: sz.y, sz: sz.z, modo: MODELOS3D[t][1] }; algum = true; ok();
   }, undefined, () => { T3.modFalhou[t] = 1; ok(); }))));
   return algum;
@@ -3560,14 +3563,14 @@ function fundirEstaticos(g) {
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.computeBoundingSphere(); geo.computeBoundingBox();
     const me = new THREE.Mesh(geo, L.mat); me.castShadow = L.itens[0].castShadow; me.receiveShadow = true; me.renderOrder = L.itens[0].renderOrder; me.userData.fundido = true; me.userData.occ = L.itens.some(o => occSet.has(o)); g.add(me); criados++; fundidos += L.itens.length; L.itens.forEach(o => remover.push(o));
   });
-  remover.forEach(o => { if (o.parent) o.parent.remove(o); o.geometry.dispose(); });
+  remover.forEach(o => { if (o.parent) o.parent.remove(o); if (!o.geometry.userData.compartilhada) o.geometry.dispose(); });
   T3.occ = g.children.filter(o => o.userData.occ).concat([...occSet].filter(o => o.parent === g && !remover.includes(o)));
   T3.fusao = { fundidos, malhas: criados, materiais: canon.size };
 }
 function build3d(reenquadrar) { const c = comodo3(); if (!c) return build3dTudo(reenquadrar); const P0 = P; P = recorte3(c); try { return build3dTudo(reenquadrar); } finally { P = P0; } }
 function build3dTudo(reenquadrar) {
   if (!T3.ok) return;
-  if (!T3.modCarregando && !window.PLANTA_SEM_MODELOS) { const usados = P.pontos.map(q => q.tipo).filter(t => MODELOS3D[t] && !(T3.modelos && T3.modelos[t]) && !(T3.modFalhou && T3.modFalhou[t])); if (usados.length) { T3.modCarregando = true; carregaModelos3D(usados).then(novo => { T3.modCarregando = false; if (novo) build3d(false); }); } } const g = T3.grp; g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); while (g.children.length) g.children.pop();
+  if (!T3.modCarregando && !window.PLANTA_SEM_MODELOS) { const usados = P.pontos.map(q => q.tipo).filter(t => MODELOS3D[t] && !(T3.modelos && T3.modelos[t]) && !(T3.modFalhou && T3.modFalhou[t])); if (usados.length) { T3.modCarregando = true; carregaModelos3D(usados).then(novo => { T3.modCarregando = false; if (novo) build3d(false); }); } } const g = T3.grp; g.traverse(o => { if (o.geometry && !o.geometry.userData.compartilhada) o.geometry.dispose(); }); while (g.children.length) g.children.pop();
   aplicarVisual(); const NT = T3.noite, modo = $('#modo3').value, Hn = P.peDireito;
   // cada parede tem a altura do pé-direito do cômodo ao lado; ponto de teto fica sob o forro (pé-direito menos o rebaixo)
   const distPoly = (poly, m) => { let d = 1e9; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; d = Math.min(d, G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, m[0], m[1]).d); } return d; };
@@ -3650,7 +3653,7 @@ function build3dTudo(reenquadrar) {
   const cores = [0xb9d3f0, 0xf0d2a8, 0xb8e0c6, 0xd6bfee, 0xf2dc8c, 0xa9dde6];
   P.comodos.forEach((c, i) => {
     const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
-    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial(Object.assign({ color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide }, RE ? pisoProps(pisoDe(c)) : { map: texMarmore(false), roughness: .38, metalness: .12 })) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; m.userData.piso = true; m.userData.estatico = true; g.add(m);
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial(Object.assign({ color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide }, RE ? pisoProps(pisoDe(c)) : { map: texMarmore(false), roughness: .38, metalness: .12 }, (RE && c.pisoCor && !c.feito) ? { color: new THREE.Color(c.pisoCor) } : {})) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; m.userData.piso = true; m.userData.estatico = true; g.add(m);
   });
   if (RE && modo !== 'vidro') P.paredes.filter(w => !w.vidro).forEach(w => {   // sombra suave no piso, junto de cada parede (profundidade, como nas imagens)
     const q = wallGeo(w), e = (w.esp || 15) / 2, gr = new THREE.Group(); gr.position.set(w.x1 + q.ux * q.L / 2, .8, w.y1 + q.uy * q.L / 2); gr.rotation.y = -Math.atan2(q.uy, q.ux);
@@ -3722,13 +3725,13 @@ function build3dTudo(reenquadrar) {
     const t = p.tipo, ang = (k.cp.w ? [k.cp.nx, k.cp.nz] : [0, 0]); let L, alvo = new THREE.Vector3(k.px, 0, k.pz), sombra = false;
     const raio = k.c && k.c.pontos ? (() => { const xs = k.c.pontos.map(q => q[0]), ys = k.c.pontos.map(q => q[1]); return Math.hypot(Math.max.apply(null, xs) - Math.min.apply(null, xs), Math.max.apply(null, ys) - Math.min.apply(null, ys)); })() : 500;
     const yL = k.pendura ? k.topo - 10 : k.y;
-    if (t === 'ponto_luz' || t === 'plafon') { L = new THREE.PointLight(0xffe8cc, 0, Math.max(520, raio * 1.6), DEC(1.0)); L.position.set(k.px, yL, k.pz); A.plI = 1.9 * KL(); sombra = nSomP < 8 && ++nSomP; }
-    else if (t === 'pendente') { L = new THREE.PointLight(0xffbf78, 0, 420, DEC(1.1)); L.position.set(k.px, k.y - 6, k.pz); A.plI = 1.5 * KL(); sombra = nSomP < 8 && ++nSomP; }
-    else if (t === 'spot') { L = new THREE.SpotLight(0xffdba6, 0, 460, .5, .45, DEC(1.3)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 3.4, k.pz); A.plI = 3.2 * KL(); sombra = nSomS < 10 && ++nSomS; }
-    else if (t === 'trilho') { L = new THREE.SpotLight(0xfff1dc, 0, 520, .8, .65, DEC(1.2)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 12.5, k.pz); alvo.set(k.px + ang[0] * -90, 0, k.pz + ang[1] * -90); A.plI = 3 * KL(); sombra = nSomS < 10 && ++nSomS; }
-    else if (t === 'arandela') { L = new THREE.SpotLight(0xffb870, 0, 300, 1.0, .95, DEC(1.3)); L.position.set(k.px + ang[0] * 10, k.y, k.pz + ang[1] * 10); alvo.set(k.px + ang[0] * 25, 0, k.pz + ang[1] * 25); A.plI = 2.6 * KL(); sombra = nSomS < 10 && ++nSomS; }
-    else if (t === 'balizador') { L = new THREE.SpotLight(0xffc88a, 0, 220, .9, .85, DEC(1.4)); L.position.set(k.px + ang[0] * 12, k.y + 4, k.pz + ang[1] * 12); alvo.set(k.px + ang[0] * 45, 0, k.pz + ang[1] * 45); A.plI = 2.2 * KL(); }
-    else if (t === 'fita_led') { L = new THREE.PointLight(0xff3366, 0, 300, DEC(1.4)); L.position.set(k.px, yL - 6, k.pz); A.plI = 1.1 * KL(); }
+    if (t === 'ponto_luz' || t === 'plafon') { L = new THREE.PointLight(0xffe8cc, 0, Math.max(520, raio * 1.6), DEC(1.0)); L.position.set(k.px, yL, k.pz); A.plI = 1.9 * KLD(); sombra = nSomP < 8 && ++nSomP; }
+    else if (t === 'pendente') { L = new THREE.PointLight(0xffbf78, 0, 420, DEC(1.1)); L.position.set(k.px, k.y - 6, k.pz); A.plI = 1.5 * KLD(); sombra = nSomP < 8 && ++nSomP; }
+    else if (t === 'spot') { L = new THREE.SpotLight(0xffdba6, 0, 460, .5, .45, DEC(1.3)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 3.4, k.pz); A.plI = 3.2 * KLD(); sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'trilho') { L = new THREE.SpotLight(0xfff1dc, 0, 520, .8, .65, DEC(1.2)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 12.5, k.pz); alvo.set(k.px + ang[0] * -90, 0, k.pz + ang[1] * -90); A.plI = 3 * KLD(); sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'arandela') { L = new THREE.SpotLight(0xffb870, 0, 300, 1.0, .95, DEC(1.3)); L.position.set(k.px + ang[0] * 10, k.y, k.pz + ang[1] * 10); alvo.set(k.px + ang[0] * 25, 0, k.pz + ang[1] * 25); A.plI = 2.6 * KLD(); sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'balizador') { L = new THREE.SpotLight(0xffc88a, 0, 220, .9, .85, DEC(1.4)); L.position.set(k.px + ang[0] * 12, k.y + 4, k.pz + ang[1] * 12); alvo.set(k.px + ang[0] * 45, 0, k.pz + ang[1] * 45); A.plI = 2.2 * KLD(); }
+    else if (t === 'fita_led') { L = new THREE.PointLight(0xff3366, 0, 300, DEC(1.4)); L.position.set(k.px, yL - 6, k.pz); A.plI = 1.1 * KLD(); }
     else return;
     if (L.isSpotLight) { const tg = new THREE.Object3D(); tg.position.copy(alvo); g.add(tg); L.target = tg; }
     if (sombra) { L.castShadow = true; L.shadow.mapSize.set(512, 512); L.shadow.camera.near = 4; L.shadow.camera.far = L.distance || 600; L.shadow.bias = -0.0025; L.shadow.radius = 3; }
@@ -3748,7 +3751,7 @@ function build3dTudo(reenquadrar) {
     if (NT && A.luz && permitido.has(p.id)) criaLuz3(p, A, { px, pz, y, topo, pendura, cp, c });
     if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const rz = p.tipo === 'tv' ? 34 : (M.catDe(p) === 'energia' ? 14 : 28), z = new THREE.Mesh(new THREE.SphereGeometry(rz, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; z.userData.proxy = true; T3.zonas.push({ m: z, base: 2 * rz }); A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
     if (modo === 'solida' && (p.tipo === 'interruptor' || p.tipo === 'botao')) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texMarcador(), depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: false })); sp.scale.set(.05, .05, 1); sp.position.set(px, yDisp, pz); sp.renderOrder = 999; sp.userData = { tecla: { sw: p.id, t: 1 }, marcador: true }; g.add(sp); T3.pick.push(sp); }   // o interruptor fica na face de dentro da parede: marcador sempre visível
-    if (A.luz) { A.dim = clamp((p.dim == null ? 100 : +p.dim) / 100, .03, 1); A.cor = (p.kelvin && p.tipo !== 'fita_led') ? kelvinCor(+p.kelvin) : null; }
+    if (A.luz) { A.dim = clamp((p.dim == null ? 100 : +p.dim) / 100, .03, 1); A.cor = p.tipo === 'fita_led' ? null : p.kelvin ? kelvinCor(+p.kelvin) : (THREE.WEBGPU ? kelvinCor(2800) : null); }
     { const s0 = A.set; A.set = on => { s0(on); T3.wake(600); }; if (A.setTecla) { const t0 = A.setTecla; A.setTecla = (i, on) => { t0(i, on); T3.wake(600); }; } }
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
