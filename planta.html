@@ -2533,7 +2533,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
 function mostrar(id) {
   S.tab = id; document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === id));
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id));
-  T3.on = id === 'v3d';
+  T3.on = id === 'v3d'; if (T3.on && T3.wake) T3.wake(900);
   if (id === 'v2d') setTimeout(() => { if (S.fitPend) { S.fitPend = false; fit(); } else if (S.autoFit) fit(); else renderSVG(); }, 30); if (id === 'v3d') abrir3d(); if (id === 'vpontos') renderPontos(); if (id === 'vapps') renderApps(); if (id === 'vcenas') renderCenas(); if (id === 'vchecks') renderChecks();
 }
 function updateBadge() {
@@ -2645,11 +2645,27 @@ async function abrir3d() {
     el3.addEventListener('pointermove', e => { if (T3.fp.on) { if (e.buttons) { const dx = e.clientX - (T3.fp.lx == null ? e.clientX : T3.fp.lx), dy = e.clientY - (T3.fp.ly == null ? e.clientY : T3.fp.ly); T3.fp.yaw -= dx * .0045; T3.fp.pitch = Math.max(-1.25, Math.min(1.25, T3.fp.pitch + dy * .0045)); T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; } else el3.style.cursor = alvo3(e) ? 'pointer' : 'grab'; return; } if (e.buttons) return; el3.style.cursor = alvo3(e) ? 'pointer' : ''; });
     el3.addEventListener('wheel', e => { if (!T3.fp.on) return; e.preventDefault(); T3.cam.fov = Math.max(35, Math.min(100, T3.cam.fov + e.deltaY * .03)); T3.cam.updateProjectionMatrix(); }, { passive: false });
     T3.draw = () => { if (T3.real && T3.comp) T3.comp.render(); else T3.ren.render(T3.scene, T3.cam); };
-    (function loop() { T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt)); if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; T3.sombraSuja = false; } const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update(); T3.draw(); })();
+    /* desempenho: a cena fica na GPU; só desenha quando algo muda (câmera, aparelho, animação) e usa qualidade reduzida durante o movimento, refinando quando para */
+    T3.until = 0; T3.moveUntil = 0;
+    T3.wake = ms => { const t = performance.now() + (ms || 400); if (t > T3.until) T3.until = t; };
+    T3.mover = () => { T3.moveUntil = performance.now() + 220; T3.wake(520); };
+    T3.animando = () => { for (const k in (T3.devs || {})) { const d = T3.devs[k]; if (d.A && d.A.on && d.A.tick) return true; } return false; };
+    T3.rapido = () => { const r = T3.ren, tm = r.toneMapping, ex = r.toneMappingExposure; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.0; r.render(T3.scene, T3.cam); r.toneMapping = tm; r.toneMappingExposure = ex; };
+    T3.stats = { quadros: 0, ocupado: 0 };
+    (function loop() {
+      T3.raf = requestAnimationFrame(loop); if (!T3.on) return; const tt = performance.now() / 1000; (T3.ticks || []).forEach(f => f(tt));
+      if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; T3.sombraSuja = false; T3.wake(350); }
+      const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update();
+      const c = T3.cam, kc = c.position.x.toFixed(1) + '|' + c.position.y.toFixed(1) + '|' + c.position.z.toFixed(1) + '|' + c.quaternion.x.toFixed(4) + '|' + c.quaternion.y.toFixed(4) + '|' + c.quaternion.z.toFixed(4) + '|' + c.fov + '|' + T3.ren.domElement.width;
+      if (kc !== T3.kc) { T3.kc = kc; T3.mover(); }
+      const agora = performance.now(); if (!(T3.fp.on || agora < T3.until || T3.animando())) return;
+      const t0 = performance.now(); if (T3.real && T3.comp && agora < T3.moveUntil && !T3.fp.on) T3.rapido(); else T3.draw();
+      T3.stats.quadros++; T3.stats.ocupado += performance.now() - t0;
+    })();
   }
   await carregaAlexa(); await carregaTuya(); resize3d(); build3d(true); prepararBrilho();
 }
-function resize3d() { const c = $('#c3d'), w = c.clientWidth, h = c.clientHeight; if (!T3.ren || !w || !h) return; T3.ren.setSize(w, h); if (T3.comp) T3.comp.setSize(w, h); T3.cam.aspect = w / h; T3.cam.updateProjectionMatrix(); }
+function resize3d() { const c = $('#c3d'), w = c.clientWidth, h = c.clientHeight; if (!T3.ren || !w || !h) return; T3.ren.setSize(w, h); if (T3.comp) T3.comp.setSize(w, h); if (T3.wake) T3.wake(700); T3.cam.aspect = w / h; T3.cam.updateProjectionMatrix(); }
 function peDe(c) { return (c && c.pe) || P.peDireito; }
 
 function visual3() { try { const v = localStorage.getItem('planta_visual'); return v === 'dia' || v === 'noite' || v === 'realleve' ? v : 'real'; } catch (e) { return 'real'; } }
@@ -3360,9 +3376,35 @@ function recorte3(c) {
   const pontos = P.pontos.filter(q => q.comodo === c.id || G.dentro(c.pontos, q.x, q.y) || (q.parede && ids.has(q.parede))), pid = new Set(pontos.map(q => q.id));
   return Object.assign({}, P, { paredes, comodos: [c], pontos, aberturas: P.aberturas.filter(a => ids.has(a.parede)), ligacoes: P.ligacoes.filter(l => pid.has(l.de) && pid.has(l.para)) });
 }
+/* Reaproveita materiais iguais e funde os objetos estáticos (paredes, piso, móveis fixos...) em poucas malhas por material e região: as chamadas de desenho caem de milhares para dezenas.
+   Dispositivos, móveis com animação e tudo o que se clica ficam separados e continuam sendo atualizados individualmente. */
+function fundirEstaticos(g) {
+  g.updateMatrixWorld(true); const occSet = new Set(T3.occ || []), canon = new Map(), lotes = new Map(), remover = [];
+  const chave = m => [m.type, m.color && m.color.getHex(), m.emissive && m.emissive.getHex(), m.emissiveIntensity, m.roughness, m.metalness, m.opacity, m.transparent ? 1 : 0, m.side, m.depthWrite ? 1 : 0, m.envMapIntensity, m.map && m.map.uuid, m.bumpMap && m.bumpMap.uuid, m.bumpScale, m.userData && m.userData.vidro ? 1 : 0].join('|');
+  const c = new THREE.Vector3();
+  g.traverse(o => {
+    if (!o.isMesh || !o.userData.estatico || Array.isArray(o.material) || !o.geometry || o.isInstancedMesh) return; const at = o.geometry.attributes; if (!at.position || !at.normal || !at.uv) return;
+    if (o.userData.proxy || o.userData.dev || o.userData.tecla || o.userData.mov || o.userData.marcador) return;
+    const m0 = o.material, k = chave(m0); let m = canon.get(k); if (!m) { canon.set(k, m0); m = m0; } o.material = m; o.getWorldPosition(c);
+    const kk = k + '#' + Math.floor(c.x / 600) + '_' + Math.floor(c.z / 600) + '_' + (c.y > 160 ? 1 : 0) + '_' + (o.castShadow ? 1 : 0); let L = lotes.get(kk); if (!L) { L = { mat: m, itens: [] }; lotes.set(kk, L); } L.itens.push(o);
+  });
+  let fundidos = 0, criados = 0;
+  lotes.forEach(L => {
+    if (L.itens.length < 2) return; let nv = 0, ni = 0; L.itens.forEach(o => { const gg = o.geometry; nv += gg.attributes.position.count; ni += gg.index ? gg.index.count : gg.attributes.position.count; });
+    const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), idx = new Uint32Array(ni), v = new THREE.Vector3(), nm = new THREE.Matrix3(); let vo = 0, io = 0;
+    L.itens.forEach(o => { const gg = o.geometry, P = gg.attributes.position, N = gg.attributes.normal, U = gg.attributes.uv, mw = o.matrixWorld; nm.getNormalMatrix(mw);
+      for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(mw); pos[(vo + i) * 3] = v.x; pos[(vo + i) * 3 + 1] = v.y; pos[(vo + i) * 3 + 2] = v.z; v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); nor[(vo + i) * 3] = v.x; nor[(vo + i) * 3 + 1] = v.y; nor[(vo + i) * 3 + 2] = v.z; uv[(vo + i) * 2] = U.getX(i); uv[(vo + i) * 2 + 1] = U.getY(i); }
+      if (gg.index) for (let i = 0; i < gg.index.count; i++) idx[io++] = gg.index.getX(i) + vo; else for (let i = 0; i < P.count; i++) idx[io++] = vo + i; vo += P.count; });
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.computeBoundingSphere(); geo.computeBoundingBox();
+    const me = new THREE.Mesh(geo, L.mat); me.castShadow = L.itens[0].castShadow; me.receiveShadow = true; me.renderOrder = L.itens[0].renderOrder; me.userData.fundido = true; me.userData.occ = L.itens.some(o => occSet.has(o)); g.add(me); criados++; fundidos += L.itens.length; L.itens.forEach(o => remover.push(o));
+  });
+  remover.forEach(o => { if (o.parent) o.parent.remove(o); o.geometry.dispose(); });
+  T3.occ = g.children.filter(o => o.userData.occ).concat([...occSet].filter(o => o.parent === g && !remover.includes(o)));
+  T3.fusao = { fundidos, malhas: criados, materiais: canon.size };
+}
 function build3d(reenquadrar) { const c = comodo3(); if (!c) return build3dTudo(reenquadrar); const P0 = P; P = recorte3(c); try { return build3dTudo(reenquadrar); } finally { P = P0; } }
 function build3dTudo(reenquadrar) {
-  if (!T3.ok) return; const g = T3.grp; while (g.children.length) { const o = g.children.pop(); if (o.geometry) o.geometry.dispose(); }
+  if (!T3.ok) return; const g = T3.grp; g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); while (g.children.length) g.children.pop();
   aplicarVisual(); const NT = T3.noite, modo = $('#modo3').value, Hn = P.peDireito;
   // cada parede tem a altura do pé-direito do cômodo ao lado; ponto de teto fica sob o forro (pé-direito menos o rebaixo)
   const distPoly = (poly, m) => { let d = 1e9; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; d = Math.min(d, G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, m[0], m[1]).d); } return d; };
@@ -3372,7 +3414,7 @@ function build3dTudo(reenquadrar) {
   const RE = !!T3.real, mWallBase = new THREE.MeshStandardMaterial({ color: RE ? 0x1f2329 : NT ? 0x14171c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: RE ? .9 : NT ? .7 : .9 });
   const mTop = new THREE.MeshStandardMaterial({ color: NT ? 0x262b33 : 0xd5dbe5 });
   const mLed = new THREE.MeshStandardMaterial({ color: 0xff8a2a, emissive: 0xff7a14, emissiveIntensity: 1.0 });
-  const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = !mat.transparent; m.receiveShadow = true; g.add(m); };
+  const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = !mat.transparent; m.receiveShadow = true; m.userData.estatico = true; g.add(m); };
   const vcache = {}; const vidroMat = k => vcache[k || 'transparente'] || (vcache[k || 'transparente'] = (() => {   // tipos de vidro: transparente, escuro, espelhado, esverdeado
     const d = { escuro: { color: 0x10151b, opacity: .62, roughness: .04, metalness: .35 }, espelhado: { color: 0xd5dce4, opacity: 1, roughness: .03, metalness: 1 }, esverdeado: { color: 0x7fc9a9, opacity: .3, roughness: .04, metalness: .15 } }[k] || { color: 0xcfe8f5, opacity: .16, roughness: .02, metalness: .1 };
     const mv = new THREE.MeshStandardMaterial({ color: d.color, transparent: d.opacity < 1, opacity: d.opacity, roughness: d.roughness, metalness: d.metalness, side: THREE.DoubleSide, depthWrite: d.opacity >= 1, envMapIntensity: 1.6 }); mv.userData.vidro = true; return mv;
@@ -3389,7 +3431,7 @@ function build3dTudo(reenquadrar) {
       if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
       if (y1 > y0) {
         const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = o.a.tipo;
-        const pB = (bw, bh, bd, mt, lu, ly, lz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mt); m.position.set(w.x1 + q.ux * lu - q.uy * lz, ly, w.y1 + q.uy * lu + q.ux * lz); m.rotation.y = rotW; m.castShadow = true; g.add(m); return m; };
+        const pB = (bw, bh, bd, mt, lu, ly, lz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mt); m.position.set(w.x1 + q.ux * lu - q.uy * lz, ly, w.y1 + q.uy * lu + q.ux * lz); m.rotation.y = rotW; m.castShadow = true; m.userData.estatico = true; g.add(m); return m; };
         const mAl = new THREE.MeshStandardMaterial({ color: RE ? 0x15181d : 0x8d97a3, metalness: .55, roughness: .38 }), mWd = new THREE.MeshStandardMaterial({ color: RE ? 0x6a4528 : 0xa8743b, roughness: .5, map: RE ? texGrao() : null });
         const mMt = new THREE.MeshStandardMaterial({ color: RE ? 0x23272d : 0x59616d, metalness: .6, roughness: .45 }), mPr = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: .85, roughness: .25 }), mAcab = new THREE.MeshStandardMaterial({ color: RE ? 0x353a42 : 0xdfe3e8, roughness: .6 });
         if (tipoA === 'janela') {
@@ -3441,17 +3483,17 @@ function build3dTudo(reenquadrar) {
     // (sem faixas de LED na base das paredes)
   });
   T3.occ = g.children.filter(o => o.isMesh && o.geometry && o.geometry.type === 'BoxGeometry' && !o.material.transparent);
-  if (NT) { const b0 = bbox(), gp = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x0a0b0e, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.set((b0.x0 + b0.x1) / 2, -.5, (b0.y0 + b0.y1) / 2); gp.receiveShadow = true; gp.userData.solo = true; g.add(gp); }
+  if (NT) { const b0 = bbox(), gp = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), new THREE.MeshStandardMaterial({ color: 0x0a0b0e, roughness: 1 })); gp.rotation.x = -Math.PI / 2; gp.position.set((b0.x0 + b0.x1) / 2, -.5, (b0.y0 + b0.y1) / 2); gp.receiveShadow = true; gp.userData.solo = true; gp.userData.estatico = true; g.add(gp); }
   const cores = [0xb9d3f0, 0xf0d2a8, 0xb8e0c6, 0xd6bfee, 0xf2dc8c, 0xa9dde6];
   P.comodos.forEach((c, i) => {
     const sh = new THREE.Shape(); c.pontos.forEach((p, j) => { if (j) sh.lineTo(p[0], p[1]); else sh.moveTo(p[0], p[1]); });
-    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial(Object.assign({ color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide }, RE ? pisoProps(pisoDe(c)) : { map: texMarmore(false), roughness: .38, metalness: .12 })) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; m.userData.piso = true; g.add(m);
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const m = new THREE.Mesh(geo, NT ? new THREE.MeshStandardMaterial(Object.assign({ color: c.feito ? 0x6fae85 : 0xffffff, side: THREE.DoubleSide }, RE ? pisoProps(pisoDe(c)) : { map: texMarmore(false), roughness: .38, metalness: .12 })) : new THREE.MeshStandardMaterial({ color: c.feito ? 0x8fd6a5 : cores[i % cores.length], side: THREE.DoubleSide, roughness: 1 })); m.position.y = .4; m.receiveShadow = true; m.userData.piso = true; m.userData.estatico = true; g.add(m);
   });
   if (RE && modo !== 'vidro') P.paredes.filter(w => !w.vidro).forEach(w => {   // sombra suave no piso, junto de cada parede (profundidade, como nas imagens)
     const q = wallGeo(w), e = (w.esp || 15) / 2, gr = new THREE.Group(); gr.position.set(w.x1 + q.ux * q.L / 2, .8, w.y1 + q.uy * q.L / 2); gr.rotation.y = -Math.atan2(q.uy, q.ux);
     [-1, 1].forEach(sg => {
       const geo = new THREE.PlaneGeometry(q.L, 46); geo.rotateX(-Math.PI / 2); if (sg < 0) geo.rotateY(Math.PI);
-      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: texSombra('borda'), transparent: true, depthWrite: false })); m.position.z = sg * (e + 23); m.renderOrder = 1; gr.add(m);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: texSombra('borda'), transparent: true, depthWrite: false })); m.position.z = sg * (e + 23); m.renderOrder = 1; m.userData.estatico = true; gr.add(m);
     });
     g.add(gr);
   });
@@ -3462,7 +3504,7 @@ function build3dTudo(reenquadrar) {
     const alongX = W >= D, span = alongX ? D : W, len = alongX ? W : D, ov = 35, tan = kind === 'colonial' ? .34 : .28, yW = peDe(c), rise = span / 2 * tan, yR = yW + rise, yE = yW - ov * tan, halfH = span / 2 + ov, Ls = Math.hypot(halfH, yR - yE), th = Math.atan2(yR - yE, halfH), LL = len + 2 * ov;
     const madeira = new THREE.MeshStandardMaterial({ color: RE ? 0x7a4e2c : 0x8a5a2b, roughness: .55, map: RE ? texGrao() : null });
     const grupo = new THREE.Group(); grupo.position.set((x0 + x1) / 2, yR, (z0 + z1) / 2); grupo.rotation.y = alongX ? 0 : Math.PI / 2; g.add(grupo);
-    const add = (par, w_, h_, d_, mt, x, y, z, sh) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w_, h_, d_), mt); m.position.set(x, y, z); m.castShadow = sh !== false; m.receiveShadow = true; par.add(m); return m; };
+    const add = (par, w_, h_, d_, mt, x, y, z, sh) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w_, h_, d_), mt); m.position.set(x, y, z); m.castShadow = sh !== false; m.receiveShadow = true; m.userData.estatico = true; par.add(m); return m; };
     [-1, 1].forEach(sg => {
       const sl = new THREE.Group(); sl.position.set(0, -(Ls / 2) * Math.sin(th), sg * (Ls / 2) * Math.cos(th)); sl.rotation.x = sg * th; grupo.add(sl);
       const mt = new THREE.MeshStandardMaterial({ map: texTelha(kind).clone(), roughness: kind === 'colonial' ? .8 : .7, metalness: 0 }); mt.map.needsUpdate = true; mt.map.repeat.set(LL / (kind === 'colonial' ? 136 : 132), Ls / (kind === 'colonial' ? 160 : 150));
@@ -3532,8 +3574,8 @@ function build3dTudo(reenquadrar) {
   };
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
-    if (M.ehMovel(p)) { const m3 = movel3D(p); m3.g.position.set(p.x, +p.elev || 0, p.y); m3.g.rotation.y = -(+p.rot || 0) * Math.PI / 180; g.add(m3.g); if (m3.tick) T3.ticks.push(m3.tick); m3.hits.forEach(m => T3.pick.push(m));
-      if (RE && !(+p.elev) && p.tipo !== 'piso_elevado' && p.tipo !== 'tapete' && p.tipo !== 'cortina_tecido') { const Tm = M.TIPOS[p.tipo], Lm = +p.larg || Tm.mov[0], Dm = +p.prof || Tm.mov[1], mc = new THREE.Mesh(new THREE.PlaneGeometry(Lm * 1.3, Dm * 1.3), new THREE.MeshBasicMaterial({ map: texSombra('mancha'), transparent: true, depthWrite: false })); mc.rotation.x = -Math.PI / 2; const gm = new THREE.Group(); gm.position.set(p.x, .9, p.y); gm.rotation.y = -(+p.rot || 0) * Math.PI / 180; gm.add(mc); mc.renderOrder = 1; g.add(gm); }
+    if (M.ehMovel(p)) { const m3 = movel3D(p); m3.g.position.set(p.x, +p.elev || 0, p.y); m3.g.rotation.y = -(+p.rot || 0) * Math.PI / 180; g.add(m3.g); if (m3.tick) T3.ticks.push(m3.tick); m3.hits.forEach(m => T3.pick.push(m)); if (!m3.tick && !m3.hits.length) m3.g.traverse(q2 => { q2.userData.estatico = true; });
+      if (RE && !(+p.elev) && p.tipo !== 'piso_elevado' && p.tipo !== 'tapete' && p.tipo !== 'cortina_tecido') { const Tm = M.TIPOS[p.tipo], Lm = +p.larg || Tm.mov[0], Dm = +p.prof || Tm.mov[1], mc = new THREE.Mesh(new THREE.PlaneGeometry(Lm * 1.3, Dm * 1.3), new THREE.MeshBasicMaterial({ map: texSombra('mancha'), transparent: true, depthWrite: false })); mc.rotation.x = -Math.PI / 2; const gm = new THREE.Group(); gm.position.set(p.x, .9, p.y); gm.rotation.y = -(+p.rot || 0) * Math.PI / 180; gm.add(mc); mc.renderOrder = 1; mc.userData.estatico = true; g.add(gm); }
       return; }
     const c = getById(P.comodos, p.comodo), cp = colaNaParede3(p), topo = tetoDe(c), y = yPonto(p), pendura = ehTeto(p) && !cp.w && p.tipo !== 'pendente';
     const yDisp = cp.w ? y : (pendura ? topo : y), px = cp.w ? cp.x : p.x, pz = cp.w ? cp.z : p.y;
@@ -3544,6 +3586,7 @@ function build3dTudo(reenquadrar) {
     if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const rz = p.tipo === 'tv' ? 34 : (M.catDe(p) === 'energia' ? 14 : 28), z = new THREE.Mesh(new THREE.SphereGeometry(rz, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; z.userData.proxy = true; T3.zonas.push({ m: z, base: 2 * rz }); A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
     if (modo === 'solida' && (p.tipo === 'interruptor' || p.tipo === 'botao')) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texMarcador(), depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: false })); sp.scale.set(.05, .05, 1); sp.position.set(px, yDisp, pz); sp.renderOrder = 999; sp.userData = { tecla: { sw: p.id, t: 1 }, marcador: true }; g.add(sp); T3.pick.push(sp); }   // o interruptor fica na face de dentro da parede: marcador sempre visível
     if (A.luz) { A.dim = clamp((p.dim == null ? 100 : +p.dim) / 100, .03, 1); A.cor = (p.kelvin && p.tipo !== 'fita_led') ? kelvinCor(+p.kelvin) : null; }
+    { const s0 = A.set; A.set = on => { s0(on); T3.wake(600); }; if (A.setTecla) { const t0 = A.setTecla; A.setTecla = (i, on) => { t0(i, on); T3.wake(600); }; } }
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
@@ -3563,6 +3606,7 @@ function build3dTudo(reenquadrar) {
     on.forEach((w, i) => { const o = (i - (on.length - 1) / 2) * 2.4; linha(w[2], new THREE.Vector3(nx * o, 0, nz * o), S.projeto === 'final' && !fa[w[0]]); });
   });
   $('#leg3d').innerHTML = Object.keys(M.CATS).map(c => '<span style="margin-right:8px"><span class="dot" style="background:' + M.CATS[c].cor + '"></span>' + M.CATS[c].nome + '</span>').join('');
+  if (!window.PLANTA_SEM_FUSAO) fundirEstaticos(g); T3.wake(900);
   if (reenquadrar) iso();
 }
 function bbox() { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; P.paredes.forEach(w => { x0 = Math.min(x0, w.x1, w.x2); x1 = Math.max(x1, w.x1, w.x2); y0 = Math.min(y0, w.y1, w.y2); y1 = Math.max(y1, w.y1, w.y2); }); if (x0 > x1) { x0 = y0 = 0; x1 = y1 = 800; } return { x0, y0, x1, y1 }; }
