@@ -857,7 +857,7 @@ try { var q = new URLSearchParams(location.search); window.PLANTA_CTX = { client
     novos.forEach(c => {
       let m = null;
       velhos.forEach(v => { if (usados.has(v.id)) return; if (G.dentro(c.pontos, v.cx, v.cy) || G.dentro(v.pontos, c.cx, c.cy)) { if (!m || Math.hypot(v.cx - c.cx, v.cy - c.cy) < Math.hypot(m.cx - c.cx, m.cy - c.cy)) m = v; } });
-      if (m) { usados.add(m.id); c.id = m.id; c.nome = m.nome; c.obs = m.obs || ''; c.pe = m.pe || 0; }
+      if (m) { usados.add(m.id); c.id = m.id; c.nome = m.nome; c.obs = m.obs || ''; c.pe = m.pe || 0; Object.keys(m).forEach(k => { if (!(k in c) && ['pontos', 'cx', 'cy', 'area', 'areaCentro', '_pat'].indexOf(k) < 0) c[k] = m[k]; }); }   // mantém piso, cor, forro, rebaixo... ao mexer nas paredes
       else { c.id = M.id(p, 'c'); c.nome = 'Cômodo ' + (++n); c.obs = ''; c.pe = 0; }
       // área interna aproximada (descontando metade da espessura em todo o perímetro)
       let per = 0; for (let i = 0; i < c.pontos.length; i++) { const a = c.pontos[i], b = c.pontos[(i + 1) % c.pontos.length]; per += Math.hypot(a[0] - b[0], a[1] - b[1]); }
@@ -2065,7 +2065,13 @@ function renderPanel() {
     h += '<div class="row"><div>' + fld('Altura (cm)', 'altura', p.altura, 'data-n="1" type="number"') + '</div><div><label>Cômodo</label><select data-f="comodo"><option value="">—</option>' + P.comodos.map(c => '<option value="' + c.id + '"' + (c.id === p.comodo ? ' selected' : '') + '>' + esc(c.nome) + '</option>').join('') + '</select></div></div>';
     if (p.tipo === 'tv') { const PL = [24, 32, 40, 43, 50, 55, 58, 60, 65, 70, 75, 77, 82, 85, 98, 100], pa = +p.polegadas || 50; if (PL.indexOf(pa) < 0) PL.push(pa); PL.sort((a, b) => a - b); h += '<label>Tela da TV (polegadas) — o 3D usa a medida real</label><select data-f="polegadas" data-n="1">' + PL.map(n => '<option value="' + n + '"' + (n === pa ? ' selected' : '') + '>' + n + '"' + (n === 50 ? ' (padrão)' : '') + '</option>').join('') + '</select>'; }
     if (p.tipo === 'soundbar') h += fld('Comprimento (cm)', 'larg', p.larg || 100, 'data-n="1" type="number" min="40" max="200"');
-    if (p.tipo === 'trilho') h += '<div class="sec">Trilho eletrificado</div><div class="row"><div><label>Comprimento</label><select data-f="comp" data-n="1">' + [50, 100, 150, 200, 250, 300].map(c => '<option value="' + c + '"' + ((+p.comp || 100) === c ? ' selected' : '') + '>' + c + ' cm</option>').join('') + '</select></div><div><label>Spots / canhões</label><select data-f="nSpots" data-n="1">' + [1, 2, 3, 4, 5, 6, 8, 10].map(c => '<option value="' + c + '"' + ((+p.nSpots || 3) === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div></div><div class="row"><div><label>Cor do trilho</label><select data-f="corTrilho"><option value="branco"' + (p.corTrilho !== 'preto' ? ' selected' : '') + '>Branco</option><option value="preto"' + (p.corTrilho === 'preto' ? ' selected' : '') + '>Preto</option></select></div><div><label>Giro</label><select data-f="giro" data-n="1">' + [0, 45, 90, 135].map(c => '<option value="' + c + '"' + ((+p.giro || 0) === c ? ' selected' : '') + '>' + c + '°</option>').join('') + '</select></div></div>';
+    if (p.tipo === 'fita_led') h += '<div class="sec">Fita de LED</div>' + fld('Comprimento (cm)', 'comp', +p.comp || 200, 'data-n="1" type="number" min="10" max="3000"') + '<div class="row"><div><label>Tipo</label><select data-f="ledModo"><option value="rgb"' + (p.ledModo !== 'cor' ? ' selected' : '') + '>RGB (colorida)</option><option value="cor"' + (p.ledModo === 'cor' ? ' selected' : '') + '>Uma cor só</option></select></div>' + (p.ledModo === 'cor' ? '<div><label>Cor</label><input type="color" data-f="ledCor" value="' + (p.ledCor || '#ffb24d') + '"></div>' : '') + '</div>';
+    if (p.tipo === 'trilho') h += '<div class="sec">Trilho eletrificado</div><div class="row"><div><label>Comprimento</label><select data-f="comp" data-n="1">' + [50, 100, 150, 200, 250, 300].map(c => '<option value="' + c + '"' + ((+p.comp || 100) === c ? ' selected' : '') + '>' + c + ' cm</option>').join('') + '</select></div><div><label>Spots / canhões</label><select data-f="nSpots" data-n="1">' + [1, 2, 3, 4, 5, 6, 8, 10].map(c => '<option value="' + c + '"' + ((+p.nSpots || 3) === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div></div><div class="row"><div><label>Cor do trilho</label><select data-f="corTrilho"><option value="branco"' + (p.corTrilho !== 'preto' ? ' selected' : '') + '>Branco</option><option value="preto"' + (p.corTrilho === 'preto' ? ' selected' : '') + '>Preto</option></select></div><div><label>Giro</label><select data-f="giro" data-n="1">' + [0, 45, 90, 135].map(c => '<option value="' + c + '"' + ((+p.giro || 0) === c ? ' selected' : '') + '>' + c + '°</option>').join('') + '</select></div></div>' + (() => {
+      const n = Math.max(1, Math.min(10, Math.round(+p.nSpots) || 3)); let hh = '<div class="sec">Spots (mover e apontar)</div>';
+      const faixa = (rot, f, v, min, max, un) => '<label style="margin-top:2px">' + rot + ': <b>' + v + un + '</b></label><input type="range" data-f="' + f + '" data-n="1" min="' + min + '" max="' + max + '" step="1" value="' + v + '" style="width:100%" oninput="this.previousElementSibling.querySelector(\'b\').textContent=this.value+\'' + un + '\'">';
+      for (let i = 0; i < n; i++) { const sp = spotDe(p, i, n); hh += '<div class="note" style="margin-top:6px;font-weight:700">Spot ' + (i + 1) + '</div>' + faixa('Posição na calha', 'spots.' + i + '.p', sp.p, 0, 100, '%') + faixa('Direção (giro)', 'spots.' + i + '.az', sp.az, 0, 359, '°') + faixa('Inclinação', 'spots.' + i + '.inc', sp.inc, 0, 80, '°'); }
+      if (!Array.isArray(p.spots) || p.spots.length < n) { p.spots = Array.from({ length: n }, (_, i) => Object.assign(spotDe(p, i, n), (p.spots && p.spots[i]) || {})); }
+      return hh; })();
     if (M.catDe(p) === 'luz') {
       const K = +p.kelvin || 3000, D = p.dim == null ? 100 : +p.dim, nomeK = k => k <= 2500 ? 'âmbar' : k <= 3200 ? 'quente' : k <= 4500 ? 'neutra' : 'fria';
       h += '<div class="sec">Cor e intensidade da luz</div>';
@@ -2110,7 +2116,7 @@ function renderPanel() {
     const a = getById(P.aberturas, sel.id); if (!a) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">' + ({ porta: 'Porta', janela: 'Janela', portal: 'Portal (sem porta)', portao: 'Portão' }[a.tipo] || 'Abertura') + '</div><div class="row"><div>' + fld('Largura (cm)', 'larg', a.larg, 'data-n="1" type="number"') + '</div><div>' + fld('Altura (cm)', 'alt', a.alt, 'data-n="1" type="number"') + '</div></div>';
     if (a.tipo === 'janela') h += fld('Peitoril (cm)', 'peitoril', a.peitoril, 'data-n="1" type="number"');
-    if (a.tipo === 'portao') h += '<label>Modelo do portão</label><select data-f="modelo">' + MODELOS_PORTAO.map(m => '<option value="' + m[0] + '"' + ((a.modelo || 'deslizante') === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select><label>Posição no 3D</label><select data-f="pos"><option value="fechado"' + (a.pos !== 'aberto' ? ' selected' : '') + '>Fechado</option><option value="aberto"' + (a.pos === 'aberto' ? ' selected' : '') + '>Aberto</option></select>';
+    if (a.tipo === 'portao') h += fld('Altura do início (cm) — 0 = desde o chão', 'peitoril', +a.peitoril || 0, 'data-n="1" type="number" min="0"') + '<label>Modelo do portão</label><select data-f="modelo">' + MODELOS_PORTAO.map(m => '<option value="' + m[0] + '"' + ((a.modelo || 'deslizante') === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select><label>Posição no 3D</label><select data-f="pos"><option value="fechado"' + (a.pos !== 'aberto' ? ' selected' : '') + '>Fechado</option><option value="aberto"' + (a.pos === 'aberto' ? ' selected' : '') + '>Aberto</option></select>';
     h += '<div class="row" style="margin-top:8px"><button data-act="flip" title="Faz a porta abrir para o outro lado da parede">⇅ Abrir p/ outro lado</button>' + ((a.tipo === 'porta' || a.tipo === 'portao') ? '<button data-act="flipdobr" title="Troca a dobradiça (ou o lado em que o portão desliza): esquerda ⇄ direita">⇄ Inverter dobradiça</button>' : '') + '<button class="danger" data-act="delsel">Excluir</button></div>';
   } else if (sel.k === 'comodo') {
     const c = getById(P.comodos, sel.id); if (!c) { S.sel = null; return renderPanel(); }
@@ -2154,7 +2160,7 @@ $('#panel').addEventListener('change', e => {
     if (S.sel.k === 'ponto' && f === 'teclas') P.ligacoes = P.ligacoes.filter(l => !(l.de === o.id && (l.tecla || 1) > v));
     if (S.sel.k === 'ponto' && (f === 'neutro.modo' || f === 'teclas')) renderPanel();
     if (S.sel.k === 'ponto' && f === 'teto') { if (v === true) { const rc = getById(P.comodos, o.comodo); o.altura = Math.max(0, peDe(rc) - (rc && rc.rebaixo || 0) - 2); } renderPanel(); }
-    if (S.sel.k === 'ponto' && (f === 'produtoId' || f === 'cor')) renderPanel();
+    if (S.sel.k === 'ponto' && (f === 'produtoId' || f === 'cor' || f === 'ledModo' || f === 'nSpots')) renderPanel();
     if (S.sel.k === 'ponto' && f === 'cat') renderTools(); }
   refresh({ panel: false });
 });
@@ -2377,7 +2383,7 @@ function fimGesto(e, cancel) {
     if (!r.ok) { undo.pop(); toast('Não deu para mover: ' + r.motivo); return refresh(); }
     S.sel = { k: 'comodo', id: r.comodoId }; if (S.ativo) S.ativo = r.comodoId; refresh(); toast('Cômodo movido' + (r.portas ? ' e ligado ao vizinho (porta criada).' : '.')); return;
   }
-  if (g.mode === 'dragPonto' && g.drag) { (g.o ? Object.keys(g.o) : [g.pid]).forEach(i => { const p = getById(P.pontos, i); if (p) p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); }); return refresh(); }
+  if (g.mode === 'dragPonto' && g.drag) { (g.o ? Object.keys(g.o) : [g.pid]).forEach(i => { const p = getById(P.pontos, i); if (p) { colaMovelParede(p); p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); } }); return refresh(); }
   if (g.mode === 'dragHandle' && g.drag) { ajustaParedes(); M.recalc(P); return refresh(); }
   if (g.mode === 'dragParede' && g.drag) { ajustaParedes(); M.recalc(P); P.pontos.forEach(p => { p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); }); return refresh(); }
   if (g.mode === 'dragAbertura' && g.drag) return refresh();
@@ -2446,6 +2452,7 @@ function tocar(g, w) {
     const ex = { parede }; if (tipo === 'interruptor') ex.teclas = S.teclasNovo;
     if (tipo === 'outro' && S.outro) { ex.nome = S.outro.nome; ex.cat = S.outro.cat; ex.sigla = S.outro.sigla; ex.altura = S.outro.altura; }
     snap(); const p = M.novoPonto(P, tipo, x, y, ex); if (tipo === 'ar_condicionado' && P.paredes.length) { const k = G.colar({ x: p.x, y: p.y }, P.paredes, 1e6); if (k) { p.x = Math.round(k.x); p.y = Math.round(k.y); p.parede = k.parede; } } p.comodo = G.comodoDoPonto(P.comodos, p.x, p.y); P.pontos.push(p); S.sel = { k: 'ponto', id: p.id }; S.tool = 'sel';
+    colaMovelParede(p);
     if (tipo === 'interruptor' || tipo === 'botao') { S.tool = 'ligar'; S.lig = { de: p.id, tecla: 1, soLuz: true }; S.sel = null; toast('Interruptor criado. Clique nos pontos de luz que ele comanda (Esc termina). Para ligar outros aparelhos, use a ferramenta Ligar pontos.', 6000); }
     return refresh();
   }
@@ -2662,16 +2669,18 @@ $('#checksBox').addEventListener('click', e => { const c = e.target.closest('[da
 
 /* ===================== 3D ===================== */
 const T3 = { on: false, ok: false, scene: null, cam: null, ren: null, ctl: null, grp: null, raf: 0 };
-const KL = () => (window.THREE && THREE.NOVO) ? Math.PI : 1, DEC = d => (window.THREE && THREE.WEBGPU) ? 2 : (window.THREE && THREE.NOVO) ? 0 : d, KLD = () => (window.THREE && THREE.WEBGPU) ? Math.PI * 220000 : KL();   // WebGPU: queda física (1/d², planta em cm) e luzes fortes   // motor novo: luzes em unidades físicas (x π) e sem queda por distância (a planta está em cm)
-function motorEscolhido() {   // padrão: WebGPU onde o navegador suporta; sem WebGPU, motor clássico
-  const q = (location.search.match(/[?&]motor=(classico|novo|webgpu)/) || [])[1], pad = (typeof navigator !== 'undefined' && navigator.gpu) ? 'webgpu' : 'classico'; let v = q;
-  if (!v) { try { v = localStorage.getItem('planta_motor2'); } catch (e) { } }
+const KL = () => (window.THREE && THREE.NOVO) ? Math.PI : 1, DEC = d => (window.THREE && THREE.WEBGPU) ? 1 : (window.THREE && THREE.NOVO) ? 0 : d, KLD = () => (window.THREE && THREE.WEBGPU) ? Math.PI * 815 : KL();   // WebGPU: queda física (1/d², planta em cm) e luzes fortes   // motor novo: luzes em unidades físicas (x π) e sem queda por distância (a planta está em cm)
+function motorEscolhido() {   // padrão: motor clássico; WebGPU fica como opção (só onde o navegador suporta)
+  const q = (location.search.match(/[?&]motor=(classico|novo|webgpu)/) || [])[1], pad = 'classico'; let v = q;
+  if (!v) { try { v = localStorage.getItem('planta_motor3'); } catch (e) { } }
   if (v === 'webgpu' && !(typeof navigator !== 'undefined' && navigator.gpu)) v = 'classico'; return v || pad;
 }
 function motorNovo() { return motorEscolhido() === 'novo'; }
 function motorWebGPU() { return motorEscolhido() === 'webgpu'; }
 function srgbTex(t) { if (window.THREE && THREE.NOVO) t.colorSpace = THREE.SRGBColorSpace; else t.encoding = THREE.sRGBEncoding; return t; }
-async function carregaThree() {
+let _carregaThree = null;
+function carregaThree() { return _carregaThree || (_carregaThree = carregaThree0().catch(e => { _carregaThree = null; throw e; })); }
+async function carregaThree0() {
   if (window.THREE && THREE.OrbitControls) return;
   if (motorWebGPU()) {   // motor WebGPU (experimental): SSGI + TRAA + bloom, modo único realista
     const B = 'https://cdn.jsdelivr.net/npm/three@0.185.1';
@@ -2837,7 +2846,7 @@ async function prepararBrilho() {
       const nrm = sample(uv => unpackRGBToNormal(nor.sample(uv))), gi = THREE.ssgi(col, dep, nrm, T3.cam);
       gi.sliceCount.value = 2; gi.stepCount.value = 8; gi.radius.value = 14; gi.thickness.value = 25; gi.giIntensity.value = 14; gi.aoIntensity.value = 1.2;
       const comp = vec4(add(col.rgb.mul(gi.getAONode().r), dif.rgb.mul(gi.getGINode().rgb)), col.a), aa = THREE.traa(comp, dep, vel, T3.cam);
-      const bl = THREE.bloom(aa, .45, .3, 1.4); rp.outputNode = aa.add(bl);
+      const bl = THREE.bloom(aa, .28, .3, 2.6); rp.outputNode = aa.add(bl);
       T3.rp = rp; T3.ssgi = gi; T3.ssao = null; T3.bloom = bl; resize3d(); aplicarVisual();
     } catch (e) { T3.rp = null; console.warn('Pipeline WebGPU indisponível:', e && e.message); }
     return;
@@ -2865,7 +2874,7 @@ async function prepararBrilho() {
       for (const f of ['math/SimplexNoise', 'shaders/SSAOShader', 'postprocessing/SSAOPass']) await loadScript(B + f + '.js');
       const ss = new THREE.SSAOPass(T3.scene, T3.cam, sz.x, sz.y); ss.kernelRadius = 40; ss.minDistance = .0015; ss.maxDistance = .05; co.addPass(ss); T3.ssao = ss;
     } catch (e) { T3.ssao = null; console.warn('AO indisponível:', e && e.message); }
-    T3.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x / 2, sz.y / 2), .5, .3, 1.4); co.addPass(T3.bloom);
+    T3.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x / 2, sz.y / 2), .32, .3, 1.9); co.addPass(T3.bloom);
     T3.fin = new THREE.ShaderPass({ uniforms: { tDiffuse: { value: null }, exp: { value: 1.15 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: 'uniform sampler2D tDiffuse; uniform float exp; varying vec2 vUv; vec3 aces(vec3 x){ x *= exp; return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); } void main(){ vec3 c = aces(texture2D(tDiffuse, vUv).rgb); gl_FragColor = vec4(pow(c, vec3(1.0 / 2.2)), 1.0); }' });
     co.addPass(T3.fin); T3.comp = co; resize3d(); aplicarVisual();
@@ -3134,6 +3143,9 @@ function texTela() {
   x.fillStyle = 'rgba(255,255,255,.18)'; x.beginPath(); x.arc(70, 100, 60, 0, 7); x.fill(); x.beginPath(); x.arc(190, 40, 40, 0, 7); x.fill();
   return (T3.texT = new THREE.CanvasTexture(cv));
 }
+function spotDe(p, i, n) {   // dados de um spot do trilho (com valores padrão)
+  const s = (p.spots && p.spots[i]) || {}; return { p: s.p != null ? +s.p : Math.round((i + .5) / n * 100), az: s.az != null ? +s.az : 0, inc: s.inc != null ? +s.inc : 0 };
+}
 function kelvinCor(K) {   // temperatura de cor (Kelvin) -> cor RGB
   const t = Math.max(1000, Math.min(12000, K)) / 100; let r, g, b;
   if (t <= 66) { r = 255; g = 99.4708 * Math.log(t) - 161.1196; } else { r = 329.6987 * Math.pow(t - 60, -.1332); g = 288.1222 * Math.pow(t - 60, -.0755); }
@@ -3160,6 +3172,11 @@ function amostraPiso(k, cor) {
   for (let i = 0; i < a.length; i += 4) { const r = a[i] / 1.35, g = a[i + 1] / 1.35, b = a[i + 2] / 1.35, R = -.574 * r + 1.43 * g + .144 * b, Gg = .426 * r + .43 * g + .144 * b, B = .426 * r + 1.43 * g - .856 * b; a[i] = 255 - Math.max(0, Math.min(255, R)); a[i + 1] = 255 - Math.max(0, Math.min(255, Gg)); a[i + 2] = 255 - Math.max(0, Math.min(255, B)); }
   x.putImageData(d, 0, 0); const rep = (pr.map.repeat && pr.map.repeat.x) || (1 / 200);
   return (M.pisoCache[ch] = { u, ui: cv.toDataURL('image/png'), tam: Math.round(1 / rep) });
+}
+function colaMovelParede(p) {   // prateleira e nicho: encostam na parede mais próxima, de costas para ela
+  if (!p || (p.tipo !== 'prateleira_vidro' && p.tipo !== 'nicho') || !P.paredes.length) return; const c = G.colar({ x: p.x, y: p.y }, P.paredes, 120); if (!c) return;
+  const w = getById(P.paredes, c.parede); if (!w) return; const q = wallGeo(w); let nx = q.nx, ny = q.ny; if ((p.x - c.x) * nx + (p.y - c.y) * ny < 0) { nx = -nx; ny = -ny; }
+  const T = M.TIPOS[p.tipo], D = +p.prof || T.mov[1], off = (w.esp || 15) / 2 + D / 2 + .5; p.x = Math.round((c.x + nx * off) * 10) / 10; p.y = Math.round((c.y + ny * off) * 10) / 10; p.rot = Math.round(((Math.atan2(-nx, ny) * 180 / Math.PI) + 360) % 360);
 }
 function topoDe(t) {
   if (!M.tops) { try { M.tops = JSON.parse(localStorage.getItem('planta_topos_v3') || '{}') || {}; } catch (e) { M.tops = {}; } }
@@ -3213,7 +3230,7 @@ async function esperaTexturas(obj) {   // só usa o modelo depois que as imagens
 async function carregaModelos3D(tipos) {
   if (window.PLANTA_SEM_MODELOS) return false; T3.modelos = T3.modelos || {}; T3.modFalhou = T3.modFalhou || {};
   const faltam = [...new Set(tipos)].filter(t => MODELOS3D[t] && !T3.modelos[t] && !T3.modFalhou[t]); if (!faltam.length) return false;
-  try { if (!THREE.GLTFLoader) { if (THREE.NOVO) { const m = await import('https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/loaders/GLTFLoader.js'); THREE.GLTFLoader = m.GLTFLoader; } else await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'); } } catch (e) { faltam.forEach(t => { T3.modFalhou[t] = 1; }); return false; }
+  try { if (!THREE.GLTFLoader) await (T3._glLoader || (T3._glLoader = (async () => { if (THREE.NOVO) { const m = await import('https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/loaders/GLTFLoader.js'); THREE.GLTFLoader = m.GLTFLoader; } else await loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'); })())); } catch (e) { faltam.forEach(t => { T3.modFalhou[t] = 1; }); return false; }
   const ld = new THREE.GLTFLoader(); let algum = false;
   await Promise.all(faltam.map(t => new Promise(ok => ld.load(URL_MODELOS + MODELOS3D[t][0] + '.glb', async gl => {
     await esperaTexturas(gl.scene); const cena = gl.scene; cena.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(cena), sz = bb.getSize(new THREE.Vector3()), ct = bb.getCenter(new THREE.Vector3());
@@ -3363,7 +3380,7 @@ function aparelho3D(p, o) {
     R.set = on => {
       const d = R.dim == null ? 1 : R.dim; mats.forEach(m => { m.emissiveIntensity = on ? 2.6 * d : 0; if (R.cor != null) m.emissive.setHex(R.cor); });
       if (h) { h.visible = on; const u = h.material && h.material.uniforms; if (u) { if (h.userData.k0 == null) h.userData.k0 = u.uK.value; u.uK.value = h.userData.k0 * d; if (R.cor != null) u.uCol.value.setHex(R.cor); } }
-      if (o.sujar) o.sujar(); if (R.pl) { R.pl.intensity = on ? R.plI * d : 0; if (R.cor != null) R.pl.color.setHex(R.cor); }
+      if (o.sujar) o.sujar(); (R.pls || (R.pl ? [R.pl] : [])).forEach(li => { li.intensity = on ? R.plI * d : 0; if (R.cor != null) li.color.setHex(R.cor); });
     };
   };
   const ceilBack = o.ceilY != null ? o.ceilY : 270;
@@ -3412,14 +3429,21 @@ function aparelho3D(p, o) {
   if (t === 'trilho') {   // trilho eletrificado: comprimento, quantidade de spots/canhões e cor (branco ou preto)
     const comp = Math.max(30, +p.comp || 100), n = Math.max(1, Math.min(10, Math.round(+p.nSpots) || 3)), preto = p.corTrilho === 'preto', cT = preto ? 0x14161a : 0xe9ecef, cS = preto ? 0x1b1e23 : 0xf4f5f7;
     const l = luzMat(0xfff1dc), h = halo(Math.max(120, comp * 1.1), 0xfff1dc, -8); B(comp, 2.2, 3, std(cT, { roughness: .45, metalness: preto ? .3 : 0 }), 0, -1.1, 0);
-    for (let i = 0; i < n; i++) { const x = -comp / 2 + comp * (i + .5) / n, c = Cy(2.6, 3.2, 9, std(cS, { roughness: .4, metalness: .25 }), x, -6.5, 0, 24); c.rotation.z = Math.sin(i * 1.7) * .12; Cy(2.1, 2.1, .3, l, x, -11, 0, 24); B(1.6, 3, 1.6, std(cT), x, -2.4, 0); }
+    R.spotsLocal = [];
+    for (let i = 0; i < n; i++) {   // posição na calha (0 a 100%), direção (giro) e inclinação de cada spot vêm do painel
+      const sp = spotDe(p, i, n), x = -comp / 2 + comp * sp.p / 100, inc = sp.inc * Math.PI / 180, az = sp.az * Math.PI / 180, dir = new THREE.Vector3(Math.sin(inc) * Math.sin(az), -Math.cos(inc), Math.sin(inc) * Math.cos(az)).normalize();
+      B(1.6, 3, 1.6, std(cT), x, -2.4, 0); const piv = new THREE.Group(); piv.position.set(x, -4, 0); piv.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir); G3.add(piv);
+      const corpo = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 3.2, 9, 24), std(cS, { roughness: .4, metalness: .25 })); corpo.position.y = -4.5; corpo.castShadow = true; piv.add(corpo);
+      const lente = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, .3, 24), l); lente.position.y = -9.1; piv.add(lente);
+      R.spotsLocal.push({ pos: new THREE.Vector3(x, -4, 0).add(dir.clone().multiplyScalar(9.5)), dir });
+    }
     if (p.giro) G3.rotation.y = -(+p.giro) * Math.PI / 180; luzGenerica([l], h); return R;
   }
   if (t === 'fita_led') {
-    const L = p.comp || 200, N = 48, segs = [], base = B(L, .9, 1.6, std(0xdfe3e8), 0, -.45, 0);
+    const L = +p.comp || 200, N = 48, segs = [], base = B(L, .9, 1.6, std(0xdfe3e8), 0, -.45, 0), rgb = p.ledModo !== 'cor', corF = new THREE.Color(p.ledCor || '#ffb24d');
     for (let i = 0; i < N; i++) { const m = new THREE.MeshBasicMaterial({ color: 0x2a2d33, toneMapped: false }), s2 = new THREE.Mesh(new THREE.BoxGeometry(L / N * .96, 1.1, 2), m); s2.position.set(-L / 2 + L / N * (i + .5), -1.35, 0); G3.add(s2); segs.push(m); }
-    R.on = false; R.dim = 1; R.set = on => { R.on = on; if (!on) segs.forEach(m => m.color.set(0x2a2d33)); if (R.pl) R.pl.intensity = on ? R.plI * (R.dim == null ? 1 : R.dim) : 0; if (o.sujar) o.sujar(); };
-    R.tick = tt => { if (!R.on) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22)).multiplyScalar(1.15 * (R.dim == null ? 1 : R.dim))); if (R.pl) R.pl.color.copy(hsl3(.5 - tt * .22)); };
+    R.on = false; R.dim = 1; R.set = on => { R.on = on; const d = R.dim == null ? 1 : R.dim; if (!on) segs.forEach(m => m.color.set(0x2a2d33)); else if (!rgb) segs.forEach(m => m.color.copy(corF).multiplyScalar(1.15 * d)); if (R.pl) { R.pl.intensity = on ? R.plI * d : 0; if (!rgb) R.pl.color.copy(corF); } if (o.sujar) o.sujar(); };
+    R.tick = tt => { if (!R.on || !rgb) return; segs.forEach((m, i) => m.color.copy(hsl3(i / N - tt * .22)).multiplyScalar(1.15 * (R.dim == null ? 1 : R.dim))); if (R.pl) R.pl.color.copy(hsl3(.5 - tt * .22)); };
     if (o.dirY) G3.rotation.y = o.dirY; R.luz = 1; return R;
   }
   if (t === 'echo' || t === 'echo_dot' || t === 'echo_pop' || t === 'echo_studio') {
@@ -3600,7 +3624,7 @@ function fundirEstaticos(g) {
 function build3d(reenquadrar) { const c = comodo3(); if (!c) return build3dTudo(reenquadrar); const P0 = P; P = recorte3(c); try { return build3dTudo(reenquadrar); } finally { P = P0; } }
 function build3dTudo(reenquadrar) {
   if (!T3.ok) return;
-  if (!T3.modCarregando && !window.PLANTA_SEM_MODELOS) { const usados = P.pontos.map(q => q.tipo).filter(t => MODELOS3D[t] && !(T3.modelos && T3.modelos[t]) && !(T3.modFalhou && T3.modFalhou[t])); if (usados.length) { T3.modCarregando = true; carregaModelos3D(usados).then(novo => { T3.modCarregando = false; if (novo) build3d(false); }); } } const g = T3.grp; g.traverse(o => { if (o.geometry && !o.isSprite && !o.geometry.userData.compartilhada) o.geometry.dispose(); });   // sprites usam uma geometria única do three.js: apagar trava o WebGPU while (g.children.length) g.children.pop();
+  if (!T3.modCarregando && !window.PLANTA_SEM_MODELOS) { const usados = P.pontos.map(q => q.tipo).filter(t => MODELOS3D[t] && !(T3.modelos && T3.modelos[t]) && !(T3.modFalhou && T3.modFalhou[t])); if (usados.length) { T3.modCarregando = true; carregaModelos3D(usados).then(novo => { T3.modCarregando = false; if (novo) build3d(false); }); } } const g = T3.grp; g.traverse(o => { if (o.geometry && !o.isSprite && !o.geometry.userData.compartilhada) o.geometry.dispose(); });   /* sprites usam uma geometria única do three.js: apagar trava o WebGPU */ while (g.children.length) g.children.pop();
   aplicarVisual(); const NT = T3.noite, modo = $('#modo3').value, Hn = P.peDireito;
   // cada parede tem a altura do pé-direito do cômodo ao lado; ponto de teto fica sob o forro (pé-direito menos o rebaixo)
   const distPoly = (poly, m) => { let d = 1e9; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; d = Math.min(d, G.projT({ x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, m[0], m[1]).d); } return d; };
@@ -3623,7 +3647,7 @@ function build3dTudo(reenquadrar) {
     let cur = -(w.esp || 15) / 2;
     ops.forEach(o => {
       box(cur, o.u0, 0, Hw, w, q, mWall);
-      const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : 0, y1 = Math.min(Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
+      const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min(Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
       if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
       if (y1 > y0) {
         const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = o.a.tipo;
@@ -3765,8 +3789,13 @@ function build3dTudo(reenquadrar) {
     else return;
     if (L.isSpotLight) { const tg = new THREE.Object3D(); tg.position.copy(alvo); g.add(tg); L.target = tg; }
     if (sombra) { L.castShadow = true; L.shadow.mapSize.set(512, 512); L.shadow.camera.near = 4; L.shadow.camera.far = L.distance || 600; L.shadow.bias = -0.0025; L.shadow.radius = 3; }
-    if (T3.real && A.plI) A.plI *= .6;
+    if (T3.real && A.plI) A.plI *= .45;
     g.add(L); A.pl = L;
+    if (t === 'trilho' && A.spotsLocal && A.spotsLocal.length) {   // um foco por spot, cada um apontado para onde foi configurado
+      A.g.updateMatrixWorld(true); const n = A.spotsLocal.length; A.plI = A.plI * 1.4 / n; A.pls = [];
+      A.spotsLocal.forEach((sp, i) => { const Li = i === 0 ? L : new THREE.SpotLight(L.color.getHex(), 0, L.distance, L.angle * .75, L.penumbra, L.decay); const wp = sp.pos.clone().applyMatrix4(A.g.matrixWorld), wd = sp.dir.clone().transformDirection(A.g.matrixWorld);
+        Li.position.copy(wp); const tg = (i === 0 && Li.target && Li.target.parent) ? Li.target : new THREE.Object3D(); tg.position.copy(wp.clone().addScaledVector(wd, 200)); if (!tg.parent) g.add(tg); Li.target = tg; if (i) g.add(Li); A.pls.push(Li); });
+    }
   };
   P.pontos.forEach(p => {
     if (!visivel(p)) return;
@@ -3780,7 +3809,7 @@ function build3dTudo(reenquadrar) {
     A.g.position.set(px, yDisp, pz); if (cp.w) A.g.rotation.y = Math.atan2(cp.nx, cp.nz);
     if (NT && A.luz && permitido.has(p.id)) criaLuz3(p, A, { px, pz, y, topo, pendura, cp, c });
     if (p.tipo !== 'interruptor' && p.tipo !== 'botao') { const rz = p.tipo === 'tv' ? 34 : (M.catDe(p) === 'energia' ? 14 : 28), z = new THREE.Mesh(new THREE.SphereGeometry(rz, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); z.userData.dev = p.id; z.userData.proxy = true; T3.zonas.push({ m: z, base: 2 * rz }); A.g.add(z); A.hit = A.hit.length ? A.hit.concat([z]) : A.hit; T3.pick.push(z); }
-    if (modo === 'solida' && (p.tipo === 'interruptor' || p.tipo === 'botao')) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texMarcador(), depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: false })); sp.scale.set(.05, .05, 1); sp.position.set(px, yDisp, pz); sp.renderOrder = 999; sp.userData = { tecla: { sw: p.id, t: 1 }, marcador: true }; g.add(sp); T3.pick.push(sp); }   // o interruptor fica na face de dentro da parede: marcador sempre visível
+    if (window.PLANTA_MARCADORES && modo === 'solida' && (p.tipo === 'interruptor' || p.tipo === 'botao')) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texMarcador(), depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: false })); sp.scale.set(.05, .05, 1); sp.position.set(px, yDisp, pz); sp.renderOrder = 999; sp.userData = { tecla: { sw: p.id, t: 1 }, marcador: true }; g.add(sp); T3.pick.push(sp); }   // o interruptor fica na face de dentro da parede: marcador sempre visível
     if (A.luz) { A.dim = clamp((p.dim == null ? 100 : +p.dim) / 100, .03, 1); A.cor = p.tipo === 'fita_led' ? null : p.kelvin ? kelvinCor(+p.kelvin) : (THREE.WEBGPU ? kelvinCor(2800) : null); }
     { const s0 = A.set; A.set = on => { s0(on); T3.wake(600); }; if (A.setTecla) { const t0 = A.setTecla; A.setTecla = (i, on) => { t0(i, on); T3.wake(600); }; } }
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
@@ -3812,10 +3841,10 @@ function focarComodo(c) {
   T3.ctl.target.set(c.cx, 70, c.cy); T3.cam.position.set(c.cx + d * .62, d * .95, c.cy + d * .62); T3.cam.lookAt(T3.ctl.target); T3.ctl.update();
 }
 { const NOMES = { classico: 'clássico', novo: 'novo (beta)', webgpu: 'WebGPU realista (experimental)' }, PROX = { classico: 'novo', novo: 'webgpu', webgpu: 'classico' }; $('#bMotor').textContent = 'Motor: ' + NOMES[motorEscolhido()];
-  $('#bMotor').onclick = () => { const prox = PROX[motorEscolhido()]; if (!confirm('Trocar o motor gráfico do 3D para "' + NOMES[prox] + '"? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor2', prox); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=(classico|novo|webgpu)/, '') + location.hash; }; }
+  $('#bMotor').onclick = () => { const prox = PROX[motorEscolhido()]; if (!confirm('Trocar o motor gráfico do 3D para "' + NOMES[prox] + '"? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor3', prox); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=(classico|novo|webgpu)/, '') + location.hash; }; }
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
-$('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   // Visão geral = casa inteira $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
+$('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   /* Visão geral = casa inteira */ $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
 const baixaArq = (blob, nome) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
 const SCRIPT_BLENDER = `# Gerado pelo Domótica ERP: monta a cena no Blender (3.6 ou mais novo) para renderizar a casa com raytracing.
 # Como usar: instale o Blender (gratuito, blender.org), deixe este arquivo e o .glb na MESMA pasta,
