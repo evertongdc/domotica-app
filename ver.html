@@ -3607,13 +3607,17 @@ $('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; buil
 const baixaArq = (blob, nome) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
 const SCRIPT_BLENDER = `# Gerado pelo Domótica ERP: monta a cena no Blender (3.6 ou mais novo) para renderizar a casa com raytracing.
 # Como usar: instale o Blender (gratuito, blender.org), deixe este arquivo e o .glb na MESMA pasta,
-# abra o Blender > aba "Scripting" > Open > escolha este arquivo > Run Script. Depois aperte F12 para renderizar.
+# abra o Blender > aba "Scripting" > Open > escolha este arquivo > Run Script. A imagem começa a renderizar sozinha
+# e fica salva na mesma pasta (NOME_render.png); o arquivo .blend também é salvo para ajustes.
 import bpy, os, math, json
 from mathutils import Vector
 
 NOME_GLB = "__GLB__"
 LUZES = json.loads('''__LUZES__''')
-POTENCIA_LUZ = 250       # watts de cada luz (aumente se ficar escuro)
+POTENCIA_LUZ = 180       # watts de cada luz (aumente se ficar escuro)
+PREENCHIMENTO = 350      # luz geral por cima (aumente para clarear tudo)
+EXPOSICAO = 0.9          # brilho final da imagem
+RENDERIZAR_AO_RODAR = True
 FORCA_EMISSAO = 12       # brilho dos objetos que emitem luz (fitas de LED, luminárias)
 AMOSTRAS = 128           # mais amostras = menos ruído e mais demora
 RESOLUCAO = (1920, 1080)
@@ -3658,33 +3662,63 @@ def rgb(h):
 
 for i, l in enumerate(LUZES):
     d = bpy.data.lights.new("luz%d" % i, l.get('tipo', 'POINT'))
-    d.energy = POTENCIA_LUZ; d.color = rgb(l.get('cor', '#ffe2b0')); d.shadow_soft_size = 0.06
+    d.energy = POTENCIA_LUZ * (1.4 if d.type == 'SPOT' else 1.0); d.color = rgb(l.get('cor', '#ffe2b0')); d.shadow_soft_size = 0.12
     if d.type == 'SPOT':
-        d.spot_size = math.radians(80); d.spot_blend = 0.6
-    o = bpy.data.objects.new("luz%d" % i, d); o.location = (l['x'], -l['z'], l['y']); sc.collection.objects.link(o)
+        d.spot_size = math.radians(70); d.spot_blend = 0.7
+    o = bpy.data.objects.new("luz%d" % i, d); o.location = (l['x'], -l['z'], l['y'] - 0.05); sc.collection.objects.link(o)
 
-# luz de preenchimento suave por cima (a casa está sem teto)
-amb = bpy.data.lights.new("preenchimento", 'AREA'); amb.energy = 1500; amb.size = tam; amb.color = (1.0, 0.86, 0.7)
-ao = bpy.data.objects.new("preenchimento", amb); ao.location = (centro.x, centro.y, mx.z + tam * 0.7); sc.collection.objects.link(ao)
+# luz de preenchimento fraca e quente por cima (a casa está sem teto); o clima vem das luzes dos cômodos
+amb = bpy.data.lights.new("preenchimento", 'AREA'); amb.energy = PREENCHIMENTO; amb.size = tam * 1.2; amb.color = (1.0, 0.84, 0.66)
+ao = bpy.data.objects.new("preenchimento", amb); ao.location = (centro.x, centro.y, mx.z + tam * 0.8); sc.collection.objects.link(ao)
 
 mundo = bpy.data.worlds.new("Noite"); sc.world = mundo; mundo.use_nodes = True
-bg = mundo.node_tree.nodes['Background']; bg.inputs[0].default_value = (0.012, 0.014, 0.02, 1); bg.inputs[1].default_value = 1.0
+bg = mundo.node_tree.nodes['Background']; bg.inputs[0].default_value = (0.02, 0.024, 0.034, 1); bg.inputs[1].default_value = 0.6
 
-cam = bpy.data.cameras.new("Camera"); cam.lens = 30
-co = bpy.data.objects.new("Camera", cam); co.location = (centro.x + tam * 0.08, centro.y - tam * 0.6, mx.z + tam * 0.9); sc.collection.objects.link(co)
-alvo = bpy.data.objects.new("Alvo", None); alvo.location = (centro.x, centro.y, 0.3); sc.collection.objects.link(alvo)
+cam = bpy.data.cameras.new("Camera"); cam.lens = 32
+co = bpy.data.objects.new("Camera", cam); co.location = (centro.x + tam * 0.06, centro.y - tam * 0.42, mx.z + tam * 1.05); sc.collection.objects.link(co)
+alvo = bpy.data.objects.new("Alvo", None); alvo.location = (centro.x, centro.y, 0.2); sc.collection.objects.link(alvo)
 t = co.constraints.new('TRACK_TO'); t.target = alvo; t.track_axis = 'TRACK_NEGATIVE_Z'; t.up_axis = 'UP_Y'
 sc.camera = co
 
 sc.render.engine = 'CYCLES'; sc.cycles.samples = AMOSTRAS; sc.cycles.use_denoising = True
+try:   # usa a placa de vídeo (Metal no Mac, CUDA/OptiX no PC) quando houver
+    prefs = bpy.context.preferences.addons['cycles'].preferences
+    for tipo in ('METAL', 'OPTIX', 'CUDA', 'HIP', 'ONEAPI'):
+        try:
+            prefs.compute_device_type = tipo; prefs.get_devices()
+            if any(dv.type == tipo for dv in prefs.devices):
+                for dv in prefs.devices: dv.use = True
+                sc.cycles.device = 'GPU'; break
+        except Exception:
+            pass
+except Exception:
+    pass
 sc.render.resolution_x, sc.render.resolution_y = RESOLUCAO
 for modo in ('AgX', 'Filmic'):
     try:
         sc.view_settings.view_transform = modo; break
     except TypeError:
         pass
-sc.view_settings.exposure = 0.6   # aumente se quiser mais claro
-print("Pronto. Aperte F12 para renderizar. Para mudar o ângulo, mova o objeto 'Camera'.")
+try:
+    sc.view_settings.look = 'AgX - Medium High Contrast'
+except Exception:
+    pass
+sc.view_settings.exposure = EXPOSICAO
+sc.render.filepath = os.path.join(pasta(), NOME_GLB.replace('_3d.glb', '') + '_render.png')
+try:
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(pasta(), NOME_GLB.replace('_3d.glb', '') + '.blend'))
+except Exception:
+    pass
+if bpy.app.background:
+    bpy.ops.render.render(write_still=True)
+else:
+    for area in bpy.context.screen.areas:   # mostra a cena já com luz e materiais (não o modo cinza)
+        if area.type == 'VIEW_3D':
+            for sp in area.spaces:
+                if sp.type == 'VIEW_3D': sp.shading.type = 'RENDERED'; sp.region_3d.view_perspective = 'CAMERA'
+    if RENDERIZAR_AO_RODAR:
+        bpy.ops.render.render('INVOKE_DEFAULT', write_still=True)
+print("Pronto. A imagem final fica salva como " + sc.render.filepath + " (F12 renderiza de novo).")
 `;
 async function exportarBlender() {
   if (!T3.ok) return toast('Abra a aba 3D primeiro.');
