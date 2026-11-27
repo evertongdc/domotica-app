@@ -268,7 +268,57 @@ window.DOMOTICA_CFG = {
     var r = await sb.rpc('portal_resumo');
     if (r.error) { R.innerHTML = '<div class="auth"><div class="err">' + esc(r.error.message) + '</div><button class="btn" id="x-s">Sair</button></div>'; document.getElementById('x-s').onclick = sair; return; }
     if (r.data && r.data.erro) return telaSemVinculo();
-    D = r.data; if (lsGet('dom_alexa')) return telaAlexa(); pintar();
+    D = r.data; await carregarProtect(); if (lsGet('dom_alexa')) return telaAlexa(); pintar();
+  }
+  /* ---------- monitoramento (Protect) e contrato: leitura direta, a RLS mostra só o que é do cliente ---------- */
+  async function carregarProtect() {
+    var P = { casas: [], contratos: [], aparelhos: [], ocorrencias: [], em: new Date() };
+    try {
+      var q = await Promise.all([
+        sb.from('residencias').select('id, nome'),
+        sb.from('contratos_assistencia').select('plano, status, valor_mensal, dia_vencimento, inicio').in('status', ['ativo', 'suspenso', 'proposta']).order('criado_em', { ascending: false }),
+        sb.from('dispositivos_externos').select('id, nome, area, dominio, ignorado, removido_em').is('removido_em', null),
+        sb.from('estado_dispositivo').select('dispositivo_id, estado, conectividade, mudou_em'),
+        sb.from('ocorrencias').select('id, tipo, titulo, aberta_em, fechada_em').order('aberta_em', { ascending: false }).limit(20)]);
+      if (!q[0].error) P.casas = q[0].data || [];
+      if (!q[1].error) P.contratos = q[1].data || [];
+      var est = {}; (q[3].error ? [] : q[3].data || []).forEach(function (e) { est[e.dispositivo_id] = e; });
+      if (!q[2].error) P.aparelhos = (q[2].data || []).filter(function (d) { return !d.ignorado && d.dominio !== 'sensor' && d.dominio !== 'button' && d.dominio !== 'scene'; }).map(function (d) { var e = est[d.id] || {}; return { nome: d.nome, area: d.area, dominio: d.dominio, estado: e.estado, con: e.conectividade, mudou: e.mudou_em }; });
+      if (!q[4].error) P.ocorrencias = q[4].data || [];
+    } catch (e) { /* sem monitoramento: o portal segue normal */ }
+    D.protect = P;
+  }
+  var PL_NOME = { connect: 'Domótica Connect', protect: 'Domótica Protect' }, PL_ST = { ativo: ['Ativo', 'b-ok'], suspenso: ['Suspenso', 'b-warn'], proposta: ['Proposta', 'b-blue'] };
+  // texto para o cliente: claro e sem alarme; a causa só aparece quando há evidência (o técnico vê o detalhe)
+  var OC_CLI = { servidor_sem_comunicacao: 'Sem comunicação com a central da sua casa', servidor_reiniciou: 'A central da sua casa reiniciou', internet: 'Falha de comunicação da internet', integracao: 'Alguns aparelhos de uma mesma marca pararam de responder', dispositivo_offline: 'Aparelho sem conexão', desatualizado: 'Sem dados recentes de um sensor', autorizacao_revogada: 'Acesso ao monitoramento revogado' };
+  function estadoTxt(a) {
+    if (a.con === 'offline') return ['Sem conexão', 'b-bad'];
+    var s = String(a.estado || '');
+    if (s === 'on') return ['Ligado', 'b-ok']; if (s === 'off') return ['Desligado', 'b-off'];
+    if (s === 'open') return ['Aberto', 'b-blue']; if (s === 'closed') return ['Fechado', 'b-off'];
+    if (s === 'locked') return ['Trancado', 'b-ok']; if (s === 'unlocked') return ['Destrancado', 'b-warn'];
+    return [s ? s : '—', 'b-off'];
+  }
+  function cardPlano() {
+    var c = D.protect && D.protect.contratos[0]; if (!c) return '';
+    var st = PL_ST[c.status] || [c.status, 'b-off'];
+    return '<div class="h">Seu plano</div><div class="card"><div class="row"><div><b>' + esc(PL_NOME[c.plano] || c.plano) + '</b><div class="sm">' + (c.valor_mensal != null ? brl(c.valor_mensal) + '/mês' : '') + (c.dia_vencimento ? ' · vence todo dia ' + c.dia_vencimento : '') + (c.inicio ? ' · desde ' + dia(c.inicio) : '') + '</div></div><span class="badge ' + st[1] + '">' + st[0] + '</span></div>' +
+      '<div class="sm" style="margin-top:8px">Sua casa funciona normalmente com ou sem o plano: apps, Alexa e interruptores não dependem dele.</div></div>';
+  }
+  function cardMonitor(resumido) {
+    var P = D.protect; if (!P || !P.aparelhos.length) return '';
+    var off = P.aparelhos.filter(function (a) { return a.con === 'offline'; }).length, tot = P.aparelhos.length;
+    var abertas = P.ocorrencias.filter(function (o) { return !o.fechada_em; });
+    var topo = '<div class="row"><div><b>' + (tot - off) + ' de ' + tot + ' aparelhos conectados</b><div class="sm">Atualizado às ' + P.em.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div></div><span class="badge ' + (abertas.length ? 'b-warn' : 'b-ok') + '">' + (abertas.length ? 'Em acompanhamento' : 'Tudo normal') + '</span></div>';
+    var oc = abertas.length ? '<div style="margin-top:10px">' + abertas.slice(0, resumido ? 2 : 10).map(function (o) { return '<div class="sm" style="margin-top:4px">• ' + esc(OC_CLI[o.tipo] || o.titulo) + (o.tipo === 'dispositivo_offline' ? ': ' + esc(String(o.titulo || '').replace(/^Aparelho offline:\s*/, '')) : '') + ' <span style="opacity:.7">(desde ' + dh(o.aberta_em) + ')</span></div>'; }).join('') + '<div class="sm" style="margin-top:8px">A equipe da Domótica já foi avisada.</div></div>' : '';
+    return '<div class="h">Monitoramento</div><div class="card">' + topo + oc + '</div>';
+  }
+  function vAgora() {
+    var P = D.protect; if (!P || !P.aparelhos.length) return '';
+    var por = {}; P.aparelhos.forEach(function (a) { (por[a.area || 'Outros'] = por[a.area || 'Outros'] || []).push(a); });
+    return cardMonitor(false) + Object.keys(por).sort().map(function (k) {
+      return '<div class="h">' + esc(k) + ' · agora</div><div class="card">' + por[k].map(function (a) { var t = estadoTxt(a); return '<div class="item"><div class="t"><b>' + esc(a.nome) + '</b></div><span class="badge ' + t[1] + '">' + esc(t[0]) + '</span></div>'; }).join('') + '</div>';
+    }).join('') + '<div class="h">Garantias</div>';
   }
   /* ---------- conectar a Alexa (vinculação de conta da skill) ---------- */
   function telaAlexa() {
@@ -326,7 +376,9 @@ window.DOMOTICA_CFG = {
       '<main><div class="wrap" id="p-corpo"></div></main>' +
       '<nav><div class="wrap">' + Object.keys(nomes).map(function (k) { return '<button data-a="' + k + '" class="' + (k === ABA ? 'on' : '') + '"><svg viewBox="0 0 24 24">' + ICO[k] + '</svg>' + nomes[k] + (k !== 'inicio' && k !== 'casa' && cont[k] ? '<span class="dot">' + cont[k] + '</span>' : '') + '</button>'; }).join('') + '</div></nav>';
     document.getElementById('p-sair').onclick = sair; rotuloTema();
-    R.querySelector('nav').onclick = function (e) { var b = e.target.closest('button'); if (b) { ABA = b.dataset.a; pintar(); window.scrollTo(0, 0); } };
+    R.querySelector('nav').onclick = function (e) { var b = e.target.closest('button'); if (b) { ABA = b.dataset.a; pintar(); window.scrollTo(0, 0);
+      // estado dos aparelhos muda: ao entrar em Início/Minha casa, relê e repinta se o cliente ainda estiver na mesma aba
+      if ((ABA === 'casa' || ABA === 'inicio') && D.protect && D.protect.aparelhos.length) { var aba = ABA; carregarProtect().then(function () { if (ABA === aba) pintar(); }); } } };
     var corpo = document.getElementById('p-corpo'); corpo.innerHTML = ({ inicio: vInicio, projetos: vProjetos, orcamentos: vOrcamentos, casa: vCasa, pedidos: vPedidos })[ABA]();
     corpo.onclick = clique;
   }
@@ -345,6 +397,7 @@ window.DOMOTICA_CFG = {
       '<div class="sm" style="margin-top:12px;color:var(--tx)">' + esc(saude) + '</div>' +
       '<div class="acts"><button class="btn pri" data-nova="reparo">Solicitar reparo</button><button class="btn" data-nova="cena">Solicitar cena</button></div></div>' +
       (pend.length ? '<div class="h">Precisa da sua atenção</div><div class="card">' + pend.join('') + '</div>' : '') +
+      cardMonitor(true) + cardPlano() +
       (ob ? '<div class="h">Obra</div><div class="card"><div class="row"><b>Instalação em andamento</b><span class="badge b-blue">' + Math.round(ob.progresso_pct || 0) + '%</span></div><div class="bar"><i style="width:' + Math.round(ob.progresso_pct || 0) + '%"></i></div>' + (ob.dt_inicio ? '<div class="sm" style="margin-top:6px">Início em ' + dia(ob.dt_inicio) + '</div>' : '') + '</div>' : '') +
       (prox ? '<div class="h">Próxima visita</div><div class="card"><b>' + esc(prox.titulo || 'Visita técnica') + '</b><div class="sm">' + dh(prox.dt_inicio) + '</div></div>' : '') +
       '<div class="h">Pedidos em aberto</div>' + (ab.length ? ab.slice(0, 3).map(cardPedido).join('') : '<div class="card empty">Nenhum pedido em aberto.</div>');
@@ -377,9 +430,10 @@ window.DOMOTICA_CFG = {
     }).join('');
   }
   function vCasa() {
-    if (!D.dispositivos.length) return '<div class="card empty">Seus dispositivos e garantias aparecerão aqui depois da instalação.</div>';
+    var agora = vAgora();
+    if (!D.dispositivos.length) return agora + '<div class="card empty">Seus dispositivos e garantias aparecerão aqui depois da instalação.</div>';
     var por = {}; D.dispositivos.forEach(function (d) { (por[d.ambiente || 'Outros'] = por[d.ambiente || 'Outros'] || []).push(d); });
-    return Object.keys(por).map(function (k) {
+    return agora + Object.keys(por).map(function (k) {
       return '<div class="h">' + esc(k) + '</div><div class="card">' + por[k].map(function (d) {
         var g = garantia(d);
         return '<div class="item"><div class="t"><b>' + esc(d.nome) + '</b><div class="sm">' + (d.dt_instalacao ? 'Instalado em ' + dia(d.dt_instalacao) : '') + '</div><span class="badge ' + g.c + '" style="margin-top:6px">' + esc(g.t) + '</span></div><button class="btn sm" data-nova="reparo" data-dev="' + esc(d.id) + '">Pedir reparo</button></div>';
