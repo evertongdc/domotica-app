@@ -703,6 +703,9 @@ window.PLANTA_CTX = {};
     tomada_alta:     { nome: 'Tomada alta',      sigla: 'TA',   cat: 'energia',   alt: 110, parede: 1, grupo: 'Tomadas' },
     ar_condicionado: { nome: 'Ar-condicionado',  sigla: 'AC',   cat: 'clima',     alt: 220, parede: 1, grupo: 'Clima / Motores' },
     ventilador:      { nome: 'Ventilador',       sigla: 'VT',   cat: 'clima',     alt: 270, parede: 0, teto: 1, grupo: 'Clima / Motores' },
+    ventilador_coluna:{ nome: 'Ventilador de coluna', sigla: 'VC', cat: 'clima',   alt: 0,   parede: 0, grupo: 'Clima / Motores' },
+    ventilador_parede:{ nome: 'Ventilador de parede', sigla: 'VP', cat: 'clima',   alt: 220, parede: 1, grupo: 'Clima / Motores' },
+    climatizador:    { nome: 'Climatizador',     sigla: 'CLZ',  cat: 'clima',     alt: 0,   parede: 0, grupo: 'Clima / Motores' },
     cortina:         { nome: 'Cortina motor.',   sigla: 'CT',   cat: 'clima',     alt: 250, parede: 1, grupo: 'Clima / Motores' },
     portao:          { nome: 'Portão / Motor',   sigla: 'PT',   cat: 'clima',     alt: 100, parede: 0, grupo: 'Clima / Motores' },
     tv:              { nome: 'TV',               sigla: 'TV',   cat: 'midia',     alt: 120, parede: 1, grupo: 'TV / Mídia' },
@@ -716,6 +719,11 @@ window.PLANTA_CTX = {};
     pendente:        { nome: 'Pendente / lustre', sigla: 'PE',  cat: 'luz',       alt: 200, parede: 0, teto: 1, grupo: 'Iluminação' },
     trilho:          { nome: 'Trilho de spots',  sigla: 'TR',   cat: 'luz',       alt: 270, parede: 0, teto: 1, grupo: 'Iluminação' },
     balizador:       { nome: 'Balizador',        sigla: 'BZ',   cat: 'luz',       alt: 30,  parede: 1, grupo: 'Iluminação' },
+    refletor:        { nome: 'Refletor LED',     sigla: 'RF',   cat: 'luz',       alt: 250, parede: 1, grupo: 'Iluminação' },
+    luz_piso:        { nome: 'Luz de piso (embutida)', sigla: 'LP', cat: 'luz',   alt: 0,   parede: 0, grupo: 'Iluminação' },
+    lampada:         { nome: 'Lâmpada simples (bocal)', sigla: 'LA', cat: 'luz',  alt: 270, parede: 0, teto: 1, grupo: 'Iluminação' },
+    espelho_organico:{ nome: 'Espelho orgânico com luz', sigla: 'EO', cat: 'luz', alt: 150, parede: 1, grupo: 'Iluminação' },
+    arvore_natal:    { nome: 'Árvore de Natal (pisca-pisca)', sigla: 'AN', cat: 'luz', alt: 0, parede: 0, grupo: 'Iluminação' },
     echo_dot:        { nome: 'Echo Dot',         sigla: 'DOT',  cat: 'alexa',     alt: 100, parede: 0, grupo: 'Alexa' },
     echo_pop:        { nome: 'Echo Pop',         sigla: 'POP',  cat: 'alexa',     alt: 100, parede: 0, grupo: 'Alexa' },
     echo_show:       { nome: 'Echo Show (tela)', sigla: 'SHW',  cat: 'alexa',     alt: 120, parede: 0, grupo: 'Alexa' },
@@ -1541,15 +1549,15 @@ function renderSVG() {
       const hw = Math.max(w.esp || 15, 8) / 2 + 3, cc = on ? '#1e88ff' : '#b45309';
       [A, B].forEach(Q => { s += '<line x1="' + (Q[0] - q.nx * hw) + '" y1="' + (Q[1] - q.ny * hw) + '" x2="' + (Q[0] + q.nx * hw) + '" y2="' + (Q[1] + q.ny * hw) + '" stroke="' + cc + '" stroke-width="3" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; });
       s += '<line x1="' + A[0] + '" y1="' + A[1] + '" x2="' + B[0] + '" y2="' + B[1] + '" stroke="' + cc + '" stroke-width="1.4" stroke-dasharray="3 5" vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
-    } else if (a.tipo === 'portao' && a.modelo !== 'social') {
-      const mod = a.modelo || 'deslizante', cc = on ? '#1e88ff' : '#92400e', sd2 = a.lado || 1, dob2 = a.dobr || 1;
-      if (mod === 'duasfolhas') {
+    } else if (a.tipo === 'portao' && (a.modelo !== 'social' || a.fixo === '1')) {
+      const fixo = a.fixo === '1', mod = a.modelo || 'deslizante', cc = on ? '#1e88ff' : (a.cor || '#92400e'), sd2 = a.lado || 1, dob2 = a.dobr || 1;
+      if (mod === 'duasfolhas' && !fixo) {
         const half = a.larg / 2, M0 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
         [[A, 1], [B, -1]].forEach(q2 => { const H = q2[0], E = [H[0] + q.nx * half * sd2, H[1] + q.ny * half * sd2]; s += '<line x1="' + H[0] + '" y1="' + H[1] + '" x2="' + E[0] + '" y2="' + E[1] + '" stroke="' + cc + '" stroke-width="3.5" vector-effect="non-scaling-stroke" style="pointer-events:none"/><path d="M' + E[0] + ' ' + E[1] + 'A' + half + ' ' + half + ' 0 0 ' + ((sd2 * q2[1]) > 0 ? 0 : 1) + ' ' + M0[0] + ' ' + M0[1] + '" fill="none" stroke="' + cc + '" stroke-width="1.5" stroke-dasharray="5 4" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; });
       } else {
         const off = (w.esp || 15) / 2 + 7, O = [q.nx * off * sd2, q.ny * off * sd2], dash = (mod === 'basculante' || mod === 'seccionado') ? ' stroke-dasharray="10 5"' : '';
         s += '<line x1="' + (A[0] + O[0]) + '" y1="' + (A[1] + O[1]) + '" x2="' + (B[0] + O[0]) + '" y2="' + (B[1] + O[1]) + '" stroke="' + cc + '" stroke-width="5"' + dash + ' vector-effect="non-scaling-stroke" style="pointer-events:none"/>';
-        if (mod === 'deslizante' || mod === 'ripado') { const F = dob2 > 0 ? B : A, T = dob2 > 0 ? A : B, x0 = F[0] + O[0] * 1.9, y0 = F[1] + O[1] * 1.9, dx = (T[0] - F[0]) * .35, dy = (T[1] - F[1]) * .35, L2 = Math.hypot(dx, dy) || 1, hx = dx / L2 * 14, hy = dy / L2 * 14; s += '<path d="M' + x0 + ' ' + y0 + 'l' + dx + ' ' + dy + 'm' + (-hx - hy * .5) + ' ' + (-hy + hx * .5) + 'l' + hx + ' ' + hy + 'l' + (-hx + hy * .5) + ' ' + (-hy - hx * .5) + '" stroke="' + cc + '" stroke-width="2" fill="none" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; }
+        if (!fixo && (mod === 'deslizante' || mod === 'ripado')) { const F = dob2 > 0 ? B : A, T = dob2 > 0 ? A : B, x0 = F[0] + O[0] * 1.9, y0 = F[1] + O[1] * 1.9, dx = (T[0] - F[0]) * .35, dy = (T[1] - F[1]) * .35, L2 = Math.hypot(dx, dy) || 1, hx = dx / L2 * 14, hy = dy / L2 * 14; s += '<path d="M' + x0 + ' ' + y0 + 'l' + dx + ' ' + dy + 'm' + (-hx - hy * .5) + ' ' + (-hy + hx * .5) + 'l' + hx + ' ' + hy + 'l' + (-hx + hy * .5) + ' ' + (-hy - hx * .5) + '" stroke="' + cc + '" stroke-width="2" fill="none" vector-effect="non-scaling-stroke" style="pointer-events:none"/>'; }
       }
     } else if (a.tipo === 'porta' || (a.tipo === 'portao' && a.modelo === 'social')) {
       const side = a.lado || 1, dob = a.dobr || 1, Hn = dob > 0 ? A : B, Fr = dob > 0 ? B : A, E = [Hn[0] + q.nx * a.larg * side, Hn[1] + q.ny * a.larg * side];
@@ -1853,7 +1861,7 @@ function ladoOffset(p) {
 }
 const PALAVRAS = { interruptor: ['interruptor', 'modulo', 'tecla'], botao: ['botao', 'keypad', 'controle', 'cena'], tomada: ['tomada'], tomada_20a: ['tomada'], tomada_dupla: ['tomada'], tomada_usb: ['tomada', 'usb'], tomada_piso: ['tomada'], tomada_dedicada: ['tomada'], tomada_alta: ['tomada'],
   echo: ['echo', 'alexa'], echo_dot: ['echo dot', 'echo', 'alexa'], echo_pop: ['echo pop', 'echo', 'alexa'], echo_show: ['echo show', 'show', 'alexa'], echo_hub: ['echo hub', 'hub', 'alexa'], echo_studio: ['echo studio', 'alexa'], hub: ['hub', 'gateway', 'zigbee', 'ponte'],
-  spot: ['spot', 'lampada', 'led'], ponto_luz: ['lampada', 'luminaria', 'plafon'], plafon: ['plafon', 'luminaria'], pendente: ['pendente', 'lustre'], trilho: ['trilho', 'spot'], fita_led: ['fita', 'led'], arandela: ['arandela', 'lampada'], balizador: ['balizador', 'led'],
+  spot: ['spot', 'lampada', 'led'], ponto_luz: ['lampada', 'luminaria', 'plafon'], plafon: ['plafon', 'luminaria'], pendente: ['pendente', 'lustre'], trilho: ['trilho', 'spot'], fita_led: ['fita', 'led'], arandela: ['arandela', 'lampada'], balizador: ['balizador', 'led'], refletor: ['refletor', 'led'], luz_piso: ['embutido', 'piso', 'balizador'], lampada: ['lampada', 'bocal'], espelho_organico: ['espelho', 'led'], arvore_natal: ['arvore', 'natal', 'pisca'], ventilador_coluna: ['ventilador'], ventilador_parede: ['ventilador'], climatizador: ['climatizador'],
   camera: ['camera'], sensor: ['sensor'], sensor_presenca: ['presenca', 'sensor'], detector: ['fumaca', 'detector', 'sensor'], fechadura: ['fechadura'], ar_condicionado: ['ar condicionado', 'ar-condicionado', 'controle'], ventilador: ['ventilador'], cortina: ['cortina', 'persiana', 'motor'], portao: ['portao', 'motor', 'abridor'],
   tv: ['tv', 'televisao'], roteador: ['roteador', 'wifi', 'mesh'], caixa_som: ['caixa de som', 'som'], amplificador: ['amplificador', 'som'], qdc: ['disjuntor', 'quadro', 'dps'], quadro_automacao: ['quadro', 'automacao'], quadro_rede: ['rack', 'switch', 'rede'] };
 function sugerirProdutos(p) {
@@ -1934,6 +1942,13 @@ function iconeReal(p, sz, accent) {
   else if (t === 'cortina') g = '<rect x="-50" y="-6" width="100" height="12" rx="6" fill="#cbd5e1" ' + ST + '/>' + [-34, -17, 0, 17, 34].map(x => '<circle cx="' + x + '" cy="0" r="5" fill="#64748b"/>').join('') + led(44, 0);
   else if (t === 'portao') g = '<rect x="-48" y="-30" width="96" height="60" rx="4" fill="#e2e8f0" ' + ST + '/>' + [-30, -15, 0, 15, 30].map(x => '<line x1="' + x + '" x2="' + x + '" y1="-26" y2="26" stroke="#94a3b8" stroke-width="3"/>').join('') + '<path d="M-20 0 H20 M10 -8 L20 0 L10 8" stroke="' + accent + '" stroke-width="4" fill="none"/>';
   else if (t === 'camera') g = '<circle r="44" fill="#e2e8f0" ' + ST + '/><circle r="32" fill="#0f172a"/><circle r="20" fill="#1e293b"/><circle r="9" fill="#38bdf8"/><circle cx="-5" cy="-5" r="3" fill="#fff"/>';
+  else if (t === 'refletor') g = '<rect x="-44" y="-30" width="88" height="56" rx="6" fill="#2b3038" ' + ST + '/><rect x="-36" y="-22" width="72" height="40" rx="3" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>' + [-24, -8, 8, 24].map(x => '<circle cx="' + x + '" cy="-2" r="5" fill="#fde68a"/>').join('') + '<rect x="-8" y="26" width="16" height="16" fill="#2b3038"/>';
+  else if (t === 'luz_piso') g = '<circle r="44" fill="#cbd5e1" ' + ST + '/><circle r="32" fill="#94a3b8"/><circle r="24" fill="#fff7cc" stroke="' + accent + '" stroke-width="3"/>' + [0, 90, 180, 270].map(a => '<line x1="0" y1="-30" x2="0" y2="-40" transform="rotate(' + a + ')" stroke="#64748b" stroke-width="3"/>').join('');
+  else if (t === 'lampada') g = '<path d="M-26 -8 A30 30 0 1 1 26 -8 C18 6 12 12 12 22 L-12 22 C-12 12 -18 6 -26 -8 Z" fill="#fff7cc" ' + ST + '/><rect x="-13" y="22" width="26" height="22" rx="3" fill="#e2e8f0" ' + ST + '/>';
+  else if (t === 'espelho_organico') g = '<path d="M-40 -34 C-18 -54 26 -50 40 -26 C52 -4 40 30 16 42 C-8 54 -44 40 -46 12 C-48 -6 -52 -22 -40 -34 Z" fill="' + accent + '" opacity=".35"/><path d="M-34 -28 C-14 -46 22 -42 34 -22 C44 -4 34 24 14 34 C-6 44 -38 34 -40 10 C-42 -6 -44 -18 -34 -28 Z" fill="#dbeafe" stroke="#94a3b8" stroke-width="2.5"/><path d="M-18 -20 C-8 -28 6 -28 14 -22" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>';
+  else if (t === 'arvore_natal') { g = '<rect x="-6" y="34" width="12" height="12" fill="#7c4a21"/><path d="M0 -50 L22 -18 L12 -18 L32 10 L20 10 L42 38 L-42 38 L-20 10 L-32 10 L-12 -18 L-22 -18 Z" fill="#166534" ' + ST + '/><path d="M0 -60 l4 8 9 1 -7 6 2 9 -8 -5 -8 5 2 -9 -7 -6 9 -1 Z" fill="#facc15"/>'; [[-6, -26, '#ef4444'], [8, -10, '#3b82f6'], [-14, 4, '#facc15'], [14, 18, '#ef4444'], [-24, 26, '#22c55e'], [0, 24, '#3b82f6'], [26, 30, '#facc15'], [-4, -40, '#22c55e']].forEach(q => { g += '<circle cx="' + q[0] + '" cy="' + q[1] + '" r="4.5" fill="' + q[2] + '"/>'; }); }
+  else if (t === 'ventilador_coluna' || t === 'ventilador_parede') g = '<circle r="44" fill="#f1f5f9" ' + ST + '/>' + [0, 120, 240].map(a => '<ellipse cx="0" cy="-20" rx="11" ry="20" transform="rotate(' + a + ')" fill="#94a3b8"/>').join('') + '<circle r="8" fill="#475569"/>' + [-30, -15, 0, 15, 30].map(x => '<line x1="' + x + '" y1="-40" x2="' + x + '" y2="40" stroke="#cbd5e1" stroke-width="1.5" opacity=".7"/>').join('');
+  else if (t === 'climatizador') g = '<rect x="-30" y="-48" width="60" height="96" rx="10" fill="#f8fafc" ' + ST + '/>' + [-30, -20, -10, 0].map(y => '<line x1="-20" x2="20" y1="' + y + '" y2="' + y + '" stroke="#94a3b8" stroke-width="3"/>').join('') + '<rect x="-20" y="14" width="40" height="22" rx="4" fill="#bae6fd" stroke="#7dd3fc" stroke-width="2"/>' + led(0, -40);
   else if (t === 'sensor' || t === 'sensor_presenca') g = '<circle r="44" fill="#f8fafc" ' + ST + '/><path d="M-22 6 A26 26 0 0 1 22 6" fill="#e5e7eb" stroke="#94a3b8" stroke-width="2"/>' + [-14, 0, 14].map(x => '<line x1="' + x + '" x2="' + x + '" y1="-6" y2="8" stroke="#cbd5e1" stroke-width="2"/>').join('') + led(0, 28);
   else if (t === 'detector') g = '<circle r="44" fill="#f8fafc" ' + ST + '/><circle r="30" fill="none" stroke="#cbd5e1" stroke-width="2"/><circle r="18" fill="none" stroke="#cbd5e1" stroke-width="2"/>' + led(0, 0);
   else if (t === 'fechadura') g = placa(46, 92, 10) + '<circle cy="-18" r="9" fill="#475569"/><rect x="-6" y="-2" width="12" height="40" rx="5" fill="#94a3b8" stroke="#475569" stroke-width="2"/>';
@@ -2050,6 +2065,7 @@ function renderPanel() {
     const w = getById(P.paredes, sel.id); if (!w) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Parede</div><div class="note">Comprimento total (eixo): ' + fmtM(M.comprimento(w)) + ' m. Para medir por cômodo use "Medir trecho" ou toque no número da medida.</div>';
     h += '<label>Espessura (cm)</label><input data-f="esp" data-n="1" type="number" value="' + (w.esp || 15) + '">';
+    if (!w.vidro) h += '<div class="row" style="align-items:end"><div><label>Cor da parede (3D)</label><input type="color" data-f="cor" value="' + (w.cor || '#f1f4f8') + '"></div><div><button data-act="paredecor0" class="' + (w.cor ? '' : 'on') + '">Cor padrão</button></div></div><button data-act="paredecortodas" style="width:100%;margin-top:4px"' + (w.cor ? '' : ' disabled') + '>Usar esta cor em todas as paredes</button>';
     h += '<div class="sec">Alvenaria ou vidro</div><label>Material da parede</label><select data-f="vidro"><option value="">Alvenaria</option>' + TIPOS_VIDRO.map(v => '<option value="' + v[0] + '"' + (w.vidro === v[0] ? ' selected' : '') + '>Vidro ' + v[1].toLowerCase() + '</option>').join('') + '</select>';
     if (w.vidro) h += '<label>Portas de vidro nesta parede (box)</label><select data-f="portasBox" data-n="1">' + [0, 1, 2, 3, 4, 5, 6].map(n => '<option value="' + n + '"' + ((+w.portasBox || 0) === n ? ' selected' : '') + '>' + (n ? n + (n > 1 ? ' portas' : ' porta') : 'Nenhuma (vidro fixo)') + '</option>').join('') + '</select><div class="note">Selecione cada porta no desenho para inverter o lado em que abre ou a dobradiça.</div>';
     const tw = M.trechos(P).filter(t => t.parede === w.id && t.len >= 20);
@@ -2065,7 +2081,7 @@ function renderPanel() {
     const a = getById(P.aberturas, sel.id); if (!a) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">' + ({ porta: 'Porta', janela: 'Janela', portal: 'Portal (sem porta)', portao: 'Portão' }[a.tipo] || 'Abertura') + '</div><div class="row"><div>' + fld('Largura (cm)', 'larg', a.larg, 'data-n="1" type="number"') + '</div><div>' + fld('Altura (cm)', 'alt', a.alt, 'data-n="1" type="number"') + '</div></div>';
     if (a.tipo === 'janela') h += fld('Peitoril (cm)', 'peitoril', a.peitoril, 'data-n="1" type="number"');
-    if (a.tipo === 'portao') h += fld('Altura do início (cm) — 0 = desde o chão', 'peitoril', +a.peitoril || 0, 'data-n="1" type="number" min="0"') + '<label>Modelo do portão</label><select data-f="modelo">' + MODELOS_PORTAO.map(m => '<option value="' + m[0] + '"' + ((a.modelo || 'deslizante') === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select><label>Posição no 3D</label><select data-f="pos"><option value="fechado"' + (a.pos !== 'aberto' ? ' selected' : '') + '>Fechado</option><option value="aberto"' + (a.pos === 'aberto' ? ' selected' : '') + '>Aberto</option></select>';
+    if (a.tipo === 'portao') h += fld('Altura do início (cm) — 0 = desde o chão', 'peitoril', +a.peitoril || 0, 'data-n="1" type="number" min="0"') + '<label>Modelo do portão</label><select data-f="modelo">' + MODELOS_PORTAO.map(m => '<option value="' + m[0] + '"' + ((a.modelo || 'deslizante') === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select><label>Movimento</label><select data-f="fixo"><option value="">Abre e fecha</option><option value="1"' + (a.fixo === '1' ? ' selected' : '') + '>Fixo (sempre fechado, sem abertura)</option></select>' + (a.fixo === '1' ? '' : '<label>Posição no 3D</label><select data-f="pos"><option value="fechado"' + (a.pos !== 'aberto' ? ' selected' : '') + '>Fechado</option><option value="aberto"' + (a.pos === 'aberto' ? ' selected' : '') + '>Aberto</option></select>') + '<div class="row" style="align-items:end"><div><label>Cor do portão</label><input type="color" data-f="cor" value="' + (a.cor || '#59616d') + '"></div><div><button data-act="portaocor0" class="' + (a.cor ? '' : 'on') + '">Cor padrão</button></div></div>';
     h += '<div class="row" style="margin-top:8px"><button data-act="flip" title="Faz a porta abrir para o outro lado da parede">⇅ Abrir p/ outro lado</button>' + ((a.tipo === 'porta' || a.tipo === 'portao') ? '<button data-act="flipdobr" title="Troca a dobradiça (ou o lado em que o portão desliza): esquerda ⇄ direita">⇄ Inverter dobradiça</button>' : '') + '<button class="danger" data-act="delsel">Excluir</button></div>';
   } else if (sel.k === 'comodo') {
     const c = getById(P.comodos, sel.id); if (!c) { S.sel = null; return renderPanel(); }
@@ -2104,6 +2120,7 @@ $('#panel').addEventListener('change', e => {
   if (t.dataset.t === 'planta') { setPath(P, f, v); if (f === 'nome') $('#fNome').value = v; }
   else { const o = alvoSel() && alvoSel()(); if (!o) return; if (f === 'comodo') v = v || null; setPath(o, f, v);
     if (S.sel.k === 'parede' && f === 'esp') M.recalc(P);
+    if ((S.sel.k === 'abertura' && f === 'fixo') || f === 'cor') setTimeout(renderPanel, 0);
     if (S.sel.k === 'parede' && f === 'vidro') { if (v && (o.esp || 15) > 6) o.esp = 3; if (!v) { if ((o.esp || 15) <= 6) o.esp = S.esp; o.portasBox = 0; delete o.vidro; } aplicaPortasBox(o); M.recalc(P); renderPanel(); }
     if (S.sel.k === 'parede' && f === 'portasBox') { aplicaPortasBox(o); renderPanel(); }
     if (S.sel.k === 'ponto' && f === 'teclas') P.ligacoes = P.ligacoes.filter(l => !(l.de === o.id && (l.tecla || 1) > v));
@@ -2139,6 +2156,9 @@ $('#panel').addEventListener('click', e => {
   if (a === 'usarprod') { snap(); const o = getById(P.pontos, S.sel.id); o.produtoId = b.dataset.id; const x = (S.catalogo || []).find(c => c.id === o.produtoId); if (x && !o.produto) o.produto = x.nome; return refresh(); }
   if (a === 'princ') { snap(); tornarPrincipal(b.dataset.id); return refresh(); }
   if (a === 'ligar') { S.tool = 'ligar'; S.lig = { de: S.sel.id, tecla: 1 }; return refresh(); }
+  if (a === 'paredecor0') { snap(); const o = getById(P.paredes, S.sel.id); if (o) delete o.cor; renderPanel(); return refresh({ panel: false }); }
+  if (a === 'paredecortodas') { const o = getById(P.paredes, S.sel.id); if (!o || !o.cor) return; snap(); P.paredes.forEach(w => { if (!w.vidro) w.cor = o.cor; }); toast('Cor aplicada a todas as paredes de alvenaria.'); renderPanel(); return refresh({ panel: false }); }
+  if (a === 'portaocor0') { snap(); const o = getById(P.aberturas, S.sel.id); if (o) delete o.cor; renderPanel(); return refresh({ panel: false }); }
   if (a === 'pisocor0') { snap(); const o = getById(P.comodos, S.sel.id); if (o) delete o.pisoCor; renderPanel(); return refresh({ panel: false }); }
   if (a === 'kelvin') { snap(); const o = getById(P.pontos, S.sel.id); if (o) o.kelvin = +b.dataset.k; renderPanel(); return refresh({ panel: false }); }
   if (a === 'flipdobr') { snap(); const o = getById(P.aberturas, S.sel.id); o.dobr = -(o.dobr || 1); return refresh({ panel: false }); }
@@ -3416,6 +3436,85 @@ function aparelho3D(p, o) {
     const m = add(new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 14, 24, 1, false, 0, Math.PI), std(0xffffff, { emissive: new THREE.Color(0xffd49a), emissiveIntensity: 0, transparent: true, opacity: .9, roughness: .3 })), 0, 0, 1.2); m.rotation.y = -Math.PI / 2; m.castShadow = false;
     luzGenerica([m.material], h); return R;
   }
+  if (t === 'refletor') {   /* refletor LED de parede: suporte e corpo inclinado para baixo */
+    B(4, 8, 2, preto, 0, 0, 1); B(2, 2, 6, preto, 0, -2, 4);
+    const pv = new THREE.Group(); pv.position.set(0, -2, 8); pv.rotation.x = .5; G3.add(pv);
+    const corpo = new THREE.Mesh(new THREE.BoxGeometry(22, 16, 4), std(0x2a2e34, { metalness: .5, roughness: .45 })); corpo.castShadow = true; pv.add(corpo);
+    for (let i = 0; i < 6; i++) { const al = new THREE.Mesh(new THREE.BoxGeometry(.6, 14, 3), std(0x23272d, { metalness: .5 })); al.position.set(-8 + i * 3.2, 0, -3.2); pv.add(al); }
+    const lente = luzMat(0xf4f7ff), le = new THREE.Mesh(new THREE.BoxGeometry(19, 13, .4), lente); le.position.z = 2.1; pv.add(le);
+    const h = halo(280, 0xf4f7ff, 0, 170); luzGenerica([lente], h); return R;
+  }
+  if (t === 'luz_piso') {   /* embutido de piso (uplight): anel inox rente ao piso; a luz real aponta para cima */
+    const lente = luzMat(0xffd9a0); Cy(6, 6, .6, prata, 0, -4.6, 0, 40); Cy(4.4, 4.4, .25, lente, 0, -4.25, 0, 40);
+    const h = halo(45, 0xffd9a0, 0); luzGenerica([lente], h); return R;
+  }
+  if (t === 'lampada') {   /* bocal simples com lâmpada bulbo (A60) */
+    Cy(2.4, 2.4, 6, branco, 0, -3, 0, 20); Cy(1.9, 1.9, 2.6, prata, 0, -7.2, 0, 20);
+    const lente = luzMat(0xffe2b8), bulbo = add(new THREE.Mesh(new THREE.SphereGeometry(3.8, 24, 16), lente), 0, -12.2, 0); bulbo.castShadow = false;
+    Cy(1.9, 3, 2.6, lente, 0, -9.4, 0, 20).castShadow = false;
+    const h = halo(raioSala() * .8, 0xffe2b8, -12); luzGenerica([lente], h); return R;
+  }
+  if (t === 'espelho_organico') {   /* espelho de formato orgânico com fita de LED atrás (luz rebatida na parede) */
+    const fo = new THREE.Shape(), P0 = [[-40, 30], [-14, 44], [6, 32], [28, 46], [46, 22], [36, -8], [44, -34], [14, -46], [-18, -36], [-46, -12]];
+    const PU = P0[P0.length - 1]; fo.moveTo((PU[0] + P0[0][0]) / 2, (PU[1] + P0[0][1]) / 2); P0.forEach((q, i) => { const n = P0[(i + 1) % P0.length]; fo.quadraticCurveTo(q[0], q[1], (q[0] + n[0]) / 2, (q[1] + n[1]) / 2); });
+    const ke = (p.larg ? +p.larg / 80 : 1), geo = new THREE.ShapeGeometry(fo, 24);
+    const brilho = new THREE.MeshBasicMaterial({ color: 0xffc98a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    const aura = new THREE.Mesh(geo, brilho); aura.scale.set(1.2 * ke, 1.2 * ke, 1); aura.position.z = .35; G3.add(aura);
+    const base = new THREE.Mesh(geo, std(0x1b1e23)); base.scale.set(.98 * ke, .98 * ke, 1); base.position.z = 1.2; G3.add(base);
+    const fita = luzMat(0xffc98a), fi = new THREE.Mesh(geo, fita); fi.scale.set(1.02 * ke, 1.02 * ke, 1); fi.position.z = 1.5; G3.add(fi);
+    const esp = new THREE.MeshStandardMaterial({ color: 0xaeb8c2, metalness: 1, roughness: .05, envMapIntensity: 1.1 }); esp.userData.vidro = true;
+    const m = new THREE.Mesh(geo, esp); m.scale.set(ke, ke, 1); m.position.z = 2.6; G3.add(m);
+    luzGenerica([fita], null); const s0 = R.set; R.set = on => { s0(on); brilho.opacity = on ? .38 * (R.dim == null ? 1 : R.dim) : 0; }; return R;
+  }
+  if (t === 'arvore_natal') {   /* pinheiro de Natal: ramos em camadas (instanciados), bolas nas pontas, festão de pisca-pisca em espiral e estrela; pisca quando ligada */
+    const y0 = -5, Ht = 175, Rb = 64, Rof = y => Math.max(4, Rb * Math.pow(1 - (y - 22) / (Ht - 22), .95));
+    let sd = 11; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+    Cy(19, 17, 16, std(0xb91c1c, { roughness: .7 }), 0, y0 + 8, 0, 36); Cy(19.3, 19.3, 2.2, std(0xd4a017, { metalness: .7, roughness: .3 }), 0, y0 + 13, 0, 36);
+    Cy(2.2, 4.2, Ht - 40, std(0x4a2f1a, { roughness: .9 }), 0, y0 + (Ht - 40) / 2 + 12, 0, 10);
+    const nucleo = new THREE.Mesh(new THREE.ConeGeometry(Rb * .62, Ht - 30, 18), std(0x06180c, { roughness: 1 })); nucleo.material.userData.envK = .05; add(nucleo, 0, y0 + 24 + (Ht - 30) / 2, 0);
+    const ramos = [], pontas = [], up = new THREE.Vector3(0, 1, 0), m4 = new THREE.Matrix4(), qt = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
+    const NV = 24; for (let i = 0; i < NV; i++) {
+      const f = i / (NV - 1), y = 24 + f * (Ht - 34), R = Rof(y), n = Math.round(8 + 10 * (1 - f)), d0 = .28 + .25 * (1 - f);
+      for (let k = 0; k < n; k++) { const a = (k / n) * Math.PI * 2 + i * .7 + rnd() * .3, d = d0 + (rnd() - .5) * .12, dir = new THREE.Vector3(Math.cos(a) * Math.cos(d), -Math.sin(d), Math.sin(a) * Math.cos(d));
+        const len = R * (.88 + rnd() * .2), w = 3.2 + 5.5 * (1 - f) + rnd() * 1.5; ramos.push({ p: new THREE.Vector3(0, y0 + y, 0), dir, len, w, roll: rnd() * Math.PI, c: rnd() });
+        for (let u = 1; u <= 4; u++) { const ss = .2 + u * .18; ramos.push({ p: new THREE.Vector3(0, y0 + y, 0).addScaledVector(dir, len * ss), dir: dir.clone().add(new THREE.Vector3((rnd() - .5) * .5, (rnd() - .3) * .4, (rnd() - .5) * .5)).normalize(), len: len * (.32 - u * .04), w: w * .8, roll: rnd() * Math.PI, c: rnd() }); }
+        pontas.push(new THREE.Vector3(0, y0 + y, 0).addScaledVector(dir, len * .92)); } }
+    const cg = new THREE.ConeGeometry(.5, 1, 7, 1); cg.translate(0, .5, 0);
+    const im = new THREE.InstancedMesh(cg, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .92, metalness: 0, envMapIntensity: .08 }), ramos.length), cA = new THREE.Color(0x0a2e17), cB = new THREE.Color(0x1f5a30), cc = new THREE.Color();
+    ramos.forEach((r, k) => { qt.setFromUnitVectors(up, r.dir); const qr = new THREE.Quaternion().setFromAxisAngle(r.dir, r.roll); qt.premultiply(qr); sc.set(r.w * 1.7, r.len, r.w * .55); m4.compose(r.p, qt, sc); im.setMatrixAt(k, m4); cc.copy(cA).lerp(cB, r.c * .8); im.setColorAt(k, cc); });
+    im.material.userData.envK = .08; im.castShadow = true; im.receiveShadow = true; G3.add(im);
+    const BOL = [0xc81e1e, 0xd4a017, 0x1e40af, 0xe5e7eb, 0x7e22ce, 0xc81e1e, 0xd4a017], bg = new THREE.SphereGeometry(1, 16, 12);
+    pontas.forEach((v, k) => { if (rnd() > .42) return; const r = 2.2 + rnd() * 1.6, b = new THREE.Mesh(bg, std(BOL[k % BOL.length], { metalness: .6, roughness: .18 })); b.scale.setScalar(r); add(b, v.x, v.y - r - 1.2, v.z); });
+    const CORES = [0xffd9a0, 0xff3030, 0x30ff6a, 0x3d8bff, 0xffd9a0, 0xffc43d], mats = CORES.map(() => new THREE.MeshBasicMaterial({ color: 0x222222, toneMapped: false })), lg = new THREE.SphereGeometry(1, 8, 6);
+    const NL = 220; for (let k = 0; k < NL; k++) { const f = k / NL, y = 26 + f * (Ht - 40), a = f * Math.PI * 2 * 8.5, r = Rof(y) * .93 + 1, l = new THREE.Mesh(lg, mats[k % mats.length]); l.scale.setScalar(1.35); l.castShadow = false; l.position.set(Math.cos(a) * r, y0 + y - 3, Math.sin(a) * r); G3.add(l); }
+    const es = new THREE.Shape(); for (let k = 0; k < 10; k++) { const rr = k % 2 ? 3.4 : 8, a = Math.PI / 2 + k * Math.PI / 5; if (k) es.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else es.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    const estrela = std(0xffd54a, { emissive: new THREE.Color(0xffc21a), emissiveIntensity: 0, metalness: .5, roughness: .3 }), st = new THREE.Mesh(new THREE.ExtrudeGeometry(es, { depth: 2, bevelEnabled: true, bevelSize: .6, bevelThickness: .6, bevelSegments: 2 }), estrela); st.geometry.center(); add(st, 0, y0 + Ht + 4, 0);
+    const h = halo(120, 0xffcf7a, 0); luzGenerica([estrela], h); const s0 = R.set;
+    R.set = on => { R.on = on; s0(on); if (!on) mats.forEach(m => m.color.setHex(0x222222)); };
+    R.tick = tt => { if (!R.on) return; const d = R.dim == null ? 1 : R.dim; mats.forEach((m, i) => { const f = Math.sin(tt * 2.4 + i * 2.1); m.color.setHex(CORES[i]); m.color.multiplyScalar(f > -.3 ? d : .06); }); st.rotation.y = Math.sin(tt * .5) * .5; };
+    return R;
+  }
+  if (t === 'ventilador_coluna' || t === 'ventilador_parede') {   /* ventilador de coluna (piso) ou de parede: grade, hélice de 3 pás, oscila quando ligado */
+    const col = t === 'ventilador_coluna', y0 = -5, Hc = 118, cab = new THREE.Group(); G3.add(cab);
+    if (col) { Cy(22, 24, 3, std(0x2b2f35), 0, y0 + 1.5, 0, 36); Cy(1.6, 1.6, Hc, std(0xd9dde2, { metalness: .5 }), 0, y0 + Hc / 2, 0, 12); cab.position.set(0, y0 + Hc + 4, 0); }
+    else { B(10, 12, 3, std(0xe9ecef), 0, 0, 1.5); B(3, 3, 10, std(0xe9ecef), 0, 0, 7); cab.position.set(0, 0, 14); cab.rotation.x = .35; }
+    const ori = new THREE.Group(); cab.add(ori); const motor = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 12, 24), std(0xe9ecef)); motor.rotation.x = Math.PI / 2; motor.position.z = col ? -8 : -2; ori.add(motor);
+    const grade = new THREE.Mesh(new THREE.TorusGeometry(22, .5, 6, 48), std(0xcfd4da, { metalness: .4 })); grade.position.z = col ? 2 : 8; ori.add(grade);
+    const gm = new THREE.MeshBasicMaterial({ color: 0xcfd4da, wireframe: true, transparent: true, opacity: .45 }); [-1, 1].forEach(sg => { const gg = new THREE.Mesh(new THREE.CircleGeometry(22, 18, 0, Math.PI * 2), gm); gg.position.z = (col ? 2 : 8) + sg * 3; ori.add(gg); });
+    const rot = new THREE.Group(); rot.position.z = col ? 2 : 8; ori.add(rot);
+    const cubo = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 3, 16), std(0x1e3a8a)); cubo.rotation.x = Math.PI / 2; rot.add(cubo);
+    for (let i = 0; i < 3; i++) { const pv = new THREE.Group(); pv.rotation.z = i * Math.PI * 2 / 3; const pa = new THREE.Mesh(new THREE.BoxGeometry(7, 17, .5), std(0x3b82f6, { transparent: true, opacity: .85 })); pa.position.y = 11; pa.rotation.y = .35; pv.add(pa); rot.add(pv); }
+    R.on = false; R.set = on => { R.on = on; }; R.tick = tt => { if (!R.on) return; rot.rotation.z = -tt * 18; ori.rotation.y = Math.sin(tt * .5) * .6; }; return R;
+  }
+  if (t === 'climatizador') {   /* climatizador evaporativo de piso: torre com aletas, visor de água e painel */
+    const y0 = -5, Hc = 105; B(38, Hc, 30, std(0xf3f5f7, { roughness: .35 }), 0, y0 + Hc / 2 + 4, 0);
+    [-14, 14].forEach(x => [-11, 11].forEach(z => Cy(2.2, 2.2, 4, preto, x, y0 + 2, z, 12)));
+    const aletas = []; for (let i = 0; i < 7; i++) { const a = new THREE.Mesh(new THREE.BoxGeometry(28, 1.2, 2.4), std(0xcfd6de)); a.position.set(0, y0 + Hc - 16 - i * 5.2, 15.4); G3.add(a); aletas.push(a); }
+    B(30, 14, .6, std(0x9ad4f5, { transparent: true, opacity: .75, roughness: .1 }), 0, y0 + 22, 15.1);
+    B(16, 5, .6, std(0x1f2937), 0, y0 + Hc - 4, 15.1); const vis = new THREE.Mesh(new THREE.PlaneGeometry(6, 2.2), std(0x000000, { emissive: new THREE.Color(0x22d3ee), emissiveIntensity: 0 })); vis.position.set(0, y0 + Hc - 4, 15.45); G3.add(vis);
+    R.on = false; R.set = on => { R.on = on; vis.material.emissiveIntensity = on ? 2.2 : 0; if (!on) aletas.forEach(a => { a.rotation.x = 0; }); };
+    R.tick = tt => { if (!R.on) return; const r = Math.sin(tt * .8) * .45; aletas.forEach(a => { a.rotation.x = r; }); }; return R;
+  }
   if (t === 'balizador') {
     const l = luzMat(0xffc88a), h = halo(55, 0xffc88a, 0, 40); B(9, 9, 8, std(0x2a2e34, { metalness: .5 }), 0, 0, 4); B(7.4, 1.4, .4, l, 0, 0, 8.1); luzGenerica([l], h); return R;
   }
@@ -3632,9 +3731,10 @@ function build3dTudo(reenquadrar) {
     const d = { escuro: { color: 0x10151b, opacity: .62, roughness: .04, metalness: .35 }, espelhado: { color: 0xd5dce4, opacity: 1, roughness: .03, metalness: 1 }, esverdeado: { color: 0x7fc9a9, opacity: .3, roughness: .04, metalness: .15 } }[k] || { color: 0xcfe8f5, opacity: .16, roughness: .02, metalness: .1 };
     const mv = new THREE.MeshStandardMaterial({ color: d.color, transparent: d.opacity < 1, opacity: d.opacity, roughness: d.roughness, metalness: d.metalness, side: THREE.DoubleSide, depthWrite: d.opacity >= 1, envMapIntensity: 1.6 }); mv.userData.vidro = true; return mv;
   })());
+  const pcache = {}; const corParede = c => pcache[c] || (pcache[c] = new THREE.MeshStandardMaterial({ color: c, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: .9 }));
   const mAlum = new THREE.MeshStandardMaterial({ color: RE ? 0x1a1d22 : 0x8d97a3, metalness: .6, roughness: .35 });
   P.paredes.forEach(w0 => {
-    const w = w0.vidro ? Object.assign({}, w0, { esp: 1.2 }) : w0, mWall = w0.vidro ? vidroMat(w0.vidro) : mWallBase;   // parede de vidro: lâmina fina e material de vidro
+    const w = w0.vidro ? Object.assign({}, w0, { esp: 1.2 }) : w0, mWall = w0.vidro ? vidroMat(w0.vidro) : (w0.cor ? corParede(w0.cor) : mWallBase);   // parede de vidro: lâmina fina e material de vidro
     const Hw = modo === 'corte' ? Math.min(110, altW(w)) : altW(w);
     const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
     let cur = -(w.esp || 15) / 2;
@@ -3666,22 +3766,22 @@ function build3dTudo(reenquadrar) {
         } else if (tipoA === 'portal') {   // vão livre com batente, sem folha
           [-1, 1].forEach(sg => pB(5, hh + 3, esp + 4, mAcab, cx + sg * (wl / 2 - 2.5), (y0 + y1) / 2 + 1.5, 0)); pB(wl, 5, esp + 4, mAcab, cx, y1 - 1.5, 0);
         } else if (tipoA === 'portao') {
-          const mod = o.a.modelo || 'deslizante', aberto = o.a.pos === 'aberto', hp = hh - 4, zf = sd * (esp / 2 + 3);
+          const mod = o.a.modelo || 'deslizante', aberto = o.a.pos === 'aberto' && o.a.fixo !== '1', mG = o.a.cor ? new THREE.MeshStandardMaterial({ color: o.a.cor, metalness: .45, roughness: .45 }) : mG, mG2 = o.a.cor ? new THREE.MeshStandardMaterial({ color: new THREE.Color(o.a.cor).multiplyScalar(1.18), metalness: .4, roughness: .5 }) : mAcab, hp = hh - 4, zf = sd * (esp / 2 + 3);
           if (mod === 'deslizante' || mod === 'ripado') {
-            const mp = mod === 'ripado' ? mWd : mMt, ox = aberto ? -db * (wl - 4) : 0; pB(wl * 2 + 6, 2.2, 4, mAl, cx + (aberto ? -db * wl / 2 : 0), y0 + 1, zf);   // trilho no piso
+            const mp = o.a.cor ? mG : (mod === 'ripado' ? mWd : mG), ox = aberto ? -db * (wl - 4) : 0; pB(wl * 2 + 6, 2.2, 4, mAl, cx + (aberto ? -db * wl / 2 : 0), y0 + 1, zf);   // trilho no piso
             pB(wl - 4, 6, 3.4, mp, cx + ox, y0 + 5, zf); pB(wl - 4, 6, 3.4, mp, cx + ox, y0 + hp, zf);
             const n = Math.floor((wl - 8) / (mod === 'ripado' ? 7 : 9)); for (let i = 0; i < n; i++) pB(mod === 'ripado' ? 5 : 2.6, hp - 10, 2.6, mp, cx + ox - (wl - 8) / 2 + (i + .5) * (wl - 8) / n, y0 + hp / 2 + 2, zf + sd * .8);
           } else if (mod === 'duasfolhas') {
             const lw = wl / 2 - 1.5;
-            [[o.u0, 1], [o.u1, -1]].forEach(q2 => { const fx = q2[0], dd = q2[1]; if (!aberto) { pB(lw, hp, 3.4, mMt, fx + dd * lw / 2, y0 + hp / 2 + 2, 0); pB(lw - 6, 5, 3.6, mAl, fx + dd * lw / 2, y0 + hp * .55, 0); } else { pB(3.4, hp, lw, mMt, fx + dd * 2, y0 + hp / 2 + 2, sd * (esp / 2 + lw / 2 + 1)); pB(3.6, 5, lw - 6, mAl, fx + dd * 2, y0 + hp * .55, sd * (esp / 2 + lw / 2 + 1)); } });
+            [[o.u0, 1], [o.u1, -1]].forEach(q2 => { const fx = q2[0], dd = q2[1]; if (!aberto) { pB(lw, hp, 3.4, mG, fx + dd * lw / 2, y0 + hp / 2 + 2, 0); pB(lw - 6, 5, 3.6, mAl, fx + dd * lw / 2, y0 + hp * .55, 0); } else { pB(3.4, hp, lw, mG, fx + dd * 2, y0 + hp / 2 + 2, sd * (esp / 2 + lw / 2 + 1)); pB(3.6, 5, lw - 6, mAl, fx + dd * 2, y0 + hp * .55, sd * (esp / 2 + lw / 2 + 1)); } });
           } else if (mod === 'social') {
-            const hx = db > 0 ? o.u0 : o.u1; if (!aberto) { pB(wl - 3, hp, 3.4, mMt, cx, y0 + hp / 2 + 2, 0); pB(wl - 9, 5, 3.6, mAl, cx, y0 + hp * .55, 0); } else { pB(3.4, hp, wl - 3, mMt, hx + db * 2, y0 + hp / 2 + 2, sd * (esp / 2 + (wl - 3) / 2 + 1)); }
+            const hx = db > 0 ? o.u0 : o.u1; if (!aberto) { pB(wl - 3, hp, 3.4, mG, cx, y0 + hp / 2 + 2, 0); pB(wl - 9, 5, 3.6, mAl, cx, y0 + hp * .55, 0); } else { pB(3.4, hp, wl - 3, mG, hx + db * 2, y0 + hp / 2 + 2, sd * (esp / 2 + (wl - 3) / 2 + 1)); }
             pB(2, 14, 2, mPr, cx + (aberto ? 0 : db * -(wl / 2 - 8)), y0 + hh * .5, sd * (esp / 2 + 2.5));
           } else if (mod === 'basculante') {
-            if (!aberto) pB(wl - 2, hp, 3.6, mMt, cx, y0 + hp / 2 + 2, zf); else pB(wl - 2, 3.6, hp * .92, mMt, cx, y1 - 5, sd * (esp / 2 + hp * .46));
+            if (!aberto) pB(wl - 2, hp, 3.6, mG, cx, y0 + hp / 2 + 2, zf); else pB(wl - 2, 3.6, hp * .92, mG, cx, y1 - 5, sd * (esp / 2 + hp * .46));
             if (!aberto) pB(wl - 8, 4, 3.8, mAl, cx, y0 + hp * .55, zf);
           } else if (mod === 'seccionado') {
-            const ns = 5, hs = hp / ns; for (let i = 0; i < ns; i++) pB(wl - 2, hs - .8, 3.2, i % 2 ? mAcab : mMt, cx, aberto ? y1 - 3 - i * 4.6 : y0 + 2 + hs * (i + .5), zf + (aberto ? sd * i * .4 : 0));
+            const ns = 5, hs = hp / ns; for (let i = 0; i < ns; i++) pB(wl - 2, hs - .8, 3.2, i % 2 ? mG2 : mG, cx, aberto ? y1 - 3 - i * 4.6 : y0 + 2 + hs * (i + .5), zf + (aberto ? sd * i * .4 : 0));
             pB(wl, 5, 6, mAl, cx, y1 - 2.5, zf);
           }
         }
@@ -3765,7 +3865,7 @@ function build3dTudo(reenquadrar) {
     const geo = new THREE.ShapeGeometry(sh); geo.rotateX(Math.PI / 2); const f = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: NT ? 0x0c0e12 : (c.forro ? 0xfff3d6 : 0xffffff), transparent: true, opacity: NT ? .10 : .28, side: THREE.DoubleSide, roughness: 1 })); f.position.y = tetoDe(c); f.userData.teto = true; g.add(f);
   });
   T3.nLuz = 0; T3.devs = {}; T3.ticks = []; T3.pick = []; T3.zonas = []; T3.zKey = ''; T3.sombraSuja = true; tetoTicks.forEach(f => T3.ticks.push(f)); tetoPick.forEach(m => T3.pick.push(m));
-  const PRIO = { ponto_luz: 0, plafon: 0, pendente: 1, arandela: 2, spot: 3, trilho: 3, balizador: 4, fita_led: 5 }, permitido = new Set(); let nSomP = 0, nSomS = 0;
+  const PRIO = { ponto_luz: 0, plafon: 0, lampada: 0, pendente: 1, arandela: 2, refletor: 2, spot: 3, trilho: 3, balizador: 4, luz_piso: 4, espelho_organico: 4, arvore_natal: 4, fita_led: 5 }, permitido = new Set(); let nSomP = 0, nSomS = 0;
   P.pontos.filter(q => visivel(q) && PRIO[q.tipo] != null).sort((x, y) => PRIO[x.tipo] - PRIO[y.tipo]).slice(0, 18).forEach(q => permitido.add(q.id));
   // cada tipo de luz ilumina de um jeito e com uma cor; as principais (ponto de luz/plafon) cobrem o cômodo inteiro; as paredes bloqueiam a luz (sem vazar para o vizinho)
   const criaLuz3 = (p, A, k) => {
@@ -3778,6 +3878,11 @@ function build3dTudo(reenquadrar) {
     else if (t === 'trilho') { L = new THREE.SpotLight(0xfff1dc, 0, 520, .8, .65, DEC(1.2)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 12.5, k.pz); alvo.set(k.px + ang[0] * -90, 0, k.pz + ang[1] * -90); A.plI = 3 * KLD(); sombra = nSomS < 10 && ++nSomS; }
     else if (t === 'arandela') { L = new THREE.SpotLight(0xffb870, 0, 300, 1.0, .95, DEC(1.3)); L.position.set(k.px + ang[0] * 10, k.y, k.pz + ang[1] * 10); alvo.set(k.px + ang[0] * 25, 0, k.pz + ang[1] * 25); A.plI = 2.6 * KLD(); sombra = nSomS < 10 && ++nSomS; }
     else if (t === 'balizador') { L = new THREE.SpotLight(0xffc88a, 0, 220, .9, .85, DEC(1.4)); L.position.set(k.px + ang[0] * 12, k.y + 4, k.pz + ang[1] * 12); alvo.set(k.px + ang[0] * 45, 0, k.pz + ang[1] * 45); A.plI = 2.2 * KLD(); }
+    else if (t === 'lampada') { L = new THREE.PointLight(0xffe2b8, 0, Math.max(440, raio * 1.4), DEC(1.0)); L.position.set(k.px, (k.pendura ? k.topo : k.y) - 12, k.pz); A.plI = 1.7 * KLD(); sombra = nSomP < 8 && ++nSomP; }
+    else if (t === 'refletor') { L = new THREE.SpotLight(0xf4f7ff, 0, 950, .7, .5, DEC(1.15)); L.position.set(k.px + ang[0] * 16, k.y - 6, k.pz + ang[1] * 16); alvo.set(k.px + ang[0] * 320, 0, k.pz + ang[1] * 320); A.plI = 4.2 * KLD(); sombra = nSomS < 10 && ++nSomS; }
+    else if (t === 'luz_piso') { L = new THREE.SpotLight(0xffd9a0, 0, 340, .32, .6, DEC(1.3)); L.position.set(k.px, 2, k.pz); alvo.set(k.px, 400, k.pz); A.plI = 2.6 * KLD(); }
+    else if (t === 'espelho_organico') { L = new THREE.PointLight(0xffc98a, 0, 160, DEC(1.6)); L.position.set(k.px + ang[0] * 6, k.y, k.pz + ang[1] * 6); A.plI = 1.4 * KLD(); }
+    else if (t === 'arvore_natal') { L = new THREE.PointLight(0xffc070, 0, 280, DEC(1.4)); L.position.set(k.px, 90, k.pz); A.plI = 1.3 * KLD(); }
     else if (t === 'fita_led') { L = new THREE.PointLight(0xff3366, 0, 300, DEC(1.4)); L.position.set(k.px, yL - 6, k.pz); A.plI = 1.1 * KLD(); }
     else return;
     if (L.isSpotLight) { const tg = new THREE.Object3D(); tg.position.copy(alvo); g.add(tg); L.target = tg; }
@@ -3808,7 +3913,7 @@ function build3dTudo(reenquadrar) {
     g.add(A.g); A.set(estaOn3(p)); T3.devs[p.id] = { A, p }; if (A.tick) T3.ticks.push(A.tick);
     if (A.hit.length) A.hit.forEach(m => T3.pick.push(m)); else A.g.traverse(m => { if (m.isMesh) { m.userData.dev = p.id; T3.pick.push(m); } });
   });
-  if (RE) g.traverse(o => { if (!(o.isMesh && o.material && 'envMapIntensity' in o.material)) return; const m = o.material; if (re_env()) m.envMap = T3.env; if (m.userData.vidro) return; m.envMapIntensity = m === mWallBase ? .25 : o.userData.piso ? 1.3 : o.userData.solo ? 0 : .45; });
+  if (RE) g.traverse(o => { if (!(o.isMesh && o.material && 'envMapIntensity' in o.material)) return; const m = o.material; if (re_env()) m.envMap = T3.env; if (m.userData.vidro) return; if (m.userData.envK != null) { m.envMapIntensity = m.userData.envK; return; } m.envMapIntensity = m === mWallBase ? .25 : o.userData.piso ? 1.3 : o.userData.solo ? 0 : .45; });
   aplicaEstadosAlexa(false); atualizaTeclas3(); T3.ticks.push(ajustaZonas);
   if ($('#lig3').checked) P.ligacoes.forEach(l => {
     const a = getById(P.pontos, l.de), b = getById(P.pontos, l.para); if (!a || !b || !visivel(a) || !visivel(b)) return;
