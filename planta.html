@@ -3841,7 +3841,7 @@ function build3dTudo(reenquadrar) {
         } else if (tipoA === 'portal') {   // vão livre com batente, sem folha
           [-1, 1].forEach(sg => pB(5, hh + 3, esp + 4, mAcab, cx + sg * (wl / 2 - 2.5), (y0 + y1) / 2 + 1.5, 0)); pB(wl, 5, esp + 4, mAcab, cx, y1 - 1.5, 0);
         } else if (tipoA === 'portao') {
-          const mod = o.a.modelo || 'deslizante', aberto = o.a.pos === 'aberto' && o.a.fixo !== '1', mG = o.a.cor ? new THREE.MeshStandardMaterial({ color: o.a.cor, metalness: .45, roughness: .45 }) : mG, mG2 = o.a.cor ? new THREE.MeshStandardMaterial({ color: new THREE.Color(o.a.cor).multiplyScalar(1.18), metalness: .4, roughness: .5 }) : mAcab, hp = hh - 4, zf = sd * (esp / 2 + 3);
+          const mod = o.a.modelo || 'deslizante', aberto = o.a.pos === 'aberto' && o.a.fixo !== '1', mG = o.a.cor ? new THREE.MeshStandardMaterial({ color: o.a.cor, metalness: .45, roughness: .45 }) : mMt, mG2 = o.a.cor ? new THREE.MeshStandardMaterial({ color: new THREE.Color(o.a.cor).multiplyScalar(1.18), metalness: .4, roughness: .5 }) : mAcab, hp = hh - 4, zf = sd * (esp / 2 + 3);
           if (mod === 'deslizante' || mod === 'ripado') {
             const mp = o.a.cor ? mG : (mod === 'ripado' ? mWd : mG), ox = aberto ? -db * (wl - 4) : 0; pB(wl * 2 + 6, 2.2, 4, mAl, cx + (aberto ? -db * wl / 2 : 0), y0 + 1, zf);   // trilho no piso
             pB(wl - 4, 6, 3.4, mp, cx + ox, y0 + 5, zf); pB(wl - 4, 6, 3.4, mp, cx + ox, y0 + hp, zf);
