@@ -250,8 +250,9 @@ window.DOMOTICA_CFG = {
       return r.data.dispositivos || [];
     },
     Tuya_comandar: async function(id, on) {
-      var c = await ctx(), r = await sb.functions.invoke('tuya-api', { body: { acao: 'comandar', org_id: c.orgId, vinculo_id: id, on: !!on } });
-      if (r.error) { var m = r.error.message || 'Falha ao comandar o aparelho.'; try { var j = await r.error.context.json(); if (j && j.erro) m = j.erro; } catch (e) { } throw new Error(m); }
+      // caminho único com travas (bloqueio, permissão do canal, limite, duplicado, auditoria). intencao: só chega aqui por clique do usuário.
+      await ctx(); var r = await sb.functions.invoke('comandar', { body: { tipo: 'tuya', alvo_id: id, on: !!on, origem: 'planta', intencao: true } });
+      if (r.error) { var m = r.error.message || 'Falha ao comandar o aparelho.'; try { var j = await r.error.context.json(); if (j && (j.msg || j.erro)) m = j.msg || j.erro; } catch (e) { } throw new Error(m); }
       if (r.data && r.data.ok === false) throw new Error(r.data.erro || 'A Tuya recusou o comando.');
       return r.data;
     },

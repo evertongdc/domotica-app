@@ -2428,7 +2428,8 @@ window.DOMOTICA_CFG = {
       if (params && params.id) return csDetalhe(c, params.id);
       $id('topbar-actions').innerHTML = '<button class="btn btn-primary" id="cs-nova">+ Nova residência</button>';
       $id('cs-nova').onclick = () => csFormResidencia();
-      c.innerHTML = '<div class="small" style="margin:0 2px 12px">Residências monitoradas (Protect) e contratos de assistência (Connect). Os aparelhos são só <b>lidos</b>: nenhum comando sai desta tela.</div><div id="cs-lista"><div class="small">Carregando...</div></div>';
+      c.innerHTML = '<div class="small" style="margin:0 2px 12px">Residências monitoradas (Protect) e contratos de assistência (Connect). Os aparelhos são só <b>lidos</b>: nenhum comando sai desta tela.</div><div id="cs-trava"></div><div id="cs-lista"><div class="small">Carregando...</div></div>';
+      csPintarTrava();
       const h = ev => { const b = ev.target.closest('[data-cs]'); if (b) navegar('casas', { id: b.getAttribute('data-cs') }); };
       if (c._csH) c.removeEventListener('click', c._csH); c._csH = h; c.addEventListener('click', h);
       try {
@@ -2449,6 +2450,20 @@ window.DOMOTICA_CFG = {
       } catch (e) { const b = $id('cs-lista'); if (b) b.innerHTML = '<div class="alert alert-error">' + escHtml(msgErro(e.message)) + '</div>'; }
     },
   };
+
+  // bloqueio de emergência da empresa: vale para TODOS os comandos remotos, de qualquer casa e provedor
+  async function csPintarTrava() {
+    const b = $id('cs-trava'); if (!b) return;
+    try {
+      const x = await ctx(); const r = must(await sb.from('org_comandos').select('bloqueado, motivo, atualizado_em').eq('org_id', x.orgId).maybeSingle());
+      const bloq = !r || r.bloqueado !== false;
+      b.innerHTML = '<div class="glass item-card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><div class="row-title">Comandos remotos: ' + (bloq ? 'BLOQUEADOS' : 'liberados') + '</div><div class="small">' + (bloq ? 'Nenhum aparelho real recebe comando pelo sistema (3D, painel ou portal).' : 'Só os canais com permissão recebem comando, com limite e auditoria.') + (r && r.motivo ? ' · ' + escHtml(r.motivo) : '') + '</div></div><button class="btn ' + (bloq ? 'btn-secondary' : 'btn-primary') + ' btn-sm" id="cs-trava-bt">' + (bloq ? 'Liberar comandos' : 'Bloquear tudo agora') + '</button></div></div>';
+      $id('cs-trava-bt').onclick = () => confirmarAcao(bloq ? 'Liberar comandos remotos? Só os canais com permissão vão poder ser acionados, com limite por minuto e registro de cada comando.' : 'Bloquear TODOS os comandos remotos agora? Os aparelhos continuam funcionando normalmente pelos apps, Alexa e interruptores.', async () => {
+        try { must(await sb.rpc('comandos_bloquear', { p_bloquear: !bloq, p_motivo: bloq ? 'liberado pelo painel' : 'bloqueio de emergência' })); toast(bloq ? 'Comandos liberados.' : 'Comandos bloqueados.', 'success'); csPintarTrava(); }
+        catch (e) { toast(/sem_acesso/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode mudar isso.' : msgErro(e.message), 'error', 7000); }
+      }, { textoConfirmar: bloq ? 'Liberar' : 'Bloquear', perigo: !bloq ? false : true });
+    } catch (e) { b.innerHTML = ''; }
+  }
 
   async function csCarregarListas() {
     const x = await ctx();
@@ -2492,6 +2507,12 @@ window.DOMOTICA_CFG = {
       const integs = must(i), ocs = must(o), devs = must(d), est = new Map(must(e).map(q => [q.dispositivo_id, q])), cts = must(k);
       let pontos = [];
       if (z.plan_id) { const pl = must(await sb.from('plans').select('dados').eq('id', z.plan_id).single()); const com = new Map(((pl.dados && pl.dados.comodos) || []).map(q => [q.id, q.nome])); pontos = ((pl.dados && pl.dados.pontos) || []).map(p => ({ id: p.id, rot: (p.nome || p.tipo) + (com.get(p.comodo) ? ' · ' + com.get(p.comodo) : '') })); }
+      // canais Tuya desta planta: permissão de comando (padrão negado) e últimos comandos auditados
+      let canaisTuya = [], audit = [];
+      if (z.plan_id) {
+        canaisTuya = must(await sb.from('tuya_vinculos').select('id, nome, dp_code, tecla, comando_permitido, estado').eq('plan_id', z.plan_id).order('nome'));
+        if (canaisTuya.length) audit = must(await sb.from('comandos_auditoria').select('em, alvo_id, origem, valor, resultado, detalhe').eq('alvo_tipo', 'tuya_vinculo').in('alvo_id', canaisTuya.map(q => q.id)).order('em', { ascending: false }).limit(15));
+      }
       const abertas = ocs.filter(q => !q.fechada_em), sit = csSituacao(integs, abertas.length);
 
       const secTopo = '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="row-title" style="font-size:1.2em">' + escHtml(z.nome) + '</div><div class="small">' + escHtml((z.clients && z.clients.nome) || 'sem cliente') + ' · Comandos remotos: <b>' + (z.comandos_bloqueados ? 'bloqueados' : 'liberados') + '</b></div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge ' + sit.cor + '">' + escHtml(sit.txt) + '</span><button class="btn btn-ghost btn-sm" data-a="editar">Editar</button></div></div></div>';
@@ -2507,7 +2528,12 @@ window.DOMOTICA_CFG = {
 
       const secCt = '<div class="row-title" style="margin:20px 2px 8px">Contrato de assistência</div>' + (cts.length ? cts.map(q => '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div><div class="row-title">' + CS_PLANO[q.plano] + (q.valor_mensal != null ? ' · R$ ' + Number(q.valor_mensal).toFixed(2).replace('.', ',') + '/mês' : '') + '</div><div class="small">' + CS_CST[q.status] + (q.inicio ? ' · desde ' + new Date(q.inicio + 'T12:00').toLocaleDateString('pt-BR') : '') + (q.dia_vencimento ? ' · vence dia ' + q.dia_vencimento : '') + (q.cobranca_ref ? ' · cobrança ' + escHtml(q.cobranca_ref) : '') + '</div></div><button class="btn btn-ghost btn-sm" data-a="contrato" data-id="' + q.id + '">Editar</button></div></div>').join('') : '<div class="small" style="margin:0 2px">Sem contrato.</div>') + (z.client_id ? '<div style="margin:10px 2px"><button class="btn btn-secondary btn-sm" data-a="contrato">+ Contrato</button></div>' : '<div class="small" style="margin:8px 2px">Vincule um cliente para registrar contrato.</div>');
 
-      c.innerHTML = secTopo + secOc + secInt + secDev + secCt;
+      const RES = { confirmado: ['confirmado', 'badge-ok'], nao_confirmado: ['enviado, sem confirmação', 'badge-blue'], enviado: ['enviado', 'badge-blue'], falhou: ['falhou', 'cs-alerta'] };
+      const nomeCanal = id => { const q = canaisTuya.find(x => x.id === id); return q ? (q.nome || q.dp_code) : '?'; };
+      const secCmd = canaisTuya.length ? '<div class="row-title" style="margin:20px 2px 8px">Comandos remotos (canais Tuya desta planta)</div><div class="small" style="margin:0 2px 8px">Padrão: sem permissão. Mesmo com permissão, o comando só sai se a empresa não estiver bloqueada e a integração não estiver pausada.</div>' +
+        canaisTuya.map(q => '<div class="glass item-card" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="min-width:0"><div class="row-title" style="font-size:.95em">' + escHtml(q.nome || q.dp_code) + (q.tecla ? ' · tecla ' + q.tecla : '') + '</div><div class="small">' + escHtml(q.dp_code) + (q.estado && q.estado.on != null ? ' · ' + (q.estado.on ? 'ligado' : 'desligado') : '') + '</div></div><button class="btn ' + (q.comando_permitido ? 'btn-primary' : 'btn-secondary') + ' btn-sm" data-a="permitir" data-id="' + q.id + '" data-v="' + (q.comando_permitido ? '0' : '1') + '">' + (q.comando_permitido ? 'Permitido · retirar' : 'Sem permissão · permitir') + '</button></div></div>').join('') +
+        '<div class="small" style="margin:14px 2px 4px;text-transform:uppercase;letter-spacing:.06em;opacity:.7">Últimos comandos</div>' + (audit.length ? audit.map(a => { const r = RES[a.resultado] || [a.resultado.replace(/_/g, ' '), 'cs-alerta']; return '<div class="small" style="margin:4px 2px">' + csDt(a.em) + ' · ' + escHtml(nomeCanal(a.alvo_id)) + ' → ' + (a.valor && a.valor.on ? 'ligar' : 'desligar') + ' · ' + escHtml(a.origem) + ' <span class="badge ' + r[1] + '">' + escHtml(r[0]) + '</span></div>'; }).join('') : '<div class="small" style="margin:4px 2px">Nenhum comando registrado.</div>') : '';
+      c.innerHTML = secTopo + secOc + secInt + secDev + secCmd + secCt;
       c.onclick = ev => {
         const b = ev.target.closest('[data-a]'); if (!b) return; const a = b.getAttribute('data-a'), alvo = b.getAttribute('data-id');
         if (a === 'editar') csFormResidencia(z);
@@ -2515,6 +2541,9 @@ window.DOMOTICA_CFG = {
         else if (a === 'revogar') confirmarAcao('Revogar esta credencial? O servidor residencial para de enviar dados na hora. A casa continua funcionando normalmente.', async () => { try { must(await sb.rpc('integracao_revogar', { p_id: alvo })); toast('Credencial revogada.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } }, { textoConfirmar: 'Revogar', perigo: true });
         else if (a === 'resolver') (async () => { try { must(await sb.from('ocorrencias').update({ fechada_em: new Date().toISOString() }).eq('id', alvo)); toast('Ocorrência marcada como resolvida.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } })();
         else if (a === 'contrato') csFormContrato(z, cts.find(q => q.id === alvo));
+        else if (a === 'permitir') { const sim = b.getAttribute('data-v') === '1'; confirmarAcao(sim ? 'Permitir comando remoto neste canal? Ele poderá ser ligado/desligado pelo sistema (com limite por minuto e registro), quando os comandos da empresa estiverem liberados.' : 'Retirar a permissão de comando remoto deste canal?', async () => {
+          try { must(await sb.from('tuya_vinculos').update({ comando_permitido: sim }).eq('id', alvo)); toast(sim ? 'Permissão concedida.' : 'Permissão retirada.', 'success'); navegar('casas', { id }); }
+          catch (e) { toast(/sem_permissao_para_liberar/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode liberar comando.' : msgErro(e.message), 'error', 7000); } }, { textoConfirmar: sim ? 'Permitir' : 'Retirar', perigo: sim }); }
       };
       c.onchange = async ev => {
         const s = ev.target.closest('[data-vinc]'); if (!s) return;
