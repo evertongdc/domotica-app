@@ -293,6 +293,7 @@ const ICONES = {
   codigos: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01M12 12h.01M17 12h.01"/>',
   pedidos: '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/>',
   plantas: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h8M11 3v8M11 15v6M15 13h6"/>',
+  casas: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',
   mais: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
 };
 function icone(nome) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICONES[nome] || '') + '</svg>'; }
@@ -306,6 +307,7 @@ const NAV = [
   { id: 'obras', label: 'Obras' },
   { id: 'dispositivos', label: 'Dispositivos' },
   { id: 'agenda', label: 'Agenda' },
+  { id: 'casas', label: 'Casas' },
   { id: 'pedidos', label: 'Pedidos' },
   { id: 'sugestoes', label: 'Sugestões do bot' },
   { id: 'codigos', label: 'Códigos' },
@@ -2401,6 +2403,169 @@ window.DOMOTICA_CFG = {
       '<button class="btn btn-secondary" onclick="fecharModal()">Fechar</button><button class="btn btn-primary" id="pd-salvar">Salvar</button>');
     $id('pd-salvar').onclick = async () => { try { must(await sb.from('service_requests').update({ status: $id('pd-st').value, resposta: $id('pd-resp').value.trim() || null }).eq('id', id)); fecharModal(); toast('Pedido atualizado.', 'success'); pdCarregar(); } catch (e) { toast(msgErro(e.message), 'error', 7000); } };
   }
+  // ── Casas (Protect + contrato Connect): residências, credencial do gateway, ocorrências, aparelhos e contrato ──
+  // Entra no adaptador (usa sb, ctx, must, msgErro e os utilitários das telas). Somente leitura dos aparelhos: nada aqui comanda aparelho.
+  const CS = { lista: [], clientes: [], plantas: [] };
+  const CS_OC_TIPO = { servidor_sem_comunicacao: 'Sem comunicação', servidor_reiniciou: 'Servidor reiniciou', internet: 'Internet', integracao: 'Falha de integração', dispositivo_offline: 'Aparelho offline', desatualizado: 'Sem dados recentes', autorizacao_revogada: 'Autorização revogada' };
+  const CS_PLANO = { connect: 'Connect', protect: 'Protect' }, CS_CST = { proposta: 'Proposta', ativo: 'Ativo', suspenso: 'Suspenso', cancelado: 'Cancelado' };
+  const csDt = d => d ? new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  const csHa = d => { if (!d) return 'nunca'; const s = Math.max(0, (Date.now() - Date.parse(d)) / 1000); return s < 90 ? 'agora' : s < 3600 ? Math.round(s / 60) + ' min' : s < 86400 ? Math.round(s / 3600) + ' h' : Math.round(s / 86400) + ' d'; };
+  const CS_URL_PONTE = (window.DOMOTICA_CFG && window.DOMOTICA_CFG.url ? window.DOMOTICA_CFG.url : '') + '/functions/v1/casa-ponte';
+
+  (function csCss() { if (document.getElementById('cs-css')) return; const s = document.createElement('style'); s.id = 'cs-css'; s.textContent = '.badge.cs-alerta{background:rgba(229,72,77,.18);border-color:rgba(229,72,77,.55);color:#ffb3b5}'; document.head.appendChild(s); })();
+  function csSituacao(integs, abertas) {
+    const ativas = integs.filter(i => i.status === 'ativa');
+    if (!integs.length || !ativas.length) return { txt: 'Sem gateway', cor: '' };
+    const mudo = ativas.some(i => !i.ultimo_heartbeat || (Date.now() - Date.parse(i.ultimo_heartbeat)) / 1000 > 300);
+    if (mudo) return { txt: 'Sem comunicação', cor: 'cs-alerta' };
+    if (abertas > 0) return { txt: abertas + ' ocorrência' + (abertas > 1 ? 's' : ''), cor: 'badge-blue' };
+    return { txt: 'Tudo normal', cor: 'badge-ok' };
+  }
+
+  VIEWS.casas = {
+    titulo: 'Casas',
+    render: async function(c, params) {
+      if (params && params.id) return csDetalhe(c, params.id);
+      $id('topbar-actions').innerHTML = '<button class="btn btn-primary" id="cs-nova">+ Nova residência</button>';
+      $id('cs-nova').onclick = () => csFormResidencia();
+      c.innerHTML = '<div class="small" style="margin:0 2px 12px">Residências monitoradas (Protect) e contratos de assistência (Connect). Os aparelhos são só <b>lidos</b>: nenhum comando sai desta tela.</div><div id="cs-lista"><div class="small">Carregando...</div></div>';
+      const h = ev => { const b = ev.target.closest('[data-cs]'); if (b) navegar('casas', { id: b.getAttribute('data-cs') }); };
+      if (c._csH) c.removeEventListener('click', c._csH); c._csH = h; c.addEventListener('click', h);
+      try {
+        const x = await ctx();
+        const [r, i, o, k] = await Promise.all([
+          sb.from('residencias').select('id, nome, client_id, plan_id, comandos_bloqueados, clients(nome)').eq('org_id', x.orgId).order('nome'),
+          sb.from('integracoes').select('id, residencia_id, status, ultimo_heartbeat').eq('org_id', x.orgId),
+          sb.from('ocorrencias').select('id, residencia_id').eq('org_id', x.orgId).is('fechada_em', null),
+          sb.from('contratos_assistencia').select('residencia_id, client_id, plano, status').eq('org_id', x.orgId).eq('status', 'ativo')]);
+        const res = must(r), integs = must(i), ocs = must(o), cts = must(k);
+        const b = $id('cs-lista'); if (!b) return;
+        if (!res.length) { b.innerHTML = '<div class="glass item-card"><div class="row-title">Nenhuma residência ainda</div><div class="small">Crie a residência do cliente, gere a credencial e instale o servidor residencial (veja ha/INSTALACAO-PADRAO.md).</div></div>'; return; }
+        b.innerHTML = res.map(z => {
+          const s = csSituacao(integs.filter(q => q.residencia_id === z.id), ocs.filter(q => q.residencia_id === z.id).length);
+          const ct = cts.find(q => q.residencia_id === z.id || (!q.residencia_id && q.client_id === z.client_id));
+          return '<div class="glass item-card" data-cs="' + z.id + '" style="cursor:pointer"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div style="min-width:0"><div class="row-title">' + escHtml(z.nome) + '</div><div class="small">' + escHtml((z.clients && z.clients.nome) || 'sem cliente') + (ct ? ' · ' + CS_PLANO[ct.plano] : '') + '</div></div><span class="badge ' + s.cor + '">' + escHtml(s.txt) + '</span></div></div>';
+        }).join('');
+      } catch (e) { const b = $id('cs-lista'); if (b) b.innerHTML = '<div class="alert alert-error">' + escHtml(msgErro(e.message)) + '</div>'; }
+    },
+  };
+
+  async function csCarregarListas() {
+    const x = await ctx();
+    const [c, p] = await Promise.all([sb.from('clients').select('id, nome').eq('org_id', x.orgId).order('nome'), sb.from('plans').select('id, nome, client_id').eq('org_id', x.orgId).order('nome')]);
+    CS.clientes = must(c); CS.plantas = must(p); return x;
+  }
+
+  async function csFormResidencia(atual) {
+    try { await csCarregarListas(); } catch (e) { return toast(msgErro(e.message), 'error', 7000); }
+    const r = atual || {};
+    abrirModal(atual ? 'Editar residência' : 'Nova residência',
+      '<div class="form-group"><label class="form-label">Nome</label><input id="cs-nome" class="form-input" maxlength="120" value="' + escHtml(r.nome || '') + '" placeholder="Ex.: Casa Éverton"></div>' +
+      '<div class="form-group"><label class="form-label">Cliente</label><select id="cs-cli" class="form-input"><option value="">— sem cliente —</option>' + CS.clientes.map(c => '<option value="' + c.id + '"' + (c.id === r.client_id ? ' selected' : '') + '>' + escHtml(c.nome) + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Planta (para vincular aparelhos aos pontos)</label><select id="cs-pl" class="form-input"><option value="">— nenhuma —</option>' + CS.plantas.map(p => '<option value="' + p.id + '"' + (p.id === r.plan_id ? ' selected' : '') + '>' + escHtml(p.nome) + '</option>').join('') + '</select></div>',
+      '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="cs-salvar">Salvar</button>');
+    $id('cs-salvar').onclick = async () => {
+      const nome = $id('cs-nome').value.trim(); if (!nome) return toast('Informe o nome.', 'error');
+      const dados = { nome, client_id: $id('cs-cli').value || null, plan_id: $id('cs-pl').value || null, atualizado_em: new Date().toISOString() };
+      try {
+        const x = await ctx();
+        if (atual) must(await sb.from('residencias').update(dados).eq('id', atual.id));
+        else { const novo = must(await sb.from('residencias').insert(Object.assign({ org_id: x.orgId }, dados)).select('id').single()); fecharModal(); toast('Residência criada.', 'success'); return navegar('casas', { id: novo.id }); }
+        fecharModal(); toast('Residência salva.', 'success'); navegar('casas', { id: atual.id });
+      } catch (e) { toast(msgErro(e.message), 'error', 7000); }
+    };
+  }
+
+  async function csDetalhe(c, id) {
+    $id('topbar-actions').innerHTML = '<button class="btn btn-ghost" id="cs-voltar">← Casas</button> <button class="btn btn-secondary" id="cs-atual">Atualizar</button>';
+    $id('cs-voltar').onclick = () => navegar('casas'); $id('cs-atual').onclick = () => navegar('casas', { id });
+    c.innerHTML = '<div class="small">Carregando...</div>';
+    try {
+      const x = await ctx();
+      const z = must(await sb.from('residencias').select('*, clients(nome)').eq('id', id).single());
+      const [i, o, d, e, k] = await Promise.all([
+        sb.from('integracoes').select('id, provedor, nome, status, token_dica, criado_em, revogada_em, ultimo_heartbeat, uptime_s, versao, meta').eq('residencia_id', id).order('criado_em'),
+        sb.from('ocorrencias').select('*').eq('residencia_id', id).order('aberta_em', { ascending: false }).limit(40),
+        sb.from('dispositivos_externos').select('id, nome, dominio, area, fabricante, modelo, origem, ponto_id, ignorado, removido_em').eq('residencia_id', id).is('removido_em', null).order('area').order('nome'),
+        sb.from('estado_dispositivo').select('dispositivo_id, estado, conectividade, mudou_em').eq('residencia_id', id),
+        sb.from('contratos_assistencia').select('*').eq('org_id', x.orgId).or('residencia_id.eq.' + id + (z.client_id ? ',and(residencia_id.is.null,client_id.eq.' + z.client_id + ')' : '')).order('criado_em', { ascending: false })]);
+      const integs = must(i), ocs = must(o), devs = must(d), est = new Map(must(e).map(q => [q.dispositivo_id, q])), cts = must(k);
+      let pontos = [];
+      if (z.plan_id) { const pl = must(await sb.from('plans').select('dados').eq('id', z.plan_id).single()); const com = new Map(((pl.dados && pl.dados.comodos) || []).map(q => [q.id, q.nome])); pontos = ((pl.dados && pl.dados.pontos) || []).map(p => ({ id: p.id, rot: (p.nome || p.tipo) + (com.get(p.comodo) ? ' · ' + com.get(p.comodo) : '') })); }
+      const abertas = ocs.filter(q => !q.fechada_em), sit = csSituacao(integs, abertas.length);
+
+      const secTopo = '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="row-title" style="font-size:1.2em">' + escHtml(z.nome) + '</div><div class="small">' + escHtml((z.clients && z.clients.nome) || 'sem cliente') + ' · Comandos remotos: <b>' + (z.comandos_bloqueados ? 'bloqueados' : 'liberados') + '</b></div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge ' + sit.cor + '">' + escHtml(sit.txt) + '</span><button class="btn btn-ghost btn-sm" data-a="editar">Editar</button></div></div></div>';
+
+      const secInt = '<div class="row-title" style="margin:20px 2px 8px">Servidor residencial (gateway)</div>' + (integs.length ? integs.map(q => '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div style="min-width:0"><div class="row-title">' + escHtml(q.nome || q.provedor) + ' <span class="small">(' + escHtml(q.provedor) + ', credencial …' + escHtml(q.token_dica || '') + ')</span></div><div class="small">Situação: <b>' + escHtml(q.status) + '</b> · Último sinal: ' + csHa(q.ultimo_heartbeat) + (q.versao ? ' · ' + escHtml(q.versao) : '') + (q.meta && q.meta.entidades != null ? ' · ' + q.meta.entidades + ' entidades, ' + (q.meta.indisponiveis || 0) + ' indisponíveis' + (q.meta.fila ? ', ' + q.meta.fila + ' na fila' : '') : '') + '</div></div>' + (q.status !== 'revogada' ? '<button class="btn btn-secondary btn-sm" data-a="revogar" data-id="' + q.id + '">Revogar</button>' : '<span class="small">revogada ' + csDt(q.revogada_em) + '</span>') + '</div></div>').join('') : '<div class="small" style="margin:0 2px">Nenhum gateway ainda.</div>') +
+        '<div style="margin:10px 2px"><button class="btn btn-primary btn-sm" data-a="credencial">Gerar credencial do gateway</button></div>';
+
+      const secOc = '<div class="row-title" style="margin:20px 2px 8px">Ocorrências</div>' + (ocs.length ? ocs.map(q => '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div style="min-width:0"><div class="row-title">' + escHtml(q.titulo) + '</div><div class="small">' + (CS_OC_TIPO[q.tipo] || q.tipo) + ' · aberta ' + csDt(q.aberta_em) + (q.fechada_em ? ' · fechada ' + csDt(q.fechada_em) : '') + '</div>' + (q.causa_provavel ? '<div class="small" style="margin-top:4px">' + escHtml(q.causa_provavel) + '</div>' : '') + '</div>' + (q.fechada_em ? '<span class="badge badge-ok">Resolvida</span>' : '<button class="btn btn-secondary btn-sm" data-a="resolver" data-id="' + q.id + '">Marcar resolvida</button>') + '</div></div>').join('') : '<div class="small" style="margin:0 2px">Nenhuma ocorrência.</div>');
+
+      const porArea = new Map(); devs.filter(q => !q.ignorado).forEach(q => { const a = q.area || 'Sem cômodo'; porArea.set(a, [...(porArea.get(a) || []), q]); });
+      const optPontos = sel => '<option value="">— sem vínculo —</option>' + pontos.map(p => '<option value="' + escHtml(p.id) + '"' + (p.id === sel ? ' selected' : '') + '>' + escHtml(p.rot) + '</option>').join('');
+      const secDev = '<div class="row-title" style="margin:20px 2px 8px">Aparelhos (' + devs.length + ')</div>' + (devs.length ? [...porArea].map(([a, l]) => '<div class="small" style="margin:12px 2px 4px;text-transform:uppercase;letter-spacing:.06em;opacity:.7">' + escHtml(a) + '</div>' + l.map(q => { const s = est.get(q.id) || {}; const off = s.conectividade === 'offline'; return '<div class="glass item-card" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="min-width:0"><div class="row-title" style="font-size:.95em">' + escHtml(q.nome) + '</div><div class="small">' + escHtml(q.dominio || '') + (q.fabricante ? ' · ' + escHtml(q.fabricante) : '') + (q.origem ? ' · ' + escHtml(q.origem) : '') + '</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="badge ' + (off ? 'cs-alerta' : s.conectividade === 'online' ? 'badge-ok' : '') + '">' + escHtml(off ? 'offline' : (s.estado || '—')) + '</span>' + (pontos.length ? '<select class="form-input" style="max-width:220px;padding:6px 8px" data-vinc="' + q.id + '">' + optPontos(q.ponto_id) + '</select>' : '') + '</div></div></div>'; }).join('')).join('') + (pontos.length ? '' : '<div class="small" style="margin:8px 2px">Para vincular aparelhos aos pontos, escolha uma planta em "Editar".</div>') : '<div class="small" style="margin:0 2px">Os aparelhos aparecem aqui quando o servidor residencial enviar a descoberta.</div>');
+
+      const secCt = '<div class="row-title" style="margin:20px 2px 8px">Contrato de assistência</div>' + (cts.length ? cts.map(q => '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div><div class="row-title">' + CS_PLANO[q.plano] + (q.valor_mensal != null ? ' · R$ ' + Number(q.valor_mensal).toFixed(2).replace('.', ',') + '/mês' : '') + '</div><div class="small">' + CS_CST[q.status] + (q.inicio ? ' · desde ' + new Date(q.inicio + 'T12:00').toLocaleDateString('pt-BR') : '') + (q.dia_vencimento ? ' · vence dia ' + q.dia_vencimento : '') + (q.cobranca_ref ? ' · cobrança ' + escHtml(q.cobranca_ref) : '') + '</div></div><button class="btn btn-ghost btn-sm" data-a="contrato" data-id="' + q.id + '">Editar</button></div></div>').join('') : '<div class="small" style="margin:0 2px">Sem contrato.</div>') + (z.client_id ? '<div style="margin:10px 2px"><button class="btn btn-secondary btn-sm" data-a="contrato">+ Contrato</button></div>' : '<div class="small" style="margin:8px 2px">Vincule um cliente para registrar contrato.</div>');
+
+      c.innerHTML = secTopo + secOc + secInt + secDev + secCt;
+      c.onclick = ev => {
+        const b = ev.target.closest('[data-a]'); if (!b) return; const a = b.getAttribute('data-a'), alvo = b.getAttribute('data-id');
+        if (a === 'editar') csFormResidencia(z);
+        else if (a === 'credencial') csGerarCredencial(z);
+        else if (a === 'revogar') confirmarAcao('Revogar esta credencial? O servidor residencial para de enviar dados na hora. A casa continua funcionando normalmente.', async () => { try { must(await sb.rpc('integracao_revogar', { p_id: alvo })); toast('Credencial revogada.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } }, { textoConfirmar: 'Revogar', perigo: true });
+        else if (a === 'resolver') (async () => { try { must(await sb.from('ocorrencias').update({ fechada_em: new Date().toISOString() }).eq('id', alvo)); toast('Ocorrência marcada como resolvida.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } })();
+        else if (a === 'contrato') csFormContrato(z, cts.find(q => q.id === alvo));
+      };
+      c.onchange = async ev => {
+        const s = ev.target.closest('[data-vinc]'); if (!s) return;
+        try { must(await sb.from('dispositivos_externos').update({ ponto_id: s.value || null, plan_id: s.value ? z.plan_id : null, atualizado_em: new Date().toISOString() }).eq('id', s.getAttribute('data-vinc'))); toast(s.value ? 'Vínculo salvo.' : 'Vínculo removido.', 'success', 1800); }
+        catch (e) { toast(msgErro(e.message), 'error', 7000); }
+      };
+    } catch (e) { c.innerHTML = '<div class="alert alert-error">' + escHtml(msgErro(e.message)) + '</div>'; }
+  }
+
+  async function csGerarCredencial(z) {
+    abrirModal('Gerar credencial do gateway', '<p class="small">Cria uma credencial nova para o servidor residencial desta casa. Ela aparece <b>uma única vez</b>: guarde no gerenciador de senhas e não envie por WhatsApp ou e-mail.</p><div class="form-group"><label class="form-label">Nome (para reconhecer)</label><input id="cs-gw-nome" class="form-input" maxlength="60" value="Home Assistant"></div>',
+      '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="cs-gw-ok">Gerar</button>');
+    $id('cs-gw-ok').onclick = async () => {
+      try {
+        const r = must(await sb.rpc('integracao_criar', { p_residencia: z.id, p_provedor: 'home_assistant', p_nome: $id('cs-gw-nome').value.trim() }));
+        const yaml = 'domotica_ponte:\n  url: ' + CS_URL_PONTE + '\n  token: !secret domotica_token';
+        abrirModal('Credencial criada', '<div class="alert alert-error" style="margin-bottom:12px">Copie agora. Depois de fechar, ela não aparece mais.</div>' +
+          '<div class="form-group"><label class="form-label">secrets.yaml</label><pre id="cs-tok" style="user-select:all;padding:10px;border-radius:8px;background:rgba(0,0,0,.25)">domotica_token: "' + escHtml(r.token) + '"</pre></div>' +
+          '<div class="form-group"><label class="form-label">configuration.yaml</label><pre style="padding:10px;border-radius:8px;background:rgba(0,0,0,.25)">' + escHtml(yaml) + '</pre></div>',
+          '<button class="btn btn-secondary" id="cs-cp">Copiar credencial</button><button class="btn btn-primary" id="cs-fim">Já guardei</button>');
+        $id('cs-cp').onclick = () => copiarTexto('domotica_token: "' + r.token + '"');
+        $id('cs-fim').onclick = () => { fecharModal(); navegar('casas', { id: z.id }); };
+      } catch (e) { toast(msgErro(e.message), 'error', 7000); }
+    };
+  }
+
+  function csFormContrato(z, atual) {
+    const q = atual || { plano: 'connect', status: 'proposta' };
+    abrirModal(atual ? 'Editar contrato' : 'Novo contrato',
+      '<div class="form-grid"><div class="form-group"><label class="form-label">Plano</label><select id="ct-plano" class="form-input">' + Object.keys(CS_PLANO).map(k => '<option value="' + k + '"' + (k === q.plano ? ' selected' : '') + '>' + CS_PLANO[k] + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Situação</label><select id="ct-st" class="form-input">' + Object.keys(CS_CST).map(k => '<option value="' + k + '"' + (k === q.status ? ' selected' : '') + '>' + CS_CST[k] + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label class="form-label">Valor mensal (R$)</label><input id="ct-valor" class="form-input" inputmode="decimal" value="' + (q.valor_mensal != null ? String(q.valor_mensal).replace('.', ',') : '') + '"></div>' +
+      '<div class="form-group"><label class="form-label">Dia de vencimento (1–28)</label><input id="ct-dia" class="form-input" type="number" min="1" max="28" value="' + (q.dia_vencimento || '') + '"></div>' +
+      '<div class="form-group"><label class="form-label">Início</label><input id="ct-ini" class="form-input" type="date" value="' + (q.inicio || '') + '"></div>' +
+      '<div class="form-group"><label class="form-label">Referência da cobrança (Asaas)</label><input id="ct-ref" class="form-input" maxlength="80" value="' + escHtml(q.cobranca_ref || '') + '"></div></div>' +
+      '<div class="form-group"><label class="form-label">Observações</label><textarea id="ct-obs" class="form-input" rows="3" maxlength="1000">' + escHtml(q.obs || '') + '</textarea></div>',
+      '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="ct-ok">Salvar</button>');
+    $id('ct-ok').onclick = async () => {
+      const v = $id('ct-valor').value.trim().replace(/\./g, '').replace(',', '.'), dia = parseInt($id('ct-dia').value, 10);
+      if (v && !isFinite(Number(v))) return toast('Valor inválido.', 'error');
+      if ($id('ct-dia').value && !(dia >= 1 && dia <= 28)) return toast('Dia de vencimento entre 1 e 28.', 'error');
+      const dados = { plano: $id('ct-plano').value, status: $id('ct-st').value, valor_mensal: v ? Number(v) : null, dia_vencimento: dia || null, inicio: $id('ct-ini').value || null, cobranca_ref: $id('ct-ref').value.trim() || null, obs: $id('ct-obs').value.trim() || null };
+      try {
+        const x = await ctx();
+        if (atual) must(await sb.from('contratos_assistencia').update(dados).eq('id', atual.id));
+        else must(await sb.from('contratos_assistencia').insert(Object.assign({ org_id: x.orgId, client_id: z.client_id, residencia_id: z.id }, dados)));
+        fecharModal(); toast('Contrato salvo.', 'success'); navegar('casas', { id: z.id });
+      } catch (e) { toast(msgErro(e.message), 'error', 7000); }
+    };
+  }
+
   window.iniciarApp = async function() {
     document.addEventListener('keydown', function(ev) {
       if (ev.key === 'Escape') fecharModal();
