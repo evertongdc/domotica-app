@@ -135,6 +135,49 @@ body.on-auth .chk input{padding:0;width:16px;height:16px}
 .ctl .ev{display:grid;grid-template-columns:44px 1fr;gap:10px;margin:8px 0;align-items:center}.ctl .ev time{font-size:.72em;color:#b9b8b3}.ctl .ev div{padding:9px 11px;border-radius:10px;background:#2b2b2b;border-left:2px solid #e3be65;font-size:.85em}
 .ctl .vazio{color:var(--cm);font-size:.85em;padding:10px 4px}
 .ctl .mapa .hot svg{width:14px;height:14px}@media(max-width:420px){.ctl .hot{width:21px;height:21px}.ctl .hot svg{width:12px;height:12px}.ctl .cenas{grid-template-columns:repeat(2,minmax(0,1fr))}.ctl .cena{flex-direction:row;min-height:48px}}
+/* ---------- Minha casa no layout do modelo do Éverton (Domotica_Painel_Interativo_v5): tela inteira, planta fixa ---------- */
+body.mc-on{background:#151515}body.mc-on>#toast{z-index:40}
+.mc{position:fixed;inset:0;z-index:30;overflow:auto;background:#151515;color:#f4f3ef;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.mc *{box-sizing:border-box}.mc button{font:inherit;cursor:pointer;color:inherit;border:0;background:none}.mc button:focus-visible{outline:2px solid #e9c36b;outline-offset:3px}.mc button:active{transform:scale(.97)}
+.mc .shell{padding:16px;min-height:100dvh;display:grid;grid-template-rows:62px minmax(330px,1.15fr) minmax(260px,.85fr);gap:14px;height:100dvh}
+.mc header,.mc .card{background:#272727;border-radius:19px}
+.mc header{display:flex;align-items:center;padding:0 24px;gap:24px;position:static;border:0;backdrop-filter:none}
+.mc .brand{font-size:23px;letter-spacing:-.8px;font-weight:650;white-space:nowrap;display:flex;align-items:center;gap:8px}.mc .brand svg{color:#e9c36b}.mc .brand small{font-size:11px;color:#aaa;letter-spacing:1px;font-weight:400}
+.mc nav{display:flex;gap:8px;flex:1;justify-content:center;position:static;background:none;border:0;padding:0}
+.mc nav button{padding:12px 20px;border-radius:30px;color:#c1c1c1;white-space:nowrap;font-size:14px;flex:none;display:block}.mc nav button.active{background:#3a3935;color:#f0cd77}
+.mc .status{font-size:12px;color:#c5c5bd;white-space:nowrap}.mc .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#8ebc99;margin-right:6px}
+.mc .voltar{background:#333331;border:1px solid #ffffff16;border-radius:12px;padding:9px 14px;font-size:12px;color:#ddd}
+.mc .top{display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr);gap:14px;min-height:0}
+.mc .card{position:relative;overflow:hidden;padding:20px}
+.mc .map{position:relative;background:#151515;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;overflow:hidden;border-radius:19px}
+.mc .map .mapa{position:relative;width:100%;max-height:100%;aspect-ratio:var(--ar,1.3);height:auto}
+.mc .map .mapa svg{display:block;width:100%;height:100%}
+.mc .map .hs{position:absolute;inset:0;pointer-events:none}
+.mc .hot{position:absolute;transform:translate(-50%,-50%);width:23px;height:23px;border-radius:50%;background:#242424df;color:#bcbcbc;display:grid;place-items:center;border:1px solid #ffffff40;box-shadow:0 1px 4px #0008;pointer-events:auto;padding:0}
+.mc .hot svg{width:13px;height:13px}.mc .hot.on{color:#ffe1a0;background:#594522d9;border-color:#f4cc79;box-shadow:0 0 5px #f4ba6055}.mc .hot:active{transform:translate(-50%,-50%) scale(.94)}
+.mc .hot.lk{opacity:.7}.mc .hot.pend{opacity:.5}.mc .hot.oculto{display:none}
+.mc .tools{position:absolute;top:8px;right:8px;display:flex;gap:7px;z-index:5}.mc .tool{background:#333331df;border:1px solid #ffffff16;border-radius:12px;width:36px;height:36px;display:grid;place-items:center}
+.mc .filters{position:absolute;top:8px;left:8px;z-index:5;display:flex;gap:4px;padding:2px;background:#181818b8;backdrop-filter:blur(8px);border-radius:10px;max-width:calc(100% - 58px);overflow:auto;scrollbar-width:none}
+.mc .filters button{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:grid;place-items:center;color:#c7c7c7;border:1px solid transparent}.mc .filters svg{width:16px;height:16px}.mc .filters button.active{background:#51452e;color:#f4cd75;border-color:#b59754}
+.mc.expanded .top{position:fixed;inset:0;z-index:10;display:block;background:#151515}.mc.expanded .map{height:100%;border-radius:0}.mc.expanded .activity{display:none}.mc.expanded .hot{width:27px;height:27px}
+.mc .activity{display:flex;flex-direction:column;gap:13px;min-height:0}
+.mc .heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.mc h2{font-size:17px;font-weight:600;margin:0}.mc .link{color:#d5b76e;font-size:12px}.mc .muted{color:#aaa9a4;font-size:12px}
+.mc .scenes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mc .scene{background:#363532;border-radius:13px;min-height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font-size:11px;color:#dedbd4;padding:6px;text-align:center}.mc .scene.active{background:#52452c;color:#f2d084}.mc .scene svg{width:21px;height:21px}
+.mc .rooms{overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.mc .room{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:#323232;border-left:2px solid #e3be65;text-align:left;width:100%}.mc .room b{font-size:12px;font-weight:500}
+.mc .bottom{display:grid;grid-template-columns:1fr 1fr 1.8fr;gap:14px;min-height:0}
+.mc .device{display:flex;flex-direction:column;gap:8px;min-height:0}
+.mc .switch{width:42px;height:24px;background:#444;border-radius:20px;padding:3px;flex-shrink:0;display:block}.mc .switch:after{content:'';display:block;width:18px;height:18px;background:#aaa;border-radius:50%;transition:transform .2s}.mc .switch.on:after{transform:translateX(18px);background:#f0ca6b}.mc .switch[disabled]{opacity:.4}
+.mc .art{flex:1;min-height:85px;display:flex;align-items:center;justify-content:center;position:relative}.mc .art svg{height:100%;max-height:145px;width:100%}
+.mc .bar{height:5px;border-radius:4px;background:#414141;overflow:hidden}.mc .bar i{display:block;height:100%;background:#e5c16e;transition:width .4s}
+.mc .lista{overflow:auto;min-height:0;flex:1}.mc .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff0e}.mc .row:last-child{border-bottom:0}.mc .row span{min-width:0;overflow-wrap:anywhere}
+.mc .pageview{grid-row:2/4;overflow:auto;min-height:0}
+.mc .viewgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:20px}.mc .viewtile{background:#303030;border:1px solid #ffffff0a;border-radius:16px;padding:16px;text-align:left;min-height:130px}.mc .viewtile h3{font-size:16px;margin:12px 0 5px}.mc .roomthumb{height:105px;border-radius:12px;background:#222;display:grid;place-items:center;color:#e9c36b}.mc .roomthumb svg{width:40px;height:40px}
+.mc .modal{position:fixed;inset:0;z-index:50;display:flex;background:#0009;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px)}
+.mc .dialog{background:#292929;border:1px solid #454545;border-radius:24px;padding:24px;width:min(420px,100%);max-height:90dvh;overflow:auto}.mc .close{font-size:24px;padding:5px 12px}
+@media(max-width:850px){.mc .shell{padding:12px;gap:10px;grid-template-rows:56px minmax(330px,1.1fr) minmax(250px,.9fr)}.mc header{padding:0 13px;gap:8px}.mc .brand{font-size:18px}.mc nav button{padding:10px 9px;font-size:12px}.mc .status{display:none}.mc .top{grid-template-columns:1.7fr 1fr;gap:10px}.mc .bottom{gap:10px;grid-template-columns:1fr 1fr 1.45fr}.mc .card{padding:14px}.mc .scenes{grid-template-columns:repeat(2,1fr)}.mc .scene{min-height:46px;flex-direction:row}.mc .viewgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px) and (orientation:portrait){.mc .shell{height:auto;display:flex;flex-direction:column}.mc .top{display:flex;flex-direction:column}.mc .activity{max-height:none}.mc .bottom{grid-template-columns:1fr 1fr}.mc .bottom .device:last-child{grid-column:1/-1}.mc .device{min-height:230px}.mc header{flex-wrap:wrap;height:auto;padding:12px}.mc nav{justify-content:flex-start;overflow:auto;width:100%;flex-basis:100%;order:3}.mc .viewgrid{grid-template-columns:1fr}.mc.expanded .map{min-height:0}}
 </style>
 <script>try{var _t=localStorage.getItem('dom_tema');if(_t==='claro'||_t==='escuro')document.documentElement.setAttribute('data-tema',_t)}catch(e){}</script>
 </head>
@@ -381,7 +424,7 @@ window.DOMOTICA_CFG = {
     s += '</svg>';
     }
     var hs = C.aparelhos.map(function (a) { var p = pos[a.id]; if (!p) return ''; var on = ctlLigado(a);
-      return '<button class="hot' + (on ? ' on' : '') + (a.cliente_pode ? '' : ' lk') + (C.pend[a.id] ? ' pend' : '') + '" style="left:' + ((p.x - x0) / W * 100).toFixed(3) + '%;top:' + ((p.y - y0) / H * 100).toFixed(3) + '%" data-ctl="' + esc(a.id) + '" aria-label="' + esc(a.nome) + ': ' + (on ? 'ligado' : 'desligado') + (a.cliente_pode ? '' : ' (só visualização)') + '" title="' + esc(a.nome) + '">' + ctlIco(ctlTipo(a.tipo)) + '</button>'; }).join('');
+      return '<button data-k="' + ctlTipo(a.tipo) + '" class="hot' + (on ? ' on' : '') + (a.cliente_pode ? '' : ' lk') + (C.pend[a.id] ? ' pend' : '') + (MC.filtro !== 'all' && MC.filtro !== ctlTipo(a.tipo) ? ' oculto' : '') + '" style="left:' + ((p.x - x0) / W * 100).toFixed(3) + '%;top:' + ((p.y - y0) / H * 100).toFixed(3) + '%" data-ctl="' + esc(a.id) + '" aria-label="' + esc(a.nome) + ': ' + (on ? 'ligado' : 'desligado') + (a.cliente_pode ? '' : ' (só visualização)') + '" title="' + esc(a.nome) + '">' + ctlIco(ctlTipo(a.tipo)) + '</button>'; }).join('');
     return '<div class="mapa">' + s + '<div class="hs">' + hs + '</div></div>';
   }
   function ctlDentro(poly, p) { var d = false; for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) { var xi = +poly[i][0], yi = +poly[i][1], xj = +poly[j][0], yj = +poly[j][1]; if (((yi > p[1]) !== (yj > p[1])) && (p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi)) d = !d; } return d; }
@@ -405,7 +448,58 @@ window.DOMOTICA_CFG = {
       ctlMapa(C) + cenas + '<h4>Aparelhos</h4><div class="lst">' + lista + '</div>' +
       '<div class="cm" style="margin:12px 4px 2px">Com o cadeado, o aparelho é só para ver. Para liberar o controle pelo portal, fale com a Domótica.</div></div>';
   }
-  function repintarControle() { var el = document.getElementById('ctl'); if (el) el.outerHTML = vControle(); }
+  function repintarControle() { if (document.getElementById('mc')) return pintarCasa(); var el = document.getElementById('ctl'); if (el) el.outerHTML = vControle(); }
+  /* ---------- Minha casa no layout do modelo do Éverton ---------- */
+  var MC = { pag: 'geral', filtro: 'all', exp: false, modal: null };
+  var MC_LAMP = '<svg viewBox="0 0 220 150"><defs><linearGradient id="mcmetal" x2="0" y2="1"><stop stop-color="#565656"/><stop offset=".7" stop-color="#151515"/><stop offset="1" stop-color="#343434"/></linearGradient><radialGradient id="mchalo"><stop stop-color="#ffc85d" stop-opacity=".55"/><stop offset="1" stop-color="#ffc85d" stop-opacity="0"/></radialGradient></defs><ellipse cx="110" cy="114" rx="100" ry="35" fill="url(#mchalo)" opacity="__G__"/><path d="M110 0V38" stroke="#101010" stroke-width="3"/><path d="M39 108Q42 40 110 39Q178 40 181 108Z" fill="url(#mcmetal)" stroke="#777" stroke-width=".6"/><ellipse cx="110" cy="108" rx="71" ry="11" fill="__B__"/><ellipse cx="110" cy="109" rx="16" ry="4" fill="#fff4cb"/></svg>';
+  var MC_PLUG = '<svg viewBox="0 0 220 150"><rect x="62" y="18" width="96" height="114" rx="18" fill="#efece6" stroke="#9a978f"/><rect x="74" y="30" width="72" height="90" rx="12" fill="#e2ded6"/><path d="M110 50l20 11v24l-20 11-20-11V61z" fill="#cfcac0" stroke="#a9a49a"/><circle cx="96" cy="74" r="5" fill="#3b3a37"/><circle cx="124" cy="74" r="5" fill="#3b3a37"/><circle cx="110" cy="64" r="5" fill="#3b3a37"/><circle cx="110" cy="112" r="4" fill="__B__"/></svg>';
+  function mcFiltros() { return [['all', 'estrela', 'Todos'], ['luz', 'luz', 'Iluminação'], ['tomada', 'tomada', 'Tomadas'], ['interruptor', 'interruptor', 'Interruptores']].map(function (f) { return '<button data-mcf="' + f[0] + '" class="' + (MC.filtro === f[0] ? 'active' : '') + '" title="' + f[2] + '" aria-label="' + f[2] + '">' + ctlIco(f[1]) + '</button>'; }).join(''); }
+  function mcComodos(C) { var por = {}; C.aparelhos.forEach(function (a) { (por[a.comodo || 'Outros'] = por[a.comodo || 'Outros'] || []).push(a); }); return por; }
+  function mcLinha(a, C) { var on = ctlLigado(a), pe = C.pend[a.id]; return '<div class="row"><span>' + esc(a.nome) + '<br><span class="muted">' + (pe ? 'Enviando…' : (on ? 'Ligado' : 'Desligado')) + (a.cliente_pode ? '' : ' · só visualização') + '</span></span><button class="switch' + (on ? ' on' : '') + '" data-ctl="' + esc(a.id) + '"' + (a.cliente_pode && !pe ? '' : ' disabled') + ' aria-label="' + (on ? 'Desligar ' : 'Ligar ') + esc(a.nome) + '"></button></div>'; }
+  function pintarCasa() {
+    var C = D.ctl, por = mcComodos(C), luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
+    var tom = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'tomada'; }), tomOn = tom.filter(ctlLigado).length;
+    var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), ar = m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
+    var head = '<header><div class="brand">' + ctlIco('porta') + 'Domótica<small>HOME</small></div><nav>' + [['geral', 'Visão geral'], ['ambientes', 'Ambientes'], ['iluminacao', 'Iluminação'], ['garantias', 'Garantias']].map(function (n) { return '<button data-mcp="' + n[0] + '" class="' + (MC.pag === n[0] ? 'active' : '') + '">' + n[1] + '</button>'; }).join('') + '</nav><div class="status"><span class="dot"></span>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div><button class="voltar" data-mcvoltar>Portal</button></header>';
+    var cenas = '<div class="heading"><h2>Cenas rápidas</h2>' + (luzes.some(function (a) { return a.cliente_pode; }) ? '<button class="link" data-mcapagar>Apagar luzes</button>' : '') + '</div>' + (C.cenas.length ? '<div class="scenes">' + C.cenas.map(function (c) { return '<button class="scene' + (C.pend['cena:' + c.id] ? ' active' : '') + '" data-cena="' + esc(c.id) + '">' + ctlIco(c.icone) + esc(c.nome) + '</button>'; }).join('') + '</div>' : '<span class="muted">Nenhuma cena criada ainda. Peça à Domótica.</span>');
+    var amb = '<div class="heading" style="margin-top:4px"><h2>Ambientes</h2><span class="muted">' + Object.keys(por).length + '</span></div><div class="rooms">' + Object.keys(por).sort().map(function (k) { var l = por[k].filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }); return '<button class="room" data-mcroom="' + esc(k) + '"><span><b>' + esc(k) + '</b><br><span class="muted">' + (l.length ? l.filter(ctlLigado).length + ' de ' + l.length + ' luzes acesas' : por[k].length + ' aparelho(s)') + '</span></span><span class="muted">›</span></button>'; }).join('') + '</div>';
+    var top = '<section class="top"><div class="map" style="--ar:' + ar + '">' + mapa + '<div class="tools"><button class="tool" data-mcexp title="' + (MC.exp ? 'Recolher planta' : 'Expandir planta') + '" aria-label="' + (MC.exp ? 'Recolher planta' : 'Expandir planta') + '"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="' + (MC.exp ? 'M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5') + '"/></svg></button></div><div class="filters">' + mcFiltros() + '</div></div><div class="card activity">' + cenas + amb + '</div></section>';
+    var cIlu = '<article class="card device"><div class="heading"><div><h2>Iluminação</h2><span class="muted">' + acesas + ' de ' + luzes.length + ' luzes acesas</span></div><button class="switch' + (acesas ? ' on' : '') + '" data-mctodas="luz" aria-label="Ligar ou apagar todas as luzes"' + (luzes.some(function (a) { return a.cliente_pode; }) ? '' : ' disabled') + '></button></div><div class="art">' + MC_LAMP.replace('__G__', acesas ? '1' : '0').replace('__B__', acesas ? '#dfb65b' : '#555') + '</div><div class="bar"><i style="width:' + (luzes.length ? Math.round(acesas / luzes.length * 100) : 0) + '%"></i></div></article>';
+    var cTom = '<article class="card device"><div class="heading"><div><h2>Tomadas</h2><span class="muted">' + (tom.length ? tomOn + ' de ' + tom.length + ' ligadas' : 'Nenhuma tomada controlada') + '</span></div>' + (tom.length ? '<button class="switch' + (tomOn ? ' on' : '') + '" data-mctodas="tomada" aria-label="Ligar ou desligar as tomadas"' + (tom.some(function (a) { return a.cliente_pode; }) ? '' : ' disabled') + '></button>' : '') + '</div><div class="art">' + MC_PLUG.replace('__B__', tomOn ? '#5fd682' : '#777') + '</div><div class="bar"><i style="width:' + (tom.length ? Math.round(tomOn / tom.length * 100) : 0) + '%"></i></div></article>';
+    var cAp = '<article class="card device"><div class="heading"><div><h2>Aparelhos</h2><span class="muted">' + C.aparelhos.length + ' no total</span></div></div><div class="lista">' + C.aparelhos.map(function (a) { return mcLinha(a, C); }).join('') + '</div></article>';
+    var corpo;
+    if (MC.pag === 'ambientes') corpo = '<section class="card pageview"><div class="heading"><h2>Todos os ambientes</h2><span class="muted">' + Object.keys(por).length + ' ambientes</span></div><div class="viewgrid">' + Object.keys(por).sort().map(function (k) { var l = por[k].filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }); return '<button class="viewtile" data-mcroom="' + esc(k) + '"><div class="roomthumb">' + ctlIco(l.length ? 'luz' : 'tomada') + '</div><h3>' + esc(k) + '</h3><span class="muted">' + (l.length ? l.filter(ctlLigado).length + ' de ' + l.length + ' luzes acesas · ' : '') + 'Abrir controles</span></button>'; }).join('') + '</div></section>';
+    else if (MC.pag === 'iluminacao') corpo = '<section class="card pageview"><div class="heading"><h2>Iluminação</h2><span class="muted">' + acesas + ' de ' + luzes.length + ' acesas</span></div><div style="margin-top:12px">' + luzes.map(function (a) { return mcLinha(a, C); }).join('') + '</div></section>';
+    else if (MC.pag === 'garantias') corpo = '<section class="card pageview">' + vCasa(true) + '</section>';
+    else corpo = top + '<section class="bottom">' + cIlu + cTom + cAp + '</section>';
+    var modal = '';
+    if (MC.modal && por[MC.modal]) modal = '<div class="modal" data-mcfechar><div class="dialog"><div class="heading"><h2>' + esc(MC.modal) + '</h2><button class="close" data-mcfechar aria-label="Fechar">×</button></div>' + por[MC.modal].map(function (a) { return mcLinha(a, C); }).join('') + '</div></div>';
+    document.body.classList.add('mc-on');
+    R.innerHTML = '<div class="mc' + (MC.exp && MC.pag === 'geral' ? ' expanded' : '') + '" id="mc"><div class="shell">' + head + corpo + '</div>' + modal + '</div>';
+    R.querySelector('#mc').onclick = mcClique;
+  }
+  async function mcTodas(tipo, ligar) {
+    var C = D.ctl, alvo = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === tipo && a.cliente_pode && ctlLigado(a) !== ligar; });
+    if (!alvo.length) return toast('Nada para mudar.');
+    for (var i = 0; i < alvo.length; i++) { var a = alvo[i]; if (!ctlLigado(a) === ligar) await comandoCliente(a.id); }
+  }
+  function mcClique(e) {
+    var b = e.target.closest('button,[data-mcfechar]'); if (!b) return;
+    if (b.hasAttribute('data-mcfechar') && (b.tagName === 'BUTTON' || e.target === b)) { MC.modal = null; return pintarCasa(); }
+    if (b.tagName !== 'BUTTON') return;
+    if (b.dataset.ctl) return comandoCliente(b.dataset.ctl);
+    if (b.dataset.cena) return cenaCliente(b.dataset.cena);
+    if (b.dataset.mcp) { MC.pag = b.dataset.mcp; MC.exp = false; return pintarCasa(); }
+    if (b.dataset.mcf) { MC.filtro = b.dataset.mcf; return pintarCasa(); }
+    if (b.dataset.mcroom) { MC.modal = b.dataset.mcroom; return pintarCasa(); }
+    if (b.hasAttribute('data-mcexp')) { MC.exp = !MC.exp; return pintarCasa(); }
+    if (b.hasAttribute('data-mcapagar')) return mcTodas('luz', false);
+    if (b.dataset.mctodas) { var t = b.dataset.mctodas, liga = !D.ctl.aparelhos.some(function (a) { return ctlTipo(a.tipo) === t && ctlLigado(a); }); return mcTodas(t, liga); }
+    if (b.dataset.nova) return novoPedido(b.dataset.nova, b.dataset.dev);
+    if (b.hasAttribute('data-mcvoltar')) { document.body.classList.remove('mc-on'); MC.modal = null; ABA = 'inicio'; return pintar(); }
+  }
+  document.addEventListener('keydown', function (e) { if (e.key !== 'Escape' || !document.getElementById('mc')) return; if (MC.modal) { MC.modal = null; pintarCasa(); } else if (MC.exp) { MC.exp = false; pintarCasa(); } });
+
   async function comandoCliente(id) {
     var C = D.ctl, a = C.aparelhos.filter(function (x) { return x.id === id; })[0]; if (!a) return;
     if (!a.cliente_pode) return toast('Este aparelho é só para visualização. Fale com a Domótica para liberar.');
@@ -525,6 +619,8 @@ window.DOMOTICA_CFG = {
     pedidos: '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/>'
   };
   function pintar() {
+    if (ABA === 'casa' && D.ctl && D.ctl.aparelhos.length) return pintarCasa();
+    document.body.classList.remove('mc-on');
     var cont = { projetos: projPend().length, orcamentos: orcPend().length, pedidos: abertos().length };
     var nomes = { inicio: 'Início', projetos: 'Projetos', orcamentos: 'Orçamentos', casa: 'Minha casa', pedidos: 'Pedidos' };
     document.body.classList.remove('on-auth');
@@ -585,8 +681,8 @@ window.DOMOTICA_CFG = {
         (o.status === 'enviado' ? '<div class="acts"><button class="btn" data-orc="recusado" data-id="' + esc(o.id) + '">Recusar</button><button class="btn ok" data-orc="aprovado" data-id="' + esc(o.id) + '">Aprovar orçamento</button></div>' : '') + '</div>';
     }).join('');
   }
-  function vCasa() {
-    var agora = vControle() + vAgora();
+  function vCasa(semPainel) {
+    var agora = (semPainel ? '' : vControle()) + vAgora();
     if (!D.dispositivos.length) return agora + '<div class="card empty">Seus dispositivos e garantias aparecerão aqui depois da instalação.</div>';
     var por = {}; D.dispositivos.forEach(function (d) { (por[d.ambiente || 'Outros'] = por[d.ambiente || 'Outros'] || []).push(d); });
     return agora + Object.keys(por).map(function (k) {
