@@ -478,7 +478,7 @@ window.DOMOTICA_CFG = {
     var C = D.ctl, por = mcComodos(C), luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
     var tom = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'tomada'; }), tomOn = tom.filter(ctlLigado).length;
     var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), ar = m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
-    var head = '<header><div class="brand">' + ctlIco('porta') + 'Domótica<small>HOME</small></div><nav>' + [['geral', 'Visão geral'], ['ambientes', 'Ambientes'], ['iluminacao', 'Iluminação'], ['garantias', 'Garantias']].map(function (n) { return '<button data-mcp="' + n[0] + '" class="' + (MC.pag === n[0] ? 'active' : '') + '">' + n[1] + '</button>'; }).join('') + '</nav><div class="status"><span class="dot"></span>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div><button class="voltar" data-mctablet title="Tela cheia para tablet na parede">Modo tablet</button><button class="voltar" data-mcvoltar>Portal</button></header>';
+    var head = '<header><div class="brand">' + ctlIco('porta') + 'Domótica<small>HOME</small></div><nav>' + [['geral', 'Visão geral'], ['ambientes', 'Ambientes'], ['iluminacao', 'Iluminação'], ['garantias', 'Garantias']].map(function (n) { return '<button data-mcp="' + n[0] + '" class="' + (MC.pag === n[0] ? 'active' : '') + '">' + n[1] + '</button>'; }).join('') + '</nav><div class="status"><span class="dot"></span>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div><button class="voltar" data-mcvoltar>Portal</button></header>';
     var cenas = '<div class="heading"><h2>Cenas rápidas</h2>' + (luzes.some(function (a) { return a.cliente_pode; }) ? '<button class="link" data-mcapagar>Apagar luzes</button>' : '') + '</div>' + (C.cenas.length ? '<div class="scenes">' + C.cenas.map(function (c) { return '<button class="scene' + (C.pend['cena:' + c.id] ? ' active' : '') + '" data-cena="' + esc(c.id) + '">' + ctlIco(c.icone) + esc(c.nome) + '</button>'; }).join('') + '</div>' : '<span class="muted">Nenhuma cena criada ainda. Peça à Domótica.</span>');
     var amb = '<div class="heading" style="margin-top:4px"><h2>Ambientes</h2><span class="muted">' + Object.keys(por).length + '</span></div><div class="rooms">' + Object.keys(por).sort().map(function (k) { var l = por[k].filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }); return '<button class="room" data-mcroom="' + esc(k) + '"><span><b>' + esc(k) + '</b><br><span class="muted">' + (l.length ? l.filter(ctlLigado).length + ' de ' + l.length + ' luzes acesas' : por[k].length + ' aparelho(s)') + '</span></span><span class="muted">›</span></button>'; }).join('') + '</div>';
     var top = '<section class="top"><div class="map" style="--ar:' + ar + '">' + mapa + '<div class="tools"><button class="tool" data-mcexp title="' + (MC.exp ? 'Recolher planta' : 'Expandir planta') + '" aria-label="' + (MC.exp ? 'Recolher planta' : 'Expandir planta') + '"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="' + (MC.exp ? 'M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5') + '"/></svg></button></div><div class="filters">' + mcFiltros() + '</div></div><div class="card activity">' + cenas + amb + '</div></section>';
@@ -510,7 +510,6 @@ window.DOMOTICA_CFG = {
     if (b.dataset.mcp) { MC.pag = b.dataset.mcp; MC.exp = false; return pintarCasa(); }
     if (b.dataset.mcf) { MC.filtro = b.dataset.mcf; return pintarCasa(); }
     if (b.dataset.mcroom) { MC.modal = b.dataset.mcroom; return repintarControle(); }
-    if (b.hasAttribute('data-mctablet')) return entrarTablet();
     if (b.hasAttribute('data-mcexp')) { MC.exp = !MC.exp; return pintarCasa(); }
     if (b.hasAttribute('data-mcapagar')) return mcTodas('luz', false);
     if (b.dataset.mctodas) { var t = b.dataset.mctodas, liga = !D.ctl.aparelhos.some(function (a) { return ctlTipo(a.tipo) === t && ctlLigado(a); }); return mcTodas(t, liga); }
@@ -519,8 +518,17 @@ window.DOMOTICA_CFG = {
   }
   document.addEventListener('keydown', function (e) { if (e.key !== 'Escape' || !document.getElementById('mc')) return; if (MC.modal) { MC.modal = null; repintarControle(); } else if (MC.exp && !MC.tablet) { MC.exp = false; pintarCasa(); } });
   /* ---------- modo tablet na parede: escolha salva NESTE aparelho; link fixo com ?tablet=1 ---------- */
-  MC.tablet = /[?&]tablet=1\b/.test(location.search) || lsGet('dom_tablet') === '1';
-  if (/[?&]tablet=1\b/.test(location.search)) lsSet('dom_tablet', '1');
+  /* tipo de aparelho automático: sem toque = computador; toque com tela pequena = celular; toque com tela grande = tablet/iPad
+     (o iPad novo se apresenta como Mac, por isso conta o toque e não o nome). ?tablet=1 força o tablet (ex.: monitor de toque), ?tablet=0 desliga. */
+  function tipoAparelho() {
+    var toque = (navigator.maxTouchPoints || 0) > 1 || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
+    if (!toque) return 'desktop';
+    return Math.min(screen.width || innerWidth, screen.height || innerHeight) >= 600 ? 'tablet' : 'celular';
+  }
+  var TB_FORCA = /[?&]tablet=1\b/.test(location.search) ? true : /[?&]tablet=0\b/.test(location.search) ? false : null;
+  lsSet('dom_tablet', null);   /* a escolha manual antiga não vale mais: agora é automático */
+  MC.tabletAuto = TB_FORCA !== null ? TB_FORCA : tipoAparelho() === 'tablet';
+  MC.tablet = MC.tabletAuto;
   var TB = { wake: null, ociosoT: null, sairT: null, relogioT: null };
   function tbNoite() { return lsGet('dom_tablet_noite') !== '0'; }
   function tbRelogio() { var d = new Date(); return { h: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), d: (function (t) { return t.charAt(0).toUpperCase() + t.slice(1); })(d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })) }; }
@@ -535,7 +543,9 @@ window.DOMOTICA_CFG = {
     if (!document.getElementById('mcNet')) { var nt = document.createElement('div'); nt.id = 'mcNet'; nt.textContent = 'Sem internet · tentando reconectar…'; nt.style.display = navigator.onLine === false ? 'block' : 'none'; document.body.appendChild(nt); }
   }
   function entrarTablet() { MC.tablet = true; lsSet('dom_tablet', '1'); MC.modal = null; MC.pag = 'geral'; MC.exp = false; tbTelaCheia(); tbAcordarTela(); toast('Modo tablet ligado neste aparelho. Para sair, segure o botão do canto por 3 segundos.'); pintarTablet(); }
-  function sairTablet() { MC.tablet = false; lsSet('dom_tablet', null); clearTimeout(TB.ociosoT); clearInterval(TB.relogioT); var dm = document.getElementById('mcDim'); if (dm) dm.style.display = 'none'; try { if (TB.wake) TB.wake.release(); } catch (e) { } TB.wake = null; try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { } toast('Modo tablet desligado neste aparelho.'); pintarCasa(); }
+  /* no tablet, segurar 3 s abre os menus do portal; sem toque por 3 min, volta sozinho para a tela do tablet (tablet fixo na parede) */
+  function sairTablet() { MC.tablet = false; clearTimeout(TB.ociosoT); clearInterval(TB.relogioT); var dm = document.getElementById('mcDim'); if (dm) dm.style.display = 'none'; try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { } document.body.classList.remove('mc-on'); MC.modal = null; ABA = 'inicio'; pintar(); tbVoltarDepois(); }
+  function tbVoltarDepois() { clearTimeout(TB.voltarT); if (!MC.tabletAuto || MC.tablet) return; TB.voltarT = setTimeout(function () { if (!MC.tabletAuto || MC.tablet || document.querySelector('.ov')) return tbVoltarDepois(); MC.tablet = true; ABA = 'casa'; pintar(); }, 3 * 60 * 1000); }
   function pintarTablet() {
     var C = D.ctl, por = mcComodos(C), r = tbRelogio(), luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
     var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), ar = m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
@@ -545,7 +555,7 @@ window.DOMOTICA_CFG = {
     var modal = MC.modal && por[MC.modal] ? '<div class="modal" data-mcfechar><div class="dialog"><div class="heading"><h2>' + esc(MC.modal) + '</h2><button class="close" data-mcfechar aria-label="Fechar">×</button></div>' + por[MC.modal].map(function (a) { return mcLinha(a, C); }).join('') + '</div></div>' : '';
     document.body.classList.add('mc-on'); tbExtras();
     R.innerHTML = '<div class="mc tab" id="mc"><div class="shell"><div class="map" style="--ar:' + ar + '">' + mapa + '</div><div class="tclock"><b id="tbHora">' + r.h + '</b><span id="tbData">' + esc(r.d) + '</span><small>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + acesas + ' de ' + luzes.length + ' luzes acesas</small></div><div class="tcorpo">' + cenas + amb + '</div></div>' + modal +
-      '<button class="tsair" id="tbSair" aria-label="Segure por 3 segundos para sair do modo tablet" title="Segure 3 s para sair"><i></i><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/></svg></button></div>';
+      '<button class="tsair" id="tbSair" aria-label="Segure por 3 segundos para abrir o portal" title="Segure 3 s para abrir o portal"><i></i><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/></svg></button></div>';
     R.querySelector('#mc').onclick = mcClique;
     /* sair: segurar 3 s no botão do canto (um toque rápido não faz nada) */
     var bs = document.getElementById('tbSair'), anel = bs.querySelector('i'), t0 = 0, raf = 0;
@@ -557,7 +567,7 @@ window.DOMOTICA_CFG = {
     clearInterval(TB.relogioT); TB.relogioT = setInterval(function () { var h = document.getElementById('tbHora'); if (!h) return clearInterval(TB.relogioT); var x = tbRelogio(); h.textContent = x.h; document.getElementById('tbData').textContent = x.d; }, 20000);
     tbOcioso();
   }
-  ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!MC.tablet || !document.getElementById('mc')) return; tbOcioso(); if (!document.fullscreenElement) tbTelaCheia(); tbAcordarTela(); }, true); });
+  ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (MC.tabletAuto && !MC.tablet) tbVoltarDepois(); if (!MC.tablet || !document.getElementById('mc')) return; tbOcioso(); if (!document.fullscreenElement) tbTelaCheia(); tbAcordarTela(); }, true); });
   document.addEventListener('visibilitychange', function () { if (MC.tablet && document.visibilityState === 'visible' && document.getElementById('mc')) { tbAcordarTela(); atualizarControle(); } });
   window.addEventListener('offline', function () { var n = document.getElementById('mcNet'); if (n) n.style.display = 'block'; });
   window.addEventListener('online', function () { var n = document.getElementById('mcNet'); if (n) n.style.display = 'none'; atualizarControle(); });
@@ -681,7 +691,7 @@ window.DOMOTICA_CFG = {
     pedidos: '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/>'
   };
   function pintar() {
-    if (ABA === 'casa' && D.ctl && D.ctl.aparelhos.length) return MC.tablet ? pintarTablet() : pintarCasa();
+    if (ABA === 'casa' && D.ctl && D.ctl.aparelhos.length) { if (MC.tabletAuto) MC.tablet = true; return MC.tablet ? pintarTablet() : pintarCasa(); }
     document.body.classList.remove('mc-on');
     var cont = { projetos: projPend().length, orcamentos: orcPend().length, pedidos: abertos().length };
     var nomes = { inicio: 'Início', projetos: 'Projetos', orcamentos: 'Orçamentos', casa: 'Minha casa', pedidos: 'Pedidos' };
