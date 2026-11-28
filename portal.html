@@ -196,6 +196,8 @@ body.mc-on{background:#151515}body.mc-on>#toast{z-index:40}
 #mcNet{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:61;background:#3a2f1c;border:1px solid #806d43;color:#f2d084;padding:8px 16px;border-radius:30px;font-size:13px;display:none}
 @media(max-aspect-ratio:1/1){.mc.tab .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}.mc.tab .map{grid-row:auto;max-height:52dvh}.mc.tab .tclock b{font-size:48px}}
 @media(max-width:600px){.mc.tab .shell{height:auto;min-height:100dvh;padding:12px;gap:12px}.mc.tab .map{max-height:none}.mc.tab .tclock b{font-size:40px}.mc.tab .scene{min-height:72px;font-size:14px}}
+.mapa.m3d{position:relative}.mapa.m3d>img{display:block;width:100%;height:100%;object-fit:fill}
+.mapa.m3d .glow{position:absolute;width:16%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,140,.75),rgba(255,176,90,.28) 40%,rgba(255,160,70,0) 70%);mix-blend-mode:screen;pointer-events:none}
 </style>
 <script>try{var _t=localStorage.getItem('dom_tema');if(_t==='claro'||_t==='escuro')document.documentElement.setAttribute('data-tema',_t)}catch(e){}</script>
 </head>
@@ -407,8 +409,20 @@ window.DOMOTICA_CFG = {
     } catch (e) { /* sem painel: o portal segue normal */ }
     return C;
   }
+  /* vista 3D em ângulo: a imagem vem do editor com a matriz da câmera; cada aparelho é projetado no ponto real (x, altura, y) */
+  function ctlProj(m, x, h, y) { var cx = m[0] * x + m[4] * h + m[8] * y + m[12], cy = m[1] * x + m[5] * h + m[9] * y + m[13], w = m[3] * x + m[7] * h + m[11] * y + m[15] || 1; return { u: (cx / w + 1) / 2 * 100, v: (1 - cy / w) / 2 * 100 }; }
+  function ctlMapa3D(C) {
+    var pl = C.planta, cam = pl.cam, bruto = {}; (pl.aparelhos || []).forEach(function (q) { if (q.x != null && q.y != null) bruto[q.id] = ctlProj(cam.m, +q.x, +(q.h != null ? q.h : 110), +q.y); });
+    var grupos = {}; C.aparelhos.forEach(function (a) { var p = bruto[a.id]; if (!p) return; var k = Math.round(p.u * 2) + ',' + Math.round(p.v * 2); (grupos[k] = grupos[k] || []).push({ a: a, p: p }); });
+    var pos = {}; Object.keys(grupos).forEach(function (k) { var g = grupos[k]; g.forEach(function (it, i) { if (g.length === 1) { pos[it.a.id] = it.p; return; } pos[it.a.id] = { u: it.p.u + (i - (g.length - 1) / 2) * 3.2, v: it.p.v }; }); });   /* mesmo ponto (ex.: teclas do mesmo interruptor): lado a lado, alinhados */
+    var brilho = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz' && ctlLigado(a) && bruto[a.id]; }).map(function (a) { var p = bruto[a.id]; return '<i class="glow" style="left:' + p.u.toFixed(2) + '%;top:' + p.v.toFixed(2) + '%"></i>'; }).join('');
+    var hs = C.aparelhos.map(function (a) { var p = pos[a.id]; if (!p) return ''; var on = ctlLigado(a);
+      return '<button data-k="' + ctlTipo(a.tipo) + '" class="hot' + (on ? ' on' : '') + (a.cliente_pode ? '' : ' lk') + (C.pend[a.id] ? ' pend' : '') + (MC.filtro !== 'all' && MC.filtro !== ctlTipo(a.tipo) ? ' oculto' : '') + '" style="left:' + p.u.toFixed(2) + '%;top:' + p.v.toFixed(2) + '%" data-ctl="' + esc(a.id) + '" aria-label="' + esc(a.nome) + ': ' + (on ? 'ligado' : 'desligado') + (a.cliente_pode ? '' : ' (só visualização)') + '" title="' + esc(a.nome) + '">' + ctlIco(ctlTipo(a.tipo)) + '</button>'; }).join('');
+    return '<div class="mapa m3d" data-ar="' + (cam.w / cam.h).toFixed(4) + '"><img src="' + esc(pl.imagemUrl) + '" alt="Casa em 3D">' + brilho + '<div class="hs">' + hs + '</div></div>';
+  }
   function ctlMapa(C) {
     var pl = C.planta; if (!pl || !(pl.comodos || []).length) return '';
+    if (pl.cam && pl.cam.m && pl.imagemUrl) return ctlMapa3D(C);
     var xs = [], ys = []; pl.comodos.forEach(function (c) { (c.pontos || []).forEach(function (q) { xs.push(+q[0]); ys.push(+q[1]); }); }); pl.paredes.forEach(function (w) { xs.push(+w.x1, +w.x2); ys.push(+w.y1, +w.y2); });
     var pad = 40, x0 = Math.min.apply(null, xs) - pad, y0 = Math.min.apply(null, ys) - pad, W = Math.max.apply(null, xs) + pad - x0, H = Math.max.apply(null, ys) + pad - y0;
     var piso = function (c) { return /externa|quintal|jardim|garagem/i.test(c.nome || '') ? 'url(#pe)' : /madeira|vin/.test(c.piso || '') ? 'url(#pm)' : 'url(#pp)'; };
@@ -477,7 +491,7 @@ window.DOMOTICA_CFG = {
   function pintarCasa() {
     var C = D.ctl, por = mcComodos(C), luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
     var tom = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'tomada'; }), tomOn = tom.filter(ctlLigado).length;
-    var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), ar = m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
+    var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), m2 = /data-ar="([\d.]+)"/.exec(mapa), ar = m2 ? m2[1] : m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
     var head = '<header><div class="brand">' + ctlIco('porta') + 'Domótica<small>HOME</small></div><nav>' + [['geral', 'Visão geral'], ['ambientes', 'Ambientes'], ['iluminacao', 'Iluminação'], ['garantias', 'Garantias']].map(function (n) { return '<button data-mcp="' + n[0] + '" class="' + (MC.pag === n[0] ? 'active' : '') + '">' + n[1] + '</button>'; }).join('') + '</nav><div class="status"><span class="dot"></span>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div><button class="voltar" data-mcvoltar>Portal</button></header>';
     var cenas = '<div class="heading"><h2>Cenas rápidas</h2>' + (luzes.some(function (a) { return a.cliente_pode; }) ? '<button class="link" data-mcapagar>Apagar luzes</button>' : '') + '</div>' + (C.cenas.length ? '<div class="scenes">' + C.cenas.map(function (c) { return '<button class="scene' + (C.pend['cena:' + c.id] ? ' active' : '') + '" data-cena="' + esc(c.id) + '">' + ctlIco(c.icone) + esc(c.nome) + '</button>'; }).join('') + '</div>' : '<span class="muted">Nenhuma cena criada ainda. Peça à Domótica.</span>');
     var amb = '<div class="heading" style="margin-top:4px"><h2>Ambientes</h2><span class="muted">' + Object.keys(por).length + '</span></div><div class="rooms">' + Object.keys(por).sort().map(function (k) { var l = por[k].filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }); return '<button class="room" data-mcroom="' + esc(k) + '"><span><b>' + esc(k) + '</b><br><span class="muted">' + (l.length ? l.filter(ctlLigado).length + ' de ' + l.length + ' luzes acesas' : por[k].length + ' aparelho(s)') + '</span></span><span class="muted">›</span></button>'; }).join('') + '</div>';
@@ -510,7 +524,7 @@ window.DOMOTICA_CFG = {
     if (b.dataset.mcp) { MC.pag = b.dataset.mcp; MC.exp = false; return pintarCasa(); }
     if (b.dataset.mcf) { MC.filtro = b.dataset.mcf; return pintarCasa(); }
     if (b.dataset.mcroom) { MC.modal = b.dataset.mcroom; return repintarControle(); }
-    if (b.hasAttribute('data-mcexp')) { MC.exp = !MC.exp; return pintarCasa(); }
+    if (b.hasAttribute('data-mcexp')) { MC.exp = !MC.exp; try { if (MC.exp && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(function () { }); else if (!MC.exp && document.fullscreenElement) document.exitFullscreen(); } catch (er) { } return pintarCasa(); }
     if (b.hasAttribute('data-mcapagar')) return mcTodas('luz', false);
     if (b.dataset.mctodas) { var t = b.dataset.mctodas, liga = !D.ctl.aparelhos.some(function (a) { return ctlTipo(a.tipo) === t && ctlLigado(a); }); return mcTodas(t, liga); }
     if (b.dataset.nova) return novoPedido(b.dataset.nova, b.dataset.dev);
@@ -527,7 +541,7 @@ window.DOMOTICA_CFG = {
   }
   var TB_FORCA = /[?&]tablet=1\b/.test(location.search) ? true : /[?&]tablet=0\b/.test(location.search) ? false : null;
   lsSet('dom_tablet', null);   /* a escolha manual antiga não vale mais: agora é automático */
-  MC.tabletAuto = TB_FORCA !== null ? TB_FORCA : tipoAparelho() === 'tablet';
+  MC.tabletAuto = TB_FORCA === true;   /* iPad/tablet usa o painel completo; a tela de quiosque (parede) só com ?tablet=1 */
   MC.tablet = MC.tabletAuto;
   var TB = { wake: null, ociosoT: null, sairT: null, relogioT: null };
   function tbNoite() { return lsGet('dom_tablet_noite') !== '0'; }
@@ -548,7 +562,7 @@ window.DOMOTICA_CFG = {
   function tbVoltarDepois() { clearTimeout(TB.voltarT); if (!MC.tabletAuto || MC.tablet) return; TB.voltarT = setTimeout(function () { if (!MC.tabletAuto || MC.tablet || document.querySelector('.ov')) return tbVoltarDepois(); MC.tablet = true; ABA = 'casa'; pintar(); }, 3 * 60 * 1000); }
   function pintarTablet() {
     var C = D.ctl, por = mcComodos(C), r = tbRelogio(), luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
-    var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), ar = m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
+    var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), m2 = /data-ar="([\d.]+)"/.exec(mapa), ar = m2 ? m2[1] : m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
     var cenas = C.cenas.length ? '<h2>Cenas</h2><div class="scenes">' + C.cenas.map(function (c) { return '<button class="scene' + (C.pend['cena:' + c.id] ? ' active' : '') + '" data-cena="' + esc(c.id) + '">' + ctlIco(c.icone) + esc(c.nome) + '</button>'; }).join('') + '</div>' : '';
     var amb = '<div class="heading"><h2>Ambientes</h2>' + (luzes.some(function (a) { return a.cliente_pode && ctlLigado(a); }) ? '<button class="link" data-mcapagar style="font-size:15px">Apagar todas</button>' : '') + '</div>' + Object.keys(por).sort().map(function (k) { var l = por[k].filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), on = l.filter(ctlLigado).length;
       return '<button class="troom' + (on ? ' on' : '') + '" data-mcroom="' + esc(k) + '"><span><b>' + esc(k) + '</b><span>' + (l.length ? on + ' de ' + l.length + ' luzes acesas' : por[k].length + ' aparelho(s)') + '</span></span><span style="font-size:26px;color:#e9c36b">›</span></button>'; }).join('');
@@ -575,10 +589,10 @@ window.DOMOTICA_CFG = {
   async function comandoCliente(id) {
     var C = D.ctl, a = C.aparelhos.filter(function (x) { return x.id === id; })[0]; if (!a) return;
     if (!a.cliente_pode) return toast('Este aparelho é só para visualização. Fale com a Domótica para liberar.');
-    if (C.pend[id]) return; var quer = !ctlLigado(a); C.pend[id] = true; repintarControle();
+    if (C.pend[id]) return; var quer = !ctlLigado(a), antes = a.estado; C.pend[id] = true; a.estado = { on: quer, confirmado: false }; repintarControle();
     var r = await sb.functions.invoke('comandar', { body: { tipo: 'tuya', alvo_id: id, on: quer, origem: 'portal', intencao: true } });
     delete C.pend[id]; var d = r.data;
-    if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } toast((d && d.msg) || 'Não foi possível enviar o comando.'); }
+    if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } a.estado = antes; toast((d && d.msg) || 'Não foi possível enviar o comando.'); }
     else if (d && d.ok) { a.estado = { on: d.on, confirmado: d.confirmado }; a.estado_em = new Date().toISOString(); if (!d.confirmado) toast('Comando enviado. O aparelho ainda não confirmou.'); }
     repintarControle();
   }

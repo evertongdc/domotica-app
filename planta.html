@@ -4261,20 +4261,24 @@ async function gerarImagemPortal() {
   const ant = { com: $('#com3').value, modo: $('#modo3').value, forro: $('#forro3') && $('#forro3').checked, lig: $('#lig3').checked, ligs: S.ligs };
   toast('Gerando a imagem do portal…', 6000);
   try {
+    /* câmera fixa em ângulo (isométrica, ortográfica = previsível): paredes em 3D no visual limpo, luzes apagadas; o portal acende as ligadas */
+    const cx = x0 + W / 2, cz = y0 + H / 2, az = .62, el = .82, dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 40000); cam.position.set(cx + dir.x * 8000, dir.y * 8000, cz + dir.z * 8000); cam.lookAt(cx, 0, cz); cam.updateMatrixWorld();
+    const c0 = T3.cam.position.clone(), t0 = T3.ctl.target.clone(); T3.cam.position.copy(cam.position); T3.ctl.target.set(cx, 0, cz);
     $('#com3').value = ''; $('#modo3').value = 'limpo'; if ($('#forro3')) $('#forro3').checked = false; $('#lig3').checked = false; S.ligs = false; build3d(false);
-    const cx = x0 + W / 2, cz = y0 + H / 2, cam = new THREE.OrthographicCamera(-W / 2, W / 2, H / 2, -H / 2, 1, 6000);
-    cam.position.set(cx, 3000, cz); cam.up.set(0, 0, -1); cam.lookAt(cx, 0, cz); cam.updateProjectionMatrix();
-    const R = T3.ren, larg = 2000, alt = Math.round(larg * H / W), tam = new THREE.Vector2(); R.getSize(tam); const pr = R.getPixelRatio();
-    Object.values(T3.devs || {}).forEach(d => { if (d.A && d.A.luz) d.A.set(true); });   /* foto com todas as luzes acesas; no portal, as apagadas escurecem a região delas */
-    const tm = R.toneMapping, te = R.toneMappingExposure; if (tm === THREE.NoToneMapping) { R.toneMapping = THREE.ACESFilmicToneMapping; } R.toneMappingExposure = .9;   /* sem o passe final do modo realista, o tom vem do renderizador */
+    T3.cam.position.copy(c0); T3.ctl.target.copy(t0);
+    let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9; [[x0, y0], [x0 + W, y0], [x0, y0 + H], [x0 + W, y0 + H]].forEach(q => [0, 280].forEach(h => { const v = new THREE.Vector3(q[0], h, q[1]).applyMatrix4(cam.matrixWorldInverse); mnx = Math.min(mnx, v.x); mxx = Math.max(mxx, v.x); mny = Math.min(mny, v.y); mxy = Math.max(mxy, v.y); }));
+    const mg = .03 * Math.max(mxx - mnx, mxy - mny); cam.left = mnx - mg; cam.right = mxx + mg; cam.bottom = mny - mg; cam.top = mxy + mg; cam.updateProjectionMatrix();
+    const R = T3.ren, larg = 2000, alt = Math.round(larg * (cam.top - cam.bottom) / (cam.right - cam.left)), tam = new THREE.Vector2(); R.getSize(tam); const pr = R.getPixelRatio();
+    Object.values(T3.devs || {}).forEach(d => { if (d.A && d.A.luz) d.A.set(false); });
+    const tm = R.toneMapping, te = R.toneMappingExposure; if (tm === THREE.NoToneMapping) { R.toneMapping = THREE.ACESFilmicToneMapping; } R.toneMappingExposure = 1;
     R.setPixelRatio(1); R.setSize(larg, alt, false); if (T3.ticks) T3.ticks.forEach(f => { try { f(performance.now() / 1000); } catch (e) { } });
     R.shadowMap.needsUpdate = true; R.render(T3.scene, cam);
-    const cv = document.createElement('canvas'); cv.width = larg; cv.height = alt; const cx2 = cv.getContext('2d');   /* tom quente de fim de tarde, como o modelo do Éverton */
-    cx2.filter = 'contrast(1.18) saturate(1.2) sepia(.28) brightness(.82)'; cx2.drawImage(R.domElement, 0, 0, larg, alt); cx2.filter = 'none';
-    const vg = cx2.createRadialGradient(larg / 2, alt / 2, Math.min(larg, alt) * .35, larg / 2, alt / 2, Math.max(larg, alt) * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); cx2.fillStyle = vg; cx2.fillRect(0, 0, larg, alt);
+    const cv = document.createElement('canvas'); cv.width = larg; cv.height = alt; const cx2 = cv.getContext('2d'); cx2.drawImage(R.domElement, 0, 0, larg, alt);
+    P.portalCam = { m: Array.from(new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse).elements).map(v => +v.toFixed(7)), w: larg, h: alt, em: new Date().toISOString() };   /* o portal projeta cada aparelho com esta matriz */
     const url = cv.toDataURL('image/jpeg', .9);
     R.toneMapping = tm; R.toneMappingExposure = te; R.setPixelRatio(pr); R.setSize(tam.x, tam.y, false);
-    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url); await gas('Planta_salvarImagem3D', S.planoId, 'portal_base', url);   /* a base é a foto do 3D: a IA e o "voltar" partem dela */
+    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url); await gas('Planta_salvarImagem3D', S.planoId, 'portal_base', url); await salvar(true);   /* a base é a foto do 3D: a IA e o "voltar" partem dela */
     toast('Imagem do portal salva. O cliente vê na próxima vez que abrir "Minha casa".', 6000);
   } catch (e) { toast('Erro: ' + e.message, 6000); }
   $('#com3').value = ant.com; $('#modo3').value = ant.modo; if ($('#forro3')) $('#forro3').checked = ant.forro; $('#lig3').checked = ant.lig; S.ligs = ant.ligs; build3d(true);
