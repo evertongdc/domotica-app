@@ -269,6 +269,7 @@ window.DOMOTICA_CFG = {
         <button id="bDentro" title="Ver de dentro do ambiente (arraste para olhar, W A S D ou setas para andar)">👁 Dentro do ambiente</button>
         <button id="bPng">Baixar PNG</button>
         <button id="bBlender" title="Gera um arquivo 3D (.glb) e um script para renderizar a casa com raytracing no Blender (grátis)">Exportar p/ Blender</button>
+        <button id="bPint3" title="Escolha a cor e clique numa face de parede no 3D: pinta só aquele lado">🖌 Pintar paredes</button><input type="color" id="cor3pint" value="#d9c7a8" style="width:42px;display:none" title="Cor da pintura">
         <button id="bImgs" class="pri">Gerar imagens p/ orçamento</button>
         <button id="bImgPortal" title="Foto da planta vista de cima para o portal do cliente (fixa, sem perspectiva)">Imagem p/ portal</button>
       </div>
@@ -1667,6 +1668,18 @@ function updateFundo() {
 
 /* ===================== camadas (teto, elétrica...) ===================== */
 const CAMADAS = [['teto', 'Teto'], ['eletrica', 'Elétrica'], ['som', 'Som'], ['alexa', 'Alexa / Hubs'], ['clima', 'Clima / Motores'], ['midia', 'TV / Mídia'], ['seguranca', 'Segurança'], ['rede', 'Rede'], ['outro', 'Outros']];
+const comodoNoLado = (w, sd, u) => { const q = wallGeo(w), d = (w.esp || 15) / 2 + 12, x = w.x1 + q.ux * u + q.nx * d * sd, y = w.y1 + q.uy * u + q.ny * d * sd, c = P.comodos.find(c => c.pontos && c.pontos.length > 2 && G.dentro(c.pontos, x, y)); return c ? c.id : 'fora'; };
+const ladosParede = w => { const q = wallGeo(w), mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2, d = (w.esp || 15) / 2 + 12, nm = (x, y) => { const c = P.comodos.find(c => c.pontos && c.pontos.length > 2 && G.dentro(c.pontos, x, y)); return c ? c.nome : 'Fora'; }; return { a: nm(mx + q.nx * d, my + q.ny * d), b: nm(mx - q.nx * d, my - q.ny * d) }; };
+/* modo "Pintar paredes" do 3D: clica na face e pinta só aquele lado (corA = lado do normal, corB = oposto) */
+function pintaParede3(e) {
+  const el = T3.ren.domElement, r = el.getBoundingClientRect(); T3.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), T3.cam);
+  const hs = T3.ray.intersectObjects(T3.scene.children, true).filter(h => h.object.isMesh && h.object.visible && h.face && !(h.object.material && h.object.material.transparent));
+  for (const h of hs) { const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (Math.abs(n.y) > .5) continue;
+    let b = null; P.paredes.forEach(w => { if (w.vidro) return; const pr = G.projT(w, h.point.x, h.point.z); if (pr.d <= (w.esp || 15) / 2 + 3 && pr.t >= -.02 && pr.t <= 1.02 && (!b || pr.d < b.d)) b = { d: pr.d, w }; });
+    if (!b) return false; const q = wallGeo(b.w), sd = (n.x * q.nx + n.z * q.ny) >= 0 ? 'A' : 'B', u = G.projT(b.w, h.point.x, h.point.z).t * q.L, id = comodoNoLado(b.w, sd === 'A' ? 1 : -1, u), cor = ($('#cor3pint') || {}).value || '#f1f4f8';
+    snap(); b.w.pint = b.w.pint || {}; b.w.pint[sd] = b.w.pint[sd] || {}; b.w.pint[sd][id] = cor; rascunho(); build3d(false); const cm = getById(P.comodos, id); toast('Pintado: parede ' + (cm ? 'da ' + cm.nome : 'do lado de fora') + '.', 1800); return true; }
+  return false;
+}
 const nomesComOn = () => { if (S.nomesCom == null) { try { S.nomesCom = localStorage.getItem('planta_nomes_comodos') === '1'; } catch (e) { S.nomesCom = false; } } return S.nomesCom; };   /* nomes dos cômodos no 2D: ocultos por padrão */
 const nomesOn = () => { if (S.nomes == null) { try { S.nomes = localStorage.getItem('planta_nomes') === '1'; } catch (e) { S.nomes = false; } } return S.nomes; };   /* nomes dos aparelhos no 2D: ocultos por padrão */
 const ehTeto = p => p.teto != null ? !!p.teto : !!(M.TIPOS[p.tipo] || {}).teto;
@@ -2072,7 +2085,10 @@ function renderPanel() {
     const w = getById(P.paredes, sel.id); if (!w) { S.sel = null; return renderPanel(); }
     h += '<div class="sec" style="margin-top:2px">Parede</div><div class="note">Comprimento total (eixo): ' + fmtM(M.comprimento(w)) + ' m. Para medir por cômodo use "Medir trecho" ou toque no número da medida.</div>';
     h += '<label>Espessura (cm)</label><input data-f="esp" data-n="1" type="number" value="' + (w.esp || 15) + '">';
-    if (!w.vidro) h += '<div class="row" style="align-items:end"><div><label>Cor da parede (3D)</label><input type="color" data-f="cor" value="' + (w.cor || '#f1f4f8') + '"></div><div><button data-act="paredecor0" class="' + (w.cor ? '' : 'on') + '">Cor padrão</button></div></div><button data-act="paredecortodas" style="width:100%;margin-top:4px"' + (w.cor ? '' : ' disabled') + '>Usar esta cor em todas as paredes</button>';
+    if (!w.vidro) { const ld = ladosParede(w), algum = w.cor || w.corA || w.corB || w.pint;
+      h += '<div class="sec">Pintura (3D)</div><div class="row" style="align-items:end"><div><label>Os dois lados</label><input type="color" data-f="cor" value="' + (w.cor || '#f1f4f8') + '"></div><div><button data-act="paredecor0" class="' + (algum ? '' : 'on') + '">Cor padrão</button></div></div>';
+      h += '<div class="row" style="align-items:end"><div><label>Lado: ' + esc(ld.a) + '</label><input type="color" data-f="corA" value="' + (w.corA || w.cor || '#f1f4f8') + '"></div><div><label>Lado: ' + esc(ld.b) + '</label><input type="color" data-f="corB" value="' + (w.corB || w.cor || '#f1f4f8') + '"></div></div>';
+      h += '<button data-act="paredecortodas" style="width:100%;margin-top:4px"' + (w.cor ? '' : ' disabled') + ' title="Copia a cor de \'Os dois lados\' para todas as paredes de alvenaria">Usar esta cor em todas as paredes</button><div class="note">No 3D, o botão "🖌 Pintar paredes" pinta só a face em que você clicar.</div>'; }
     h += '<div class="sec">Alvenaria ou vidro</div><label>Material da parede</label><select data-f="vidro"><option value="">Alvenaria</option>' + TIPOS_VIDRO.map(v => '<option value="' + v[0] + '"' + (w.vidro === v[0] ? ' selected' : '') + '>Vidro ' + v[1].toLowerCase() + '</option>').join('') + '</select>';
     if (w.vidro) h += '<label>Portas de vidro nesta parede (box)</label><select data-f="portasBox" data-n="1">' + [0, 1, 2, 3, 4, 5, 6].map(n => '<option value="' + n + '"' + ((+w.portasBox || 0) === n ? ' selected' : '') + '>' + (n ? n + (n > 1 ? ' portas' : ' porta') : 'Nenhuma (vidro fixo)') + '</option>').join('') + '</select><div class="note">Selecione cada porta no desenho para inverter o lado em que abre ou a dobradiça.</div>';
     const tw = M.trechos(P).filter(t => t.parede === w.id && t.len >= 20);
@@ -2129,7 +2145,9 @@ $('#panel').addEventListener('change', e => {
   if (t.dataset.t === 'planta') { setPath(P, f, v); if (f === 'nome') $('#fNome').value = v; }
   else { const o = alvoSel() && alvoSel()(); if (!o) return; if (f === 'comodo') v = v || null; setPath(o, f, v);
     if (S.sel.k === 'parede' && f === 'esp') M.recalc(P);
-    if ((S.sel.k === 'abertura' && f === 'fixo') || f === 'cor') setTimeout(renderPanel, 0);
+    if (S.sel.k === 'parede' && f === 'cor') { delete o.corA; delete o.corB; delete o.pint; }
+    if (S.sel.k === 'parede' && (f === 'corA' || f === 'corB') && o.pint) delete o.pint[f === 'corA' ? 'A' : 'B'];
+    if ((S.sel.k === 'abertura' && f === 'fixo') || f === 'cor' || f === 'corA' || f === 'corB') setTimeout(renderPanel, 0);
     if (S.sel.k === 'parede' && f === 'vidro') { if (v && (o.esp || 15) > 6) o.esp = 3; if (!v) { if ((o.esp || 15) <= 6) o.esp = S.esp; o.portasBox = 0; delete o.vidro; } aplicaPortasBox(o); M.recalc(P); renderPanel(); }
     if (S.sel.k === 'parede' && f === 'portasBox') { aplicaPortasBox(o); renderPanel(); }
     if (S.sel.k === 'ponto' && f === 'teclas') P.ligacoes = P.ligacoes.filter(l => !(l.de === o.id && (l.tecla || 1) > v));
@@ -2165,8 +2183,8 @@ $('#panel').addEventListener('click', e => {
   if (a === 'usarprod') { snap(); const o = getById(P.pontos, S.sel.id); o.produtoId = b.dataset.id; const x = (S.catalogo || []).find(c => c.id === o.produtoId); if (x && !o.produto) o.produto = x.nome; return refresh(); }
   if (a === 'princ') { snap(); tornarPrincipal(b.dataset.id); return refresh(); }
   if (a === 'ligar') { S.tool = 'ligar'; S.lig = { de: S.sel.id, tecla: 1 }; return refresh(); }
-  if (a === 'paredecor0') { snap(); const o = getById(P.paredes, S.sel.id); if (o) delete o.cor; renderPanel(); return refresh({ panel: false }); }
-  if (a === 'paredecortodas') { const o = getById(P.paredes, S.sel.id); if (!o || !o.cor) return; snap(); P.paredes.forEach(w => { if (!w.vidro) w.cor = o.cor; }); toast('Cor aplicada a todas as paredes de alvenaria.'); renderPanel(); return refresh({ panel: false }); }
+  if (a === 'paredecor0') { snap(); const o = getById(P.paredes, S.sel.id); if (o) { delete o.cor; delete o.corA; delete o.corB; delete o.pint; } renderPanel(); return refresh({ panel: false }); }
+  if (a === 'paredecortodas') { const o = getById(P.paredes, S.sel.id); if (!o || !o.cor) return; snap(); P.paredes.forEach(w => { if (!w.vidro) { w.cor = o.cor; delete w.corA; delete w.corB; delete w.pint; } }); toast('Cor aplicada a todas as paredes de alvenaria.'); renderPanel(); return refresh({ panel: false }); }
   if (a === 'portaocor0') { snap(); const o = getById(P.aberturas, S.sel.id); if (o) delete o.cor; renderPanel(); return refresh({ panel: false }); }
   if (a === 'pisocor0') { snap(); const o = getById(P.comodos, S.sel.id); if (o) delete o.pisoCor; renderPanel(); return refresh({ panel: false }); }
   if (a === 'kelvin') { snap(); const o = getById(P.pontos, S.sel.id); if (o) o.kelvin = +b.dataset.k; renderPanel(); return refresh({ panel: false }); }
@@ -2703,7 +2721,7 @@ async function abrir3d() {
       else if (h && !(h.object.userData.tecla || h.object.userData.dev || h.object.userData.mov)) { const bh = hs.find(q => (q.object.userData.tecla || q.object.userData.dev) && q.distance <= h.distance + 45); if (bh) h = bh; }   // parede em que o aparelho está fixado   // a tecla do interruptor ganha da área de toque ampliada de um aparelho vizinho
       return h && (h.object.userData.tecla || h.object.userData.dev || h.object.userData.mov) ? h.object.userData : null; };
     el3.addEventListener('pointerdown', e => { T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; d0 = { x: e.clientX, y: e.clientY, t: Date.now() }; });
-    el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; const u = alvo3(e); if (!u) return; if (u.mov) { S.movAberto = S.movAberto || {}; S.movAberto[u.mov] = !S.movAberto[u.mov]; T3.sombraSuja = true; } else if (u.tecla) tocaTecla3(u.tecla.sw, u.tecla.t, !!u.marcador); else alternarDisp3(u.dev); });
+    el3.addEventListener('pointerup', e => { if (!d0) return; const mv = Math.hypot(e.clientX - d0.x, e.clientY - d0.y), dt = Date.now() - d0.t; d0 = null; if (mv > 5 || dt > 700) return; if (T3.pintar) { pintaParede3(e); return; } const u = alvo3(e); if (!u) return; if (u.mov) { S.movAberto = S.movAberto || {}; S.movAberto[u.mov] = !S.movAberto[u.mov]; T3.sombraSuja = true; } else if (u.tecla) tocaTecla3(u.tecla.sw, u.tecla.t, !!u.marcador); else alternarDisp3(u.dev); });
     el3.addEventListener('pointermove', e => { if (T3.fp.on) { if (e.buttons) { const dx = e.clientX - (T3.fp.lx == null ? e.clientX : T3.fp.lx), dy = e.clientY - (T3.fp.ly == null ? e.clientY : T3.fp.ly); T3.fp.yaw -= dx * .0045; T3.fp.pitch = Math.max(-1.25, Math.min(1.25, T3.fp.pitch + dy * .0045)); T3.fp.lx = e.clientX; T3.fp.ly = e.clientY; } else el3.style.cursor = alvo3(e) ? 'pointer' : 'grab'; return; } if (e.buttons) return; el3.style.cursor = alvo3(e) ? 'pointer' : ''; });
     el3.addEventListener('wheel', e => { if (!T3.fp.on) return; e.preventDefault(); T3.cam.fov = Math.max(35, Math.min(100, T3.cam.fov + e.deltaY * .03)); T3.cam.updateProjectionMatrix(); }, { passive: false });
     T3.draw = () => { if (T3.rp) T3.rp.render(); else if (T3.real && T3.comp) T3.comp.render(); else T3.ren.render(T3.scene, T3.cam); };
@@ -2850,7 +2868,7 @@ async function prepararBrilho() {
     const co = new THREE.EffectComposer(T3.ren, rt); co.addPass(new THREE.RenderPass(T3.scene, T3.cam));
     try {   // oclusão de luz nos cantos (escurece encontros de parede, móveis e chão)
       for (const f of ['math/SimplexNoise', 'shaders/SSAOShader', 'postprocessing/SSAOPass']) await loadScript(B + f + '.js');
-      const ss = new THREE.SSAOPass(T3.scene, T3.cam, sz.x, sz.y); ss.kernelRadius = 40; ss.minDistance = .0015; ss.maxDistance = .05; co.addPass(ss); T3.ssao = ss;
+      const ss = new THREE.SSAOPass(T3.scene, T3.cam, sz.x, sz.y); ss.kernelRadius = 40; ss.minDistance = .00002;   /* .0015 deixava um fio claro tracejado na junção chão/parede */ ss.maxDistance = .05; co.addPass(ss); T3.ssao = ss;
     } catch (e) { T3.ssao = null; console.warn('AO indisponível:', e && e.message); }
     T3.bloom = new THREE.UnrealBloomPass(new THREE.Vector2(sz.x / 2, sz.y / 2), .32, .3, 1.9); co.addPass(T3.bloom);
     T3.fin = new THREE.ShaderPass({ uniforms: { tDiffuse: { value: null }, exp: { value: 1.15 } }, vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -3751,15 +3769,24 @@ function build3dTudo(reenquadrar) {
   T3.limpoTopos = [];
   P.paredes.forEach(w0 => {
     const w = w0.vidro ? Object.assign({}, w0, { esp: 1.2 }) : w0, mWall = w0.vidro ? vidroMat(w0.vidro) : (w0.cor ? corParede(w0.cor) : mWallBase);   // parede de vidro: lâmina fina e material de vidro
+    /* cor por lado: A = lado do normal (+n), B = lado oposto; com cores diferentes a parede vira duas metades de espessura */
+    const qW = wallGeo(w), eW = w.esp || 15, mA = w0.vidro ? mWall : ((w0.corA || w0.cor) ? corParede(w0.corA || w0.cor) : mWallBase), mB = w0.vidro ? mWall : ((w0.corB || w0.cor) ? corParede(w0.corB || w0.cor) : mWallBase), duas = mA !== mB;
+    const wA = Object.assign({}, w, { x1: w.x1 + qW.nx * eW / 4, y1: w.y1 + qW.ny * eW / 4, esp: eW / 2 }), wB = Object.assign({}, w, { x1: w.x1 - qW.nx * eW / 4, y1: w.y1 - qW.ny * eW / 4, esp: eW / 2 });
+    /* pintura por cômodo (modo Pintar no 3D): w.pint = { A: { comodoId: cor }, B: {...} }; o lado é dividido nos trechos de cada cômodo */
+    const pint = !w0.vidro && w0.pint ? w0.pint : null, trechosLado = sd => { const out = []; let ant = null, c0 = -eW / 2; for (let u = -eW / 2; u <= qW.L + eW / 2 + .01; u += 10) { const id = comodoNoLado(w0, sd, Math.min(u, qW.L + eW / 2)); if (ant !== null && id !== ant) { out.push([c0, u, ant]); c0 = u; } ant = id; } out.push([c0, qW.L + eW / 2, ant]); return out; };
+    const TL = pint ? { A: trechosLado(1), B: trechosLado(-1) } : null, matLado = (sd, id) => { const c = pint && pint[sd] && pint[sd][id]; return c ? corParede(c) : (sd === 'A' ? mA : mB); };
+    const emTrechos = (sd, u0, u1, fn) => TL[sd].forEach(t => { const a = Math.max(u0, t[0]), b = Math.min(u1, t[1]); if (b - a > .3) fn(a, b, matLado(sd, t[2])); });
+    const wb = (u0, u1, y0, y1) => { if (pint) { emTrechos('A', u0, u1, (a, b, m) => box(a, b, y0, y1, wA, qW, m)); emTrechos('B', u0, u1, (a, b, m) => box(a, b, y0, y1, wB, qW, m)); return; } if (!duas) return box(u0, u1, y0, y1, w, qW, mA); box(u0, u1, y0, y1, wA, qW, mA); box(u0, u1, y0, y1, wB, qW, mB); };
+    const wbTo = (grp, u0, u1, y0, y1, ww, qq, mm) => { if (ww) return boxTo(grp, u0, u1, y0, y1, ww, qq, mm); if (pint) { emTrechos('A', u0, u1, (a, b, m) => boxTo(grp, a, b, y0, y1, wA, qW, m)); emTrechos('B', u0, u1, (a, b, m) => boxTo(grp, a, b, y0, y1, wB, qW, m)); return; } if (!duas) return boxTo(grp, u0, u1, y0, y1, w, qW, mA); boxTo(grp, u0, u1, y0, y1, wA, qW, mA); boxTo(grp, u0, u1, y0, y1, wB, qW, mB); };
     const Hw = modo === 'corte' ? Math.min(110, altW(w)) : LIMPO ? Math.min(125, altW(w)) : altW(w);
     const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
     let cur = -(w.esp || 15) / 2;
     const someJan = o => LIMPO && o.a.tipo === 'janela' && Hw - (o.a.peitoril || 100) < 40;   /* visual limpo: parede baixa abaixo do peitoril esconde a janela (como no ASNO) */
     ops.forEach(o => {
-      box(cur, o.u0, 0, Hw, w, q, mWall);
-      if (someJan(o)) { box(o.u0, o.u1, 0, Hw, w, q, mWall); cur = o.u1; return; }
+      wb(cur, o.u0, 0, Hw);
+      if (someJan(o)) { wb(o.u0, o.u1, 0, Hw); cur = o.u1; return; }
       const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min((LIMPO && o.a.tipo === 'portao') ? Math.max(Hw, altW(w)) : Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));   /* visual limpo: portão mantém a altura inteira */
-      if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
+      if (y0 > 0) wb(o.u0, o.u1, 0, Math.min(y0, Hw)); if (y1 < Hw) wb(o.u0, o.u1, y1, Hw);
       if (y1 > y0) {
         const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = (LIMPO && Hw <= 125 && o.a.tipo === 'porta' && !vid) ? 'portaBaixa' : o.a.tipo;   /* visual limpo: porta em parede baixa vira placa fechada cortada na altura da parede (como no ASNO) */
         const pB = (bw, bh, bd, mt, lu, ly, lz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mt); m.position.set(w.x1 + q.ux * lu - q.uy * lz, ly, w.y1 + q.uy * lu + q.ux * lz); m.rotation.y = rotW; m.castShadow = true; m.userData.estatico = true; g.add(m); return m; };
@@ -3807,7 +3834,7 @@ function build3dTudo(reenquadrar) {
       }
       cur = o.u1;
     });
-    box(cur, q.L + (w.esp || 15) / 2, 0, Hw, w, q, mWall);
+    wb(cur, q.L + (w.esp || 15) / 2, 0, Hw);
     const HfL = LIMPO && !w0.vidro ? altW(w) : 0, infL = HfL > 125 ? infoLimpo(w0) : null, capG = infL ? new THREE.Group() : null;
     if (!w0.vidro && modo !== 'vidro') { const wc = Object.assign({}, w, { esp: (w.esp || 15) + .6 }); let c0 = -(w.esp || 15) / 2 - .3;   /* borda do topo, interrompida nos vãos que chegam ao topo; na parede de fora do visual limpo ela alterna com a parte de cima */
       const cap = (a0, a1) => capG ? boxTo(capG, a0, a1, Hw, Hw + 1.4, wc, q, mTop) : box(a0, a1, Hw, Hw + 1.4, wc, q, mTop);
@@ -3815,10 +3842,10 @@ function build3dTudo(reenquadrar) {
       cap(c0, q.L + (w.esp || 15) / 2 + .3); if (capG) g.add(capG); }
     if (LIMPO && !w0.vidro) { const Hf = HfL, inf = infL;
       if (inf) { const grp = new THREE.Group(), B0 = 125; let cu = -(w.esp || 15) / 2;
-        ops.forEach(o => { boxTo(grp, cu, o.u0, B0, Hf, w, q, mWall); const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min(Hf, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
-          if (y1 > B0) { const gl = Math.max(B0, y0); if (gl > B0) boxTo(grp, o.u0, o.u1, B0, gl, w, q, mWall); if (y1 < Hf) boxTo(grp, o.u0, o.u1, y1, Hf, w, q, mWall); if (o.a.tipo === 'janela') boxTo(grp, o.u0, o.u1, gl, y1, Object.assign({}, w, { esp: 1.2 }), q, vidroMat()); }
-          else boxTo(grp, o.u0, o.u1, B0, Hf, w, q, mWall); cu = o.u1; });
-        boxTo(grp, cu, q.L + (w.esp || 15) / 2, B0, Hf, w, q, mWall); boxTo(grp, -(w.esp || 15) / 2 - .3, q.L + (w.esp || 15) / 2 + .3, Hf, Hf + 1.4, Object.assign({}, w, { esp: (w.esp || 15) + .6 }), q, mTop);
+        ops.forEach(o => { wbTo(grp, cu, o.u0, B0, Hf); const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min(Hf, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
+          if (y1 > B0) { const gl = Math.max(B0, y0); if (gl > B0) wbTo(grp, o.u0, o.u1, B0, gl); if (y1 < Hf) wbTo(grp, o.u0, o.u1, y1, Hf); if (o.a.tipo === 'janela') boxTo(grp, o.u0, o.u1, gl, y1, Object.assign({}, w, { esp: 1.2 }), q, vidroMat()); }
+          else wbTo(grp, o.u0, o.u1, B0, Hf); cu = o.u1; });
+        wbTo(grp, cu, q.L + (w.esp || 15) / 2, B0, Hf); boxTo(grp, -(w.esp || 15) / 2 - .3, q.L + (w.esp || 15) / 2 + .3, Hf, Hf + 1.4, Object.assign({}, w, { esp: (w.esp || 15) + .6 }), q, mTop);
         grp.visible = ((camX - inf.mx) * inf.ox + (camZ - inf.mz) * inf.oz) <= 0; if (capG) capG.visible = !grp.visible; g.add(grp); T3.limpoTopos.push(Object.assign(inf, { grp, cap: capG })); } }
     if (w0.vidro) {   // perfis de alumínio no topo e no pé (sem cortar a passagem das portas)
       const wp = Object.assign({}, w, { esp: 2.6 }); box(-1.3, q.L + 1.3, Hw - 3, Hw, wp, q, mAlum); let c0 = -1.3; ops.forEach(o => { if (o.u0 > c0) box(c0, o.u0, 0, 3, wp, q, mAlum); c0 = o.u1; }); box(c0, q.L + 1.3, 0, 3, wp, q, mAlum);
@@ -3971,6 +3998,7 @@ function focarComodo(c) {
 }
 { const NOMES = { classico: 'clássico', novo: 'novo (beta)', webgpu: 'WebGPU realista (experimental)' }, PROX = { classico: 'novo', novo: 'webgpu', webgpu: 'classico' }; $('#bMotor').textContent = 'Motor: ' + NOMES[motorEscolhido()];
   $('#bMotor').onclick = () => { const prox = PROX[motorEscolhido()]; if (!confirm('Trocar o motor gráfico do 3D para "' + NOMES[prox] + '"? A página vai recarregar (o que está salvo ou em rascunho é mantido).')) return; try { localStorage.setItem('planta_motor3', prox); } catch (e) { } location.href = location.pathname + location.search.replace(/[?&]motor=(classico|novo|webgpu)/, '') + location.hash; }; }
+$('#bPint3').onclick = () => { T3.pintar = !T3.pintar; $('#bPint3').classList.toggle('on', T3.pintar); $('#cor3pint').style.display = T3.pintar ? '' : 'none'; toast(T3.pintar ? 'Pintar: escolha a cor e clique na face da parede.' : 'Pintura desligada.', 2200); };
 $('#vis3').onchange = e => { try { localStorage.setItem('planta_visual', e.target.value); } catch (x) { } build3d(true); }; $('#modo3').onchange = () => build3d(false); $('#lig3').onchange = () => { S.ligs = $('#lig3').checked; renderCamadas(); renderSVG(); build3d(false); }; $('#forro3').onchange = () => build3d(false);
 $('#pe3').onchange = e => { snap(); P.peDireito = clamp(parseFloat(e.target.value) || 270, 200, 600); build3d(false); rascunho(); };
 $('#bIso').onclick = () => { if ($('#com3').value) { $('#com3').value = ''; build3d(true); } else iso(); };   /* Visão geral = casa inteira */ $('#bFoco').onclick = () => { const c = getById(P.comodos, $('#com3').value); if (c) focarComodo(c); };
