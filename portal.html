@@ -178,6 +178,24 @@ body.mc-on{background:#151515}body.mc-on>#toast{z-index:40}
 .mc .dialog{background:#292929;border:1px solid #454545;border-radius:24px;padding:24px;width:min(420px,100%);max-height:90dvh;overflow:auto}.mc .close{font-size:24px;padding:5px 12px}
 @media(max-width:850px){.mc .shell{padding:12px;gap:10px;grid-template-rows:56px minmax(330px,1.1fr) minmax(250px,.9fr)}.mc header{padding:0 13px;gap:8px}.mc .brand{font-size:18px}.mc nav button{padding:10px 9px;font-size:12px}.mc .status{display:none}.mc .top{grid-template-columns:1.7fr 1fr;gap:10px}.mc .bottom{gap:10px;grid-template-columns:1fr 1fr 1.45fr}.mc .card{padding:14px}.mc .scenes{grid-template-columns:repeat(2,1fr)}.mc .scene{min-height:46px;flex-direction:row}.mc .viewgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px) and (orientation:portrait){.mc .shell{height:auto;display:flex;flex-direction:column}.mc .top{display:flex;flex-direction:column}.mc .activity{max-height:none}.mc .bottom{grid-template-columns:1fr 1fr}.mc .bottom .device:last-child{grid-column:1/-1}.mc .device{min-height:230px}.mc header{flex-wrap:wrap;height:auto;padding:12px}.mc nav{justify-content:flex-start;overflow:auto;width:100%;flex-basis:100%;order:3}.mc .viewgrid{grid-template-columns:1fr}.mc.expanded .map{min-height:0}}
+/* ---------- modo tablet na parede: tela cheia, sem menus, toque grande ---------- */
+.mc.tab .shell{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);grid-template-rows:auto minmax(0,1fr);height:100dvh;padding:18px;gap:16px}
+.mc.tab .map{grid-row:1/3;border-radius:22px}
+.mc.tab .tclock{background:#272727;border-radius:22px;padding:18px 22px}.mc.tab .tclock b{display:block;font-size:64px;font-weight:300;letter-spacing:-2px;line-height:1}.mc.tab .tclock span{font-size:17px;color:#aaa9a4}
+.mc.tab .tclock small{display:block;margin-top:8px;font-size:14px;color:#d5b76e}
+.mc.tab .tcorpo{background:#272727;border-radius:22px;padding:18px;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:14px}
+.mc.tab h2{font-size:20px}
+.mc.tab .scenes{grid-template-columns:repeat(2,1fr);gap:10px}.mc.tab .scene{min-height:92px;font-size:16px;border-radius:16px}.mc.tab .scene svg{width:30px;height:30px}
+.mc.tab .troom{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px;border-radius:16px;background:#323232;border-left:3px solid #e3be65;text-align:left;width:100%;min-height:76px;flex:none}
+.mc.tab .troom b{font-size:18px;font-weight:500;display:block}.mc.tab .troom span span{font-size:14px;color:#aaa9a4}.mc.tab .troom.on{background:#3d3524}
+.mc.tab .hot{width:34px;height:34px}.mc.tab .hot svg{width:18px;height:18px}
+.mc.tab .dialog{width:min(560px,100%);padding:28px}.mc.tab .row{padding:16px 0;font-size:17px}.mc.tab .switch{width:58px;height:32px;padding:4px}.mc.tab .switch:after{width:24px;height:24px}.mc.tab .switch.on:after{transform:translateX(26px)}
+.mc .tsair{position:fixed;right:10px;top:10px;z-index:45;width:48px;height:48px;border-radius:50%;background:#2a2a2a;border:1px solid #ffffff22;color:#999;display:grid;place-items:center;opacity:.45;touch-action:none;-webkit-user-select:none;user-select:none}
+.mc .tsair i{position:absolute;inset:-3px;border-radius:50%;background:conic-gradient(#e9c36b var(--p,0%),transparent 0);-webkit-mask:radial-gradient(circle,transparent 25px,#000 26px);mask:radial-gradient(circle,transparent 25px,#000 26px);pointer-events:none}
+#mcDim{position:fixed;inset:0;z-index:60;background:#000;opacity:.78;display:none}
+#mcNet{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:61;background:#3a2f1c;border:1px solid #806d43;color:#f2d084;padding:8px 16px;border-radius:30px;font-size:13px;display:none}
+@media(max-aspect-ratio:1/1){.mc.tab .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}.mc.tab .map{grid-row:auto;max-height:52dvh}.mc.tab .tclock b{font-size:48px}}
+@media(max-width:600px){.mc.tab .shell{height:auto;min-height:100dvh;padding:12px;gap:12px}.mc.tab .map{max-height:none}.mc.tab .tclock b{font-size:40px}.mc.tab .scene{min-height:72px;font-size:14px}}
 </style>
 <script>try{var _t=localStorage.getItem('dom_tema');if(_t==='claro'||_t==='escuro')document.documentElement.setAttribute('data-tema',_t)}catch(e){}</script>
 </head>
@@ -337,7 +355,7 @@ window.DOMOTICA_CFG = {
     var r = await sb.rpc('portal_resumo');
     if (r.error) { R.innerHTML = '<div class="auth"><div class="err">' + esc(r.error.message) + '</div><button class="btn" id="x-s">Sair</button></div>'; document.getElementById('x-s').onclick = sair; return; }
     if (r.data && r.data.erro) return telaSemVinculo();
-    D = r.data; await carregarProtect(); if (lsGet('dom_alexa')) return telaAlexa(); pintar();
+    D = r.data; await carregarProtect(); if (lsGet('dom_alexa')) return telaAlexa(); if (MC.tablet && D.ctl && D.ctl.aparelhos.length) ABA = 'casa'; pintar();
   }
   /* ---------- monitoramento (Protect) e contrato: leitura direta, a RLS mostra só o que é do cliente ---------- */
   async function carregarProtect() {
@@ -448,7 +466,7 @@ window.DOMOTICA_CFG = {
       ctlMapa(C) + cenas + '<h4>Aparelhos</h4><div class="lst">' + lista + '</div>' +
       '<div class="cm" style="margin:12px 4px 2px">Com o cadeado, o aparelho é só para ver. Para liberar o controle pelo portal, fale com a Domótica.</div></div>';
   }
-  function repintarControle() { if (document.getElementById('mc')) return pintarCasa(); var el = document.getElementById('ctl'); if (el) el.outerHTML = vControle(); }
+  function repintarControle() { if (document.getElementById('mc')) return MC.tablet ? pintarTablet() : pintarCasa(); var el = document.getElementById('ctl'); if (el) el.outerHTML = vControle(); }
   /* ---------- Minha casa no layout do modelo do Éverton ---------- */
   var MC = { pag: 'geral', filtro: 'all', exp: false, modal: null };
   var MC_LAMP = '<svg viewBox="0 0 220 150"><defs><linearGradient id="mcmetal" x2="0" y2="1"><stop stop-color="#565656"/><stop offset=".7" stop-color="#151515"/><stop offset="1" stop-color="#343434"/></linearGradient><radialGradient id="mchalo"><stop stop-color="#ffc85d" stop-opacity=".55"/><stop offset="1" stop-color="#ffc85d" stop-opacity="0"/></radialGradient></defs><ellipse cx="110" cy="114" rx="100" ry="35" fill="url(#mchalo)" opacity="__G__"/><path d="M110 0V38" stroke="#101010" stroke-width="3"/><path d="M39 108Q42 40 110 39Q178 40 181 108Z" fill="url(#mcmetal)" stroke="#777" stroke-width=".6"/><ellipse cx="110" cy="108" rx="71" ry="11" fill="__B__"/><ellipse cx="110" cy="109" rx="16" ry="4" fill="#fff4cb"/></svg>';
@@ -460,7 +478,7 @@ window.DOMOTICA_CFG = {
     var C = D.ctl, por = mcComodos(C), luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
     var tom = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'tomada'; }), tomOn = tom.filter(ctlLigado).length;
     var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), ar = m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
-    var head = '<header><div class="brand">' + ctlIco('porta') + 'Domótica<small>HOME</small></div><nav>' + [['geral', 'Visão geral'], ['ambientes', 'Ambientes'], ['iluminacao', 'Iluminação'], ['garantias', 'Garantias']].map(function (n) { return '<button data-mcp="' + n[0] + '" class="' + (MC.pag === n[0] ? 'active' : '') + '">' + n[1] + '</button>'; }).join('') + '</nav><div class="status"><span class="dot"></span>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div><button class="voltar" data-mcvoltar>Portal</button></header>';
+    var head = '<header><div class="brand">' + ctlIco('porta') + 'Domótica<small>HOME</small></div><nav>' + [['geral', 'Visão geral'], ['ambientes', 'Ambientes'], ['iluminacao', 'Iluminação'], ['garantias', 'Garantias']].map(function (n) { return '<button data-mcp="' + n[0] + '" class="' + (MC.pag === n[0] ? 'active' : '') + '">' + n[1] + '</button>'; }).join('') + '</nav><div class="status"><span class="dot"></span>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div><button class="voltar" data-mctablet title="Tela cheia para tablet na parede">Modo tablet</button><button class="voltar" data-mcvoltar>Portal</button></header>';
     var cenas = '<div class="heading"><h2>Cenas rápidas</h2>' + (luzes.some(function (a) { return a.cliente_pode; }) ? '<button class="link" data-mcapagar>Apagar luzes</button>' : '') + '</div>' + (C.cenas.length ? '<div class="scenes">' + C.cenas.map(function (c) { return '<button class="scene' + (C.pend['cena:' + c.id] ? ' active' : '') + '" data-cena="' + esc(c.id) + '">' + ctlIco(c.icone) + esc(c.nome) + '</button>'; }).join('') + '</div>' : '<span class="muted">Nenhuma cena criada ainda. Peça à Domótica.</span>');
     var amb = '<div class="heading" style="margin-top:4px"><h2>Ambientes</h2><span class="muted">' + Object.keys(por).length + '</span></div><div class="rooms">' + Object.keys(por).sort().map(function (k) { var l = por[k].filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }); return '<button class="room" data-mcroom="' + esc(k) + '"><span><b>' + esc(k) + '</b><br><span class="muted">' + (l.length ? l.filter(ctlLigado).length + ' de ' + l.length + ' luzes acesas' : por[k].length + ' aparelho(s)') + '</span></span><span class="muted">›</span></button>'; }).join('') + '</div>';
     var top = '<section class="top"><div class="map" style="--ar:' + ar + '">' + mapa + '<div class="tools"><button class="tool" data-mcexp title="' + (MC.exp ? 'Recolher planta' : 'Expandir planta') + '" aria-label="' + (MC.exp ? 'Recolher planta' : 'Expandir planta') + '"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="' + (MC.exp ? 'M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5') + '"/></svg></button></div><div class="filters">' + mcFiltros() + '</div></div><div class="card activity">' + cenas + amb + '</div></section>';
@@ -485,20 +503,64 @@ window.DOMOTICA_CFG = {
   }
   function mcClique(e) {
     var b = e.target.closest('button,[data-mcfechar]'); if (!b) return;
-    if (b.hasAttribute('data-mcfechar') && (b.tagName === 'BUTTON' || e.target === b)) { MC.modal = null; return pintarCasa(); }
+    if (b.hasAttribute('data-mcfechar') && (b.tagName === 'BUTTON' || e.target === b)) { MC.modal = null; return repintarControle(); }
     if (b.tagName !== 'BUTTON') return;
     if (b.dataset.ctl) return comandoCliente(b.dataset.ctl);
     if (b.dataset.cena) return cenaCliente(b.dataset.cena);
     if (b.dataset.mcp) { MC.pag = b.dataset.mcp; MC.exp = false; return pintarCasa(); }
     if (b.dataset.mcf) { MC.filtro = b.dataset.mcf; return pintarCasa(); }
-    if (b.dataset.mcroom) { MC.modal = b.dataset.mcroom; return pintarCasa(); }
+    if (b.dataset.mcroom) { MC.modal = b.dataset.mcroom; return repintarControle(); }
+    if (b.hasAttribute('data-mctablet')) return entrarTablet();
     if (b.hasAttribute('data-mcexp')) { MC.exp = !MC.exp; return pintarCasa(); }
     if (b.hasAttribute('data-mcapagar')) return mcTodas('luz', false);
     if (b.dataset.mctodas) { var t = b.dataset.mctodas, liga = !D.ctl.aparelhos.some(function (a) { return ctlTipo(a.tipo) === t && ctlLigado(a); }); return mcTodas(t, liga); }
     if (b.dataset.nova) return novoPedido(b.dataset.nova, b.dataset.dev);
     if (b.hasAttribute('data-mcvoltar')) { document.body.classList.remove('mc-on'); MC.modal = null; ABA = 'inicio'; return pintar(); }
   }
-  document.addEventListener('keydown', function (e) { if (e.key !== 'Escape' || !document.getElementById('mc')) return; if (MC.modal) { MC.modal = null; pintarCasa(); } else if (MC.exp) { MC.exp = false; pintarCasa(); } });
+  document.addEventListener('keydown', function (e) { if (e.key !== 'Escape' || !document.getElementById('mc')) return; if (MC.modal) { MC.modal = null; repintarControle(); } else if (MC.exp && !MC.tablet) { MC.exp = false; pintarCasa(); } });
+  /* ---------- modo tablet na parede: escolha salva NESTE aparelho; link fixo com ?tablet=1 ---------- */
+  MC.tablet = /[?&]tablet=1\b/.test(location.search) || lsGet('dom_tablet') === '1';
+  if (/[?&]tablet=1\b/.test(location.search)) lsSet('dom_tablet', '1');
+  var TB = { wake: null, ociosoT: null, sairT: null, relogioT: null };
+  function tbNoite() { return lsGet('dom_tablet_noite') !== '0'; }
+  function tbRelogio() { var d = new Date(); return { h: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), d: (function (t) { return t.charAt(0).toUpperCase() + t.slice(1); })(d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })) }; }
+  /* tela sempre acesa (Screen Wake Lock); sem suporte, segue a configuração do aparelho */
+  async function tbAcordarTela() { try { if ('wakeLock' in navigator && document.visibilityState === 'visible' && !TB.wake) { TB.wake = await navigator.wakeLock.request('screen'); TB.wake.addEventListener('release', function () { TB.wake = null; }); } } catch (e) { TB.wake = null; } }
+  function tbTelaCheia() { try { var el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(function () { }); } catch (e) { } }
+  /* à noite (20h–6h), depois de 5 min sem toque, a tela escurece; o primeiro toque só clareia (não aciona nada) */
+  function tbOcioso() { clearTimeout(TB.ociosoT); if (!MC.tablet || !tbNoite()) return;
+    TB.ociosoT = setTimeout(function () { var h = new Date().getHours(); if (MC.tablet && document.getElementById('mc') && (h >= 20 || h < 6)) { var x = document.getElementById('mcDim'); if (x) x.style.display = 'block'; } }, 5 * 60 * 1000); }
+  function tbExtras() {
+    if (!document.getElementById('mcDim')) { var dm = document.createElement('div'); dm.id = 'mcDim'; dm.addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); dm.style.display = 'none'; tbOcioso(); }); document.body.appendChild(dm); }
+    if (!document.getElementById('mcNet')) { var nt = document.createElement('div'); nt.id = 'mcNet'; nt.textContent = 'Sem internet · tentando reconectar…'; nt.style.display = navigator.onLine === false ? 'block' : 'none'; document.body.appendChild(nt); }
+  }
+  function entrarTablet() { MC.tablet = true; lsSet('dom_tablet', '1'); MC.modal = null; MC.pag = 'geral'; MC.exp = false; tbTelaCheia(); tbAcordarTela(); toast('Modo tablet ligado neste aparelho. Para sair, segure o botão do canto por 3 segundos.'); pintarTablet(); }
+  function sairTablet() { MC.tablet = false; lsSet('dom_tablet', null); clearTimeout(TB.ociosoT); clearInterval(TB.relogioT); var dm = document.getElementById('mcDim'); if (dm) dm.style.display = 'none'; try { if (TB.wake) TB.wake.release(); } catch (e) { } TB.wake = null; try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) { } toast('Modo tablet desligado neste aparelho.'); pintarCasa(); }
+  function pintarTablet() {
+    var C = D.ctl, por = mcComodos(C), r = tbRelogio(), luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
+    var mapa = ctlMapa(C), m = /viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(mapa), ar = m ? (+m[1] / +m[2]).toFixed(4) : '1.3';
+    var cenas = C.cenas.length ? '<h2>Cenas</h2><div class="scenes">' + C.cenas.map(function (c) { return '<button class="scene' + (C.pend['cena:' + c.id] ? ' active' : '') + '" data-cena="' + esc(c.id) + '">' + ctlIco(c.icone) + esc(c.nome) + '</button>'; }).join('') + '</div>' : '';
+    var amb = '<div class="heading"><h2>Ambientes</h2>' + (luzes.some(function (a) { return a.cliente_pode && ctlLigado(a); }) ? '<button class="link" data-mcapagar style="font-size:15px">Apagar todas</button>' : '') + '</div>' + Object.keys(por).sort().map(function (k) { var l = por[k].filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), on = l.filter(ctlLigado).length;
+      return '<button class="troom' + (on ? ' on' : '') + '" data-mcroom="' + esc(k) + '"><span><b>' + esc(k) + '</b><span>' + (l.length ? on + ' de ' + l.length + ' luzes acesas' : por[k].length + ' aparelho(s)') + '</span></span><span style="font-size:26px;color:#e9c36b">›</span></button>'; }).join('');
+    var modal = MC.modal && por[MC.modal] ? '<div class="modal" data-mcfechar><div class="dialog"><div class="heading"><h2>' + esc(MC.modal) + '</h2><button class="close" data-mcfechar aria-label="Fechar">×</button></div>' + por[MC.modal].map(function (a) { return mcLinha(a, C); }).join('') + '</div></div>' : '';
+    document.body.classList.add('mc-on'); tbExtras();
+    R.innerHTML = '<div class="mc tab" id="mc"><div class="shell"><div class="map" style="--ar:' + ar + '">' + mapa + '</div><div class="tclock"><b id="tbHora">' + r.h + '</b><span id="tbData">' + esc(r.d) + '</span><small>' + esc(C.casa ? C.casa.nome : 'Minha casa') + ' · ' + acesas + ' de ' + luzes.length + ' luzes acesas</small></div><div class="tcorpo">' + cenas + amb + '</div></div>' + modal +
+      '<button class="tsair" id="tbSair" aria-label="Segure por 3 segundos para sair do modo tablet" title="Segure 3 s para sair"><i></i><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/></svg></button></div>';
+    R.querySelector('#mc').onclick = mcClique;
+    /* sair: segurar 3 s no botão do canto (um toque rápido não faz nada) */
+    var bs = document.getElementById('tbSair'), anel = bs.querySelector('i'), t0 = 0, raf = 0;
+    var parar = function () { cancelAnimationFrame(raf); clearTimeout(TB.sairT); anel.style.setProperty('--p', '0%'); };
+    var passo = function () { var p = Math.min(100, (Date.now() - t0) / 30); anel.style.setProperty('--p', p + '%'); if (p < 100) raf = requestAnimationFrame(passo); };
+    bs.addEventListener('pointerdown', function (e) { e.preventDefault(); t0 = Date.now(); passo(); TB.sairT = setTimeout(function () { parar(); sairTablet(); }, 3000); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { bs.addEventListener(ev, parar); });
+    bs.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    clearInterval(TB.relogioT); TB.relogioT = setInterval(function () { var h = document.getElementById('tbHora'); if (!h) return clearInterval(TB.relogioT); var x = tbRelogio(); h.textContent = x.h; document.getElementById('tbData').textContent = x.d; }, 20000);
+    tbOcioso();
+  }
+  ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, function () { if (!MC.tablet || !document.getElementById('mc')) return; tbOcioso(); if (!document.fullscreenElement) tbTelaCheia(); tbAcordarTela(); }, true); });
+  document.addEventListener('visibilitychange', function () { if (MC.tablet && document.visibilityState === 'visible' && document.getElementById('mc')) { tbAcordarTela(); atualizarControle(); } });
+  window.addEventListener('offline', function () { var n = document.getElementById('mcNet'); if (n) n.style.display = 'block'; });
+  window.addEventListener('online', function () { var n = document.getElementById('mcNet'); if (n) n.style.display = 'none'; atualizarControle(); });
 
   async function comandoCliente(id) {
     var C = D.ctl, a = C.aparelhos.filter(function (x) { return x.id === id; })[0]; if (!a) return;
@@ -619,7 +681,7 @@ window.DOMOTICA_CFG = {
     pedidos: '<path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/>'
   };
   function pintar() {
-    if (ABA === 'casa' && D.ctl && D.ctl.aparelhos.length) return pintarCasa();
+    if (ABA === 'casa' && D.ctl && D.ctl.aparelhos.length) return MC.tablet ? pintarTablet() : pintarCasa();
     document.body.classList.remove('mc-on');
     var cont = { projetos: projPend().length, orcamentos: orcPend().length, pedidos: abertos().length };
     var nomes = { inicio: 'Início', projetos: 'Projetos', orcamentos: 'Orçamentos', casa: 'Minha casa', pedidos: 'Pedidos' };
