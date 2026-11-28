@@ -33,6 +33,7 @@ header#top input{width:auto;flex:1 1 130px;max-width:230px}
 .sp{flex:1}
 nav#tabs{display:flex;gap:6px;padding:0;overflow-x:auto;flex:none}
 header#top #fCliente,header#top #fImovel,header#top #bEstilo{display:none}
+header#top{background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}header#top button,header#top input,nav#tabs button,nav#menuBar button{backdrop-filter:none;-webkit-backdrop-filter:none}   /* iPad: blur dentro de blur numa barra que rola deixava um esfumaçado escuro no topo */
 header#top #bAtalhos,header#top #bUndo,header#top #bRedo,header#top #bImp,header#top #bAbrir,header#top #bModo,header#top #bTema,header#top #bExp,header#top #bShare,header#top #bDados{display:none!important}   /* foram para a barra de menus */
 nav#menuBar{display:flex;gap:0;flex:none}nav#menuBar button{background:transparent;border:0;padding:6px 9px;font-size:13px;border-radius:8px;color:var(--tx);box-shadow:none}nav#menuBar button:hover,nav#menuBar button.on{background:var(--gl2)}
 #menuDrop{position:fixed;z-index:9999;display:none;min-width:250px;padding:5px;border-radius:12px;background:var(--sheet);border:1px solid var(--bd);box-shadow:0 14px 40px rgba(0,0,0,.45)}#menuDrop.on{display:block}
