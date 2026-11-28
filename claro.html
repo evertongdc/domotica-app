@@ -6,7 +6,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-light-32.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-light-48.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2" media="(prefers-color-scheme: dark)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=2" media="(prefers-color-scheme: dark)"><link rel="apple-touch-icon" id="ati" href="apple-touch-icon-light.png?v=2">
   <meta name="theme-color" content="#ffffff">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Domótica ERP</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -134,7 +134,7 @@ textarea.form-input { min-height: 78px; resize: vertical; }
 .nav-item.active { background: linear-gradient(135deg, rgba(254,121,44,.22), rgba(13,68,222,.2)); border-color: var(--glass-border); color: var(--text); }
 .sidebar-foot { margin-top: auto; padding: 10px 8px 0; border-top: 1px solid var(--glass-border); }
 .sidebar-foot .user { font-weight: 600; }
-.main { margin-left: calc(var(--sidebar-w) + 16px); padding: 20px 24px 40px; max-width: 1280px; }
+.main { margin-left: calc(var(--sidebar-w) + 16px); padding: calc(20px + env(safe-area-inset-top)) 24px 40px; max-width: 1280px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .topbar h1 { font-size: 24px; }
 .tabbar { display: none; }
@@ -198,7 +198,7 @@ table.table { width: 100%; border-collapse: collapse; }
 /* celular */
 @media (max-width: 860px) {
   .sidebar { display: none; }
-  .main { margin-left: 0; padding: 14px 14px calc(var(--tabbar-h) + 24px); }
+  .main { margin-left: 0; padding: calc(14px + env(safe-area-inset-top)) 14px calc(var(--tabbar-h) + 24px); }   /* iPad instalado na tela de início: não deixa o topo cobrir o cabeçalho */
   .topbar h1 { font-size: 20px; }
   .so-desktop { display: none !important; }
   .form-grid { grid-template-columns: 1fr; }
@@ -2350,7 +2350,7 @@ window.DOMOTICA_CFG = {
 
 
   // ---------------- PORTAL DO CLIENTE (lado do dono) ----------------
-  const PORTAL_URL = 'https://app.domoticaautomacao.com.br/portal.html';
+  const PORTAL_URL = 'https://app.domoticaautomacao.com.br/portal';
   const PD_TIPO = { reparo: 'Reparo', cena: 'Cena', suporte: 'Suporte', duvida: 'Dúvida', outro: 'Outro' };
   const PD_STATUS = { aberta: 'Aberta', em_analise: 'Em análise', agendada: 'Agendada', concluida: 'Concluída', cancelada: 'Cancelada' };
   const PD_COR = { aberta: 'badge-blue', em_analise: 'badge-blue', agendada: 'badge-blue', concluida: 'badge-ok', cancelada: 'badge-off' };
@@ -2506,16 +2506,19 @@ window.DOMOTICA_CFG = {
         sb.from('contratos_assistencia').select('*').eq('org_id', x.orgId).or('residencia_id.eq.' + id + (z.client_id ? ',and(residencia_id.is.null,client_id.eq.' + z.client_id + ')' : '')).order('criado_em', { ascending: false })]);
       const integs = must(i), ocs = must(o), devs = must(d), est = new Map(must(e).map(q => [q.dispositivo_id, q])), cts = must(k);
       let pontos = [];
-      if (z.plan_id) { const pl = must(await sb.from('plans').select('dados').eq('id', z.plan_id).single()); const com = new Map(((pl.dados && pl.dados.comodos) || []).map(q => [q.id, q.nome])); pontos = ((pl.dados && pl.dados.pontos) || []).map(p => ({ id: p.id, rot: (p.nome || p.tipo) + (com.get(p.comodo) ? ' · ' + com.get(p.comodo) : '') })); }
+      let dadosPlanta = null; if (z.plan_id) { const pl = must(await sb.from('plans').select('dados').eq('id', z.plan_id).single()); dadosPlanta = pl.dados || null; const com = new Map(((pl.dados && pl.dados.comodos) || []).map(q => [q.id, q.nome])); pontos = ((pl.dados && pl.dados.pontos) || []).map(p => ({ id: p.id, rot: (p.nome || p.tipo) + (com.get(p.comodo) ? ' · ' + com.get(p.comodo) : '') })); }
       // canais Tuya desta planta: permissão de comando (padrão negado) e últimos comandos auditados
-      let canaisTuya = [], audit = [];
+      let canaisTuya = [], audit = [], cenas = [], imgPortal = null;
       if (z.plan_id) {
-        canaisTuya = must(await sb.from('tuya_vinculos').select('id, nome, dp_code, tecla, comando_permitido, estado').eq('plan_id', z.plan_id).order('nome'));
+        canaisTuya = must(await sb.from('tuya_vinculos').select('id, nome, dp_code, tecla, device_id, ponto_id, interruptor_id, comando_permitido, cliente_pode, estado').eq('plan_id', z.plan_id).order('nome'));
+        cenas = must(await sb.from('cenas_casa').select('*').eq('residencia_id', id).order('ordem').order('criado_em'));
+        const ip = x.orgId + '/' + z.plan_id + '/3d_portal.jpg', su = await sb.storage.from('plantas').createSignedUrl(ip, 600);
+        imgPortal = { caminho: ip, base: x.orgId + '/' + z.plan_id + '/3d_portal_base.jpg', url: su.error ? null : su.data.signedUrl };
         if (canaisTuya.length) audit = must(await sb.from('comandos_auditoria').select('em, alvo_id, origem, valor, resultado, detalhe').eq('alvo_tipo', 'tuya_vinculo').in('alvo_id', canaisTuya.map(q => q.id)).order('em', { ascending: false }).limit(15));
       }
       const abertas = ocs.filter(q => !q.fechada_em), sit = csSituacao(integs, abertas.length);
 
-      const secTopo = '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="row-title" style="font-size:1.2em">' + escHtml(z.nome) + '</div><div class="small">' + escHtml((z.clients && z.clients.nome) || 'sem cliente') + ' · Comandos remotos: <b>' + (z.comandos_bloqueados ? 'bloqueados' : 'liberados') + '</b></div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge ' + sit.cor + '">' + escHtml(sit.txt) + '</span><button class="btn btn-ghost btn-sm" data-a="editar">Editar</button></div></div></div>';
+      const secTopo = '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div class="row-title" style="font-size:1.2em">' + escHtml(z.nome) + '</div><div class="small">' + escHtml((z.clients && z.clients.nome) || 'sem cliente') + ' · Comandos remotos: <b>' + (z.comandos_bloqueados ? 'bloqueados' : 'liberados') + '</b></div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge ' + sit.cor + '">' + escHtml(sit.txt) + '</span><button class="btn btn-secondary btn-sm" data-a="casabloq">' + (z.comandos_bloqueados ? 'Liberar comandos da casa' : 'Bloquear comandos da casa') + '</button><button class="btn btn-ghost btn-sm" data-a="editar">Editar</button></div></div></div>';
 
       const secInt = '<div class="row-title" style="margin:20px 2px 8px">Servidor residencial (gateway)</div>' + (integs.length ? integs.map(q => '<div class="glass item-card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start"><div style="min-width:0"><div class="row-title">' + escHtml(q.nome || q.provedor) + ' <span class="small">(' + escHtml(q.provedor) + ', credencial …' + escHtml(q.token_dica || '') + ')</span></div><div class="small">Situação: <b>' + escHtml(q.status) + '</b> · Último sinal: ' + csHa(q.ultimo_heartbeat) + (q.versao ? ' · ' + escHtml(q.versao) : '') + (q.meta && q.meta.entidades != null ? ' · ' + q.meta.entidades + ' entidades, ' + (q.meta.indisponiveis || 0) + ' indisponíveis' + (q.meta.fila ? ', ' + q.meta.fila + ' na fila' : '') : '') + '</div></div>' + (q.status !== 'revogada' ? '<button class="btn btn-secondary btn-sm" data-a="revogar" data-id="' + q.id + '">Revogar</button>' : '<span class="small">revogada ' + csDt(q.revogada_em) + '</span>') + '</div></div>').join('') : '<div class="small" style="margin:0 2px">Nenhum gateway ainda.</div>') +
         '<div style="margin:10px 2px"><button class="btn btn-primary btn-sm" data-a="credencial">Gerar credencial do gateway</button></div>';
@@ -2530,10 +2533,56 @@ window.DOMOTICA_CFG = {
 
       const RES = { confirmado: ['confirmado', 'badge-ok'], nao_confirmado: ['enviado, sem confirmação', 'badge-blue'], enviado: ['enviado', 'badge-blue'], falhou: ['falhou', 'cs-alerta'] };
       const nomeCanal = id => { const q = canaisTuya.find(x => x.id === id); return q ? (q.nome || q.dp_code) : '?'; };
-      const secCmd = canaisTuya.length ? '<div class="row-title" style="margin:20px 2px 8px">Comandos remotos (canais Tuya desta planta)</div><div class="small" style="margin:0 2px 8px">Padrão: sem permissão. Mesmo com permissão, o comando só sai se a empresa não estiver bloqueada e a integração não estiver pausada.</div>' +
-        canaisTuya.map(q => '<div class="glass item-card" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="min-width:0"><div class="row-title" style="font-size:.95em">' + escHtml(q.nome || q.dp_code) + (q.tecla ? ' · tecla ' + q.tecla : '') + '</div><div class="small">' + escHtml(q.dp_code) + (q.estado && q.estado.on != null ? ' · ' + (q.estado.on ? 'ligado' : 'desligado') : '') + '</div></div><button class="btn ' + (q.comando_permitido ? 'btn-primary' : 'btn-secondary') + ' btn-sm" data-a="permitir" data-id="' + q.id + '" data-v="' + (q.comando_permitido ? '0' : '1') + '">' + (q.comando_permitido ? 'Permitido · retirar' : 'Sem permissão · permitir') + '</button></div></div>').join('') +
+      /* o mesmo canal físico aparece 2 vezes (pelo ponto de luz e pela tecla do interruptor): um cartão por canal; as permissões valem para os dois registros */
+      const rotPonto = new Map(pontos.map(p => [p.id, p.rot]));
+      const grupos = []; canaisTuya.forEach(q => { const k = q.device_id + '|' + q.dp_code; let g = grupos.find(x => x.k === k); if (!g) { g = { k, itens: [] }; grupos.push(g); } g.itens.push(q); });
+      grupos.forEach(g => { g.itens.sort((a, b) => (a.ponto_id ? 0 : 1) - (b.ponto_id ? 0 : 1) || (a.id < b.id ? -1 : 1)); g.rep = g.itens.slice().sort((a, b) => (b.cliente_pode ? 1 : 0) - (a.cliente_pode ? 1 : 0) || (a.ponto_id ? 0 : 1) - (b.ponto_id ? 0 : 1) || (a.id < b.id ? -1 : 1))[0];
+        g.ids = g.itens.map(q => q.id); g.perm = g.itens.every(q => q.comando_permitido); g.cli = g.itens.every(q => q.cliente_pode);
+        g.nome = g.itens.map(q => q.ponto_id && rotPonto.get(q.ponto_id) ? rotPonto.get(q.ponto_id) : (q.nome || q.dp_code) + (q.tecla ? ' · tecla ' + q.tecla : '')).filter((v, i, a) => a.indexOf(v) === i).join(' / '); g.dp = g.itens[0].dp_code; g.estado = g.itens[0].estado; });
+      const secCmd = grupos.length ? '<div class="row-title" style="margin:20px 2px 8px">Comandos remotos (canais Tuya desta planta)</div><div class="small" style="margin:0 2px 8px">Padrão: sem permissão. "Cliente pode" deixa o cliente ligar/desligar pelo portal (só funciona se o canal também tiver permissão). Mesmo assim, o comando só sai com a empresa e a casa desbloqueadas.</div>' +
+        grupos.map(g => '<div class="glass item-card" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="min-width:0"><div class="row-title" style="font-size:.95em">' + escHtml(g.nome) + '</div><div class="small">' + escHtml(g.dp) + (g.estado && g.estado.on != null ? ' · ' + (g.estado.on ? 'ligado' : 'desligado') : '') + '</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ' + (g.perm ? 'btn-primary' : 'btn-secondary') + ' btn-sm" data-a="permitir" data-ids="' + g.ids.join(',') + '" data-v="' + (g.perm ? '0' : '1') + '">' + (g.perm ? 'Permitido · retirar' : 'Sem permissão · permitir') + '</button><button class="btn ' + (g.cli ? 'btn-primary' : 'btn-secondary') + ' btn-sm" data-a="cliente" data-ids="' + g.ids.join(',') + '" data-v="' + (g.cli ? '0' : '1') + '">' + (g.cli ? 'Cliente pode · retirar' : 'Cliente não · liberar') + '</button></div></div></div>').join('') +
         '<div class="small" style="margin:14px 2px 4px;text-transform:uppercase;letter-spacing:.06em;opacity:.7">Últimos comandos</div>' + (audit.length ? audit.map(a => { const r = RES[a.resultado] || [a.resultado.replace(/_/g, ' '), 'cs-alerta']; return '<div class="small" style="margin:4px 2px">' + csDt(a.em) + ' · ' + escHtml(nomeCanal(a.alvo_id)) + ' → ' + (a.valor && a.valor.on ? 'ligar' : 'desligar') + ' · ' + escHtml(a.origem) + ' <span class="badge ' + r[1] + '">' + escHtml(r[0]) + '</span></div>'; }).join('') : '<div class="small" style="margin:4px 2px">Nenhum comando registrado.</div>') : '';
-      c.innerHTML = secTopo + secOc + secInt + secDev + secCmd + secCt;
+      const CS_ICO = { estrela: '★', sol: '☀', lua: '☾', filme: '🎬', sofa: '🛋', porta: '🚪', luz: '💡', festa: '🎉' };
+      const nomeDoRep = vid => { const g = grupos.find(x => x.ids.includes(vid)); return g ? g.nome : '(canal removido)'; };
+      const secCenas = grupos.length ? '<div class="row-title" style="margin:20px 2px 8px">Cenas da casa (portal do cliente)</div><div class="small" style="margin:0 2px 8px">O cliente vê e usa estas cenas no portal. Cada aparelho da cena passa pelas mesmas travas: só liga/desliga o que estiver liberado para o cliente.</div>' +
+        (cenas.length ? cenas.map(q => '<div class="glass item-card" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="min-width:0"><div class="row-title" style="font-size:.95em">' + (CS_ICO[q.icone] || '★') + ' ' + escHtml(q.nome) + '</div><div class="small">' + (q.itens || []).map(it => escHtml(nomeDoRep(it.vinculo_id)) + ' → ' + (it.on ? 'ligar' : 'desligar')).join(' · ') + '</div></div><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" data-a="cena" data-id="' + q.id + '">Editar</button><button class="btn btn-ghost btn-sm" data-a="cenadel" data-id="' + q.id + '">Excluir</button></div></div></div>').join('') : '<div class="small" style="margin:0 2px">Nenhuma cena ainda.</div>') +
+        '<div style="margin:10px 2px"><button class="btn btn-secondary btn-sm" data-a="cena">+ Nova cena</button></div>' : '';
+      const csFormCena = atual => {
+        const q = atual || { nome: '', icone: 'estrela', itens: [] }, sel = new Map((q.itens || []).map(it => [it.vinculo_id, it.on]));
+        const valDe = g => { for (const id of g.ids) if (sel.has(id)) return sel.get(id) ? '1' : '0'; return ''; };
+        abrirModal(atual ? 'Editar cena' : 'Nova cena',
+          '<div class="form-group"><label class="form-label">Nome</label><input id="cs-cn" class="form-input" maxlength="40" value="' + escHtml(q.nome) + '" placeholder="Ex.: Cinema"></div>' +
+          '<div class="form-group"><label class="form-label">Ícone</label><select id="cs-ci" class="form-input">' + Object.keys(CS_ICO).map(k => '<option value="' + k + '"' + (k === q.icone ? ' selected' : '') + '>' + CS_ICO[k] + ' ' + k + '</option>').join('') + '</select></div>' +
+          '<div class="form-group"><label class="form-label">O que a cena faz</label>' + grupos.map((g, i) => '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin:6px 0"><span class="small" style="flex:1;min-width:0">' + escHtml(g.nome) + (g.cli ? '' : ' <i>(não liberado ao cliente)</i>') + '</span><select class="form-input" style="max-width:150px;padding:6px 8px" data-cg="' + i + '"><option value="">— não mexe —</option><option value="1"' + (valDe(g) === '1' ? ' selected' : '') + '>Ligar</option><option value="0"' + (valDe(g) === '0' ? ' selected' : '') + '>Desligar</option></select></div>').join('') + '</div>',
+          '<button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button><button class="btn btn-primary" id="cs-csalvar">Salvar</button>');
+        $id('cs-csalvar').onclick = async () => {
+          const nome = $id('cs-cn').value.trim(); if (!nome) return toast('Informe o nome da cena.', 'error');
+          const itens = []; document.querySelectorAll('[data-cg]').forEach(el => { if (el.value) itens.push({ vinculo_id: grupos[+el.getAttribute('data-cg')].rep.id, on: el.value === '1' }); });
+          if (!itens.length) return toast('Escolha pelo menos um aparelho.', 'error');
+          try { const x = await ctx(); const dados = { nome, icone: $id('cs-ci').value, itens };
+            if (atual) { const n = must(await sb.from('cenas_casa').update(dados).eq('id', atual.id).select('id')); if (!n || !n.length) throw new Error('row-level security'); } else must(await sb.from('cenas_casa').insert(Object.assign({ org_id: x.orgId, residencia_id: id, ordem: cenas.length }, dados)));
+            fecharModal(); toast('Cena salva.', 'success'); navegar('casas', { id }); }
+          catch (e) { toast(/row-level security/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode criar cenas.' : msgErro(e.message), 'error', 7000); }
+        };
+      };
+      /* imagem realista da casa no portal: foto do 3D (editor), imagem pronta enviada aqui, ou gerada por IA a partir da foto base */
+      const secImg = imgPortal ? '<div class="row-title" style="margin:20px 2px 8px">Imagem da casa no portal</div><div class="glass item-card">' +
+        (imgPortal.url ? '<img src="' + escHtml(imgPortal.url) + '" alt="Imagem da planta no portal" style="width:100%;max-width:640px;border-radius:12px;display:block;margin-bottom:10px">' : '<div class="small" style="margin-bottom:10px">Ainda sem imagem. No editor da planta, abra o 3D e use <b>Imagem p/ portal</b>.</div>') +
+        '<div class="small" style="margin-bottom:10px">A imagem precisa ter o mesmo enquadramento da foto base (é ela que alinha os aparelhos). Para usar uma imagem feita fora (ChatGPT, Gemini, Lumux…), baixe a foto base, gere a partir dela e envie o resultado.</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-a="imgbase">Baixar foto base</button><button class="btn btn-secondary btn-sm" data-a="imgenviar">Enviar imagem pronta</button><button class="btn btn-primary btn-sm" data-a="imgrender">Gerar imagem realista (sem IA)</button><button class="btn btn-secondary btn-sm" data-a="imgia">Gerar com IA (Gemini)</button><button class="btn btn-ghost btn-sm" data-a="imgvoltar">Voltar para a foto do 3D</button></div>' +
+        '<input type="file" id="cs-imgfile" accept="image/jpeg,image/png,image/webp" style="display:none"></div>' : '';
+      const garantirBase = async () => { const lb = await sb.storage.from('plantas').list(x.orgId + '/' + z.plan_id, { search: '3d_portal_base.jpg' }); if (!(lb.data || []).some(f => f.name === '3d_portal_base.jpg')) { const cp = await sb.storage.from('plantas').copy(imgPortal.caminho, imgPortal.base); if (cp.error) throw new Error('Não consegui guardar a foto base: ' + cp.error.message); } };
+      const tamImg = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im.naturalWidth / im.naturalHeight); im.onerror = () => ok(null); im.src = src; });
+      c.innerHTML = secTopo + secOc + secInt + secDev + secCmd + secCenas + secImg + secCt;
+      const fi = $id('cs-imgfile'); if (fi) fi.onchange = async () => {
+        const f = fi.files && fi.files[0]; fi.value = ''; if (!f) return; if (f.size > 12e6) return toast('Imagem grande demais (máx. 12 MB).', 'error');
+        try {
+          const arN = await tamImg(URL.createObjectURL(f)), arB = imgPortal.url ? await tamImg(imgPortal.url) : null;
+          const enviar = async () => { try { if (imgPortal.url) await garantirBase(); must(await sb.storage.from('plantas').upload(imgPortal.caminho, f, { contentType: f.type || 'image/jpeg', upsert: true })); toast('Imagem enviada. O cliente vê na próxima vez que abrir Minha casa.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } };
+          if (arN && arB && Math.abs(arN / arB - 1) > .04) confirmarAcao('A proporção desta imagem (' + arN.toFixed(2) + ') é diferente da foto base (' + arB.toFixed(2) + '). Ela vai ficar esticada e os aparelhos podem não cair no lugar certo. Enviar mesmo assim?', enviar, { textoConfirmar: 'Enviar' });
+          else enviar();
+        } catch (e) { toast(msgErro(e.message), 'error', 7000); }
+      };
       c.onclick = ev => {
         const b = ev.target.closest('[data-a]'); if (!b) return; const a = b.getAttribute('data-a'), alvo = b.getAttribute('data-id');
         if (a === 'editar') csFormResidencia(z);
@@ -2541,8 +2590,36 @@ window.DOMOTICA_CFG = {
         else if (a === 'revogar') confirmarAcao('Revogar esta credencial? O servidor residencial para de enviar dados na hora. A casa continua funcionando normalmente.', async () => { try { must(await sb.rpc('integracao_revogar', { p_id: alvo })); toast('Credencial revogada.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } }, { textoConfirmar: 'Revogar', perigo: true });
         else if (a === 'resolver') (async () => { try { must(await sb.from('ocorrencias').update({ fechada_em: new Date().toISOString() }).eq('id', alvo)); toast('Ocorrência marcada como resolvida.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } })();
         else if (a === 'contrato') csFormContrato(z, cts.find(q => q.id === alvo));
-        else if (a === 'permitir') { const sim = b.getAttribute('data-v') === '1'; confirmarAcao(sim ? 'Permitir comando remoto neste canal? Ele poderá ser ligado/desligado pelo sistema (com limite por minuto e registro), quando os comandos da empresa estiverem liberados.' : 'Retirar a permissão de comando remoto deste canal?', async () => {
-          try { must(await sb.from('tuya_vinculos').update({ comando_permitido: sim }).eq('id', alvo)); toast(sim ? 'Permissão concedida.' : 'Permissão retirada.', 'success'); navegar('casas', { id }); }
+        else if (a === 'casabloq') { const bloquear = !z.comandos_bloqueados; confirmarAcao(bloquear ? 'Bloquear os comandos remotos desta casa? Nada liga/desliga pelo sistema (equipe e cliente) até liberar de novo.' : 'Liberar os comandos remotos desta casa? Cada canal ainda precisa da própria permissão, e o bloqueio da empresa continua valendo.', async () => {
+          try { const n = must(await sb.from('residencias').update({ comandos_bloqueados: bloquear }).eq('id', id).select('id')); if (!n || !n.length) throw new Error('sem_permissao_para_liberar'); toast(bloquear ? 'Comandos da casa bloqueados.' : 'Comandos da casa liberados.', 'success'); navegar('casas', { id }); }
+          catch (e) { toast(/sem_permissao_para_liberar/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode mudar o bloqueio.' : msgErro(e.message), 'error', 7000); } }, { textoConfirmar: bloquear ? 'Bloquear' : 'Liberar', perigo: !bloquear }); }
+        else if (a === 'imgrender') (async () => {
+          try {
+            if (!dadosPlanta || !(dadosPlanta.comodos || []).length) return toast('A planta não tem cômodos.', 'error');
+            if (!window.plantaRealista) await new Promise((ok, er) => { const sc = document.createElement('script'); sc.src = 'planta-realista.js?v=1'; sc.onload = ok; sc.onerror = () => er(new Error('Não consegui carregar o gerador.')); document.head.appendChild(sc); });
+            const LUZ = /^(ponto_luz|plafon|spot|pendente|arandela|fita_led|trilho|balizador|lampada|luz_piso|refletor)$/;
+            const luzes = (dadosPlanta.pontos || []).filter(p => LUZ.test(p.tipo || '')).map(p => [+p.x, +p.y, p.tipo]);
+            const url = window.plantaRealista({ comodos: dadosPlanta.comodos, paredes: dadosPlanta.paredes || [], aberturas: dadosPlanta.aberturas || [] }, luzes, 2000);
+            const blob = await (await fetch(url)).blob();
+            if (imgPortal.url) await garantirBase();
+            must(await sb.storage.from('plantas').upload(imgPortal.caminho, blob, { contentType: 'image/jpeg', upsert: true }));
+            toast('Imagem realista gerada e aplicada no portal.', 'success'); navegar('casas', { id });
+          } catch (e) { toast(msgErro(e.message), 'error', 8000); }
+        })();
+        else if (a === 'imgenviar') { const fi2 = $id('cs-imgfile'); if (fi2) fi2.click(); }
+        else if (a === 'imgbase') (async () => { const r = await sb.storage.from('plantas').createSignedUrl(imgPortal.base, 600, { download: 'foto-base-planta.jpg' }); const r2 = r.error ? await sb.storage.from('plantas').createSignedUrl(imgPortal.caminho, 600, { download: 'foto-base-planta.jpg' }) : r; if (r2.error) return toast('Ainda sem foto. Gere no editor 3D (Imagem p/ portal).', 'error', 6000); window.open(r2.data.signedUrl, '_blank', 'noopener'); })();
+        else if (a === 'imgia') confirmarAcao('Gerar uma versão realista com o Gemini a partir da foto base? Leva até 1 minuto e conta no limite diário de IA. Usa a sua chave do Google: na faixa gratuita não há custo; se a cobrança estiver ativada na conta Google, cada imagem custa alguns centavos de dólar.', async () => {
+          toast('Gerando a imagem realista… (até 1 minuto)', 'info', 60000);
+          const r = await sb.functions.invoke('planta-realista', { body: { plan_id: z.plan_id, acao: 'gerar' } }); let d = r.data; if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } }
+          if (d && d.ok) { toast('Imagem realista pronta. Confira abaixo; se não gostar, use "Voltar para a foto do 3D".', 'success', 8000); navegar('casas', { id }); } else toast((d && d.erro) || 'Não foi possível gerar a imagem.', 'error', 12000); }, { textoConfirmar: 'Gerar' });
+        else if (a === 'imgvoltar') confirmarAcao('Voltar a imagem do portal para a foto do 3D?', async () => { const r = await sb.functions.invoke('planta-realista', { body: { plan_id: z.plan_id, acao: 'restaurar' } }); let d = r.data; if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } } if (d && d.ok) { toast('Voltou para a foto do 3D.', 'success'); navegar('casas', { id }); } else toast((d && d.erro) || 'Não foi possível voltar.', 'error', 8000); }, { textoConfirmar: 'Voltar' });
+        else if (a === 'cena') csFormCena(cenas.find(q => q.id === alvo));
+        else if (a === 'cenadel') confirmarAcao('Excluir esta cena? Ela some do portal do cliente.', async () => { try { must(await sb.from('cenas_casa').delete().eq('id', alvo)); toast('Cena excluída.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } }, { textoConfirmar: 'Excluir', perigo: true });
+        else if (a === 'cliente') { const sim = b.getAttribute('data-v') === '1', ids = (b.getAttribute('data-ids') || '').split(',').filter(Boolean); confirmarAcao(sim ? 'Liberar este canal para o CLIENTE ligar/desligar pelo portal? Fica registrado quem liberou, e cada comando dele passa pelas mesmas travas (limite por minuto, bloqueios) e pela auditoria.' : 'Tirar do cliente o controle deste canal pelo portal?', async () => {
+          try { const n = must(await sb.from('tuya_vinculos').update({ cliente_pode: sim }).in('id', ids).select('id')); if (!n || n.length !== ids.length) throw new Error('sem_permissao_para_liberar'); toast(sim ? 'Liberado para o cliente.' : 'Retirado do cliente.', 'success'); navegar('casas', { id }); }
+          catch (e) { toast(/sem_permissao_para_liberar/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode liberar comando.' : msgErro(e.message), 'error', 7000); } }, { textoConfirmar: sim ? 'Liberar' : 'Retirar', perigo: sim }); }
+        else if (a === 'permitir') { const sim = b.getAttribute('data-v') === '1', ids = (b.getAttribute('data-ids') || alvo || '').split(',').filter(Boolean); confirmarAcao(sim ? 'Permitir comando remoto neste canal? Ele poderá ser ligado/desligado pelo sistema (com limite por minuto e registro), quando os comandos da empresa estiverem liberados.' : 'Retirar a permissão de comando remoto deste canal?', async () => {
+          try { const n = must(await sb.from('tuya_vinculos').update({ comando_permitido: sim }).in('id', ids).select('id')); if (!n || n.length !== ids.length) throw new Error('sem_permissao_para_liberar'); toast(sim ? 'Permissão concedida.' : 'Permissão retirada.', 'success'); navegar('casas', { id }); }
           catch (e) { toast(/sem_permissao_para_liberar/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode liberar comando.' : msgErro(e.message), 'error', 7000); } }, { textoConfirmar: sim ? 'Permitir' : 'Retirar', perigo: sim }); }
       };
       c.onchange = async ev => {

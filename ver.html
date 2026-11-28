@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Planta · Domótica</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
@@ -27,7 +27,7 @@ button.danger{border-color:rgba(229,72,77,.6);color:var(--dgr)}
 input,select,textarea{background:var(--inb);border:1px solid var(--inbd);border-radius:8px;padding:6px 8px;width:100%;min-width:0}
 textarea{resize:vertical;min-height:54px}
 label{display:block;font-size:12px;color:var(--mu);margin:8px 0 3px}
-header#top{display:flex;gap:8px;align-items:center;padding:8px 10px;background:var(--gl);border-bottom:1px solid var(--gl2);backdrop-filter:blur(14px);flex-wrap:wrap}
+header#top{display:flex;gap:8px;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;background:var(--gl);border-bottom:1px solid var(--gl2);backdrop-filter:blur(14px);flex-wrap:wrap}   /* iPad instalado na tela de início: não deixa o topo (relógio/barra do app) cobrir o cabeçalho */
 header#top input{width:auto;flex:1 1 130px;max-width:230px}
 .brand{font-weight:800;letter-spacing:.3px}.brand span{color:var(--or)}
 .sp{flex:1}
@@ -104,7 +104,7 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
 #fabs,#bDados{display:none}
 @media (max-width:900px){
   /* cabeçalho de uma linha só (rola de lado); Salvar fica sempre à vista */
-  header#top{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:6px 8px;scrollbar-width:none}
+  header#top{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:calc(6px + env(safe-area-inset-top)) 8px 6px;scrollbar-width:none}
   header#top::-webkit-scrollbar{display:none}
   header#top .brand,header#top #fCliente,header#top #fImovel,header#top .sp{display:none}
   header#top button,header#top a{flex:none;white-space:nowrap;padding:6px 10px;font-size:13px}
@@ -2747,7 +2747,7 @@ async function abrir3d() {
       if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; if (THREE.WEBGPU) T3.scene.traverse(o => { if (o.isLight && o.castShadow && o.shadow) { o.shadow.autoUpdate = false; o.shadow.needsUpdate = true; } }); T3.sombraSuja = false; T3.wake(350); }
       const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update();
       const c = T3.cam, kc = c.position.x.toFixed(1) + '|' + c.position.y.toFixed(1) + '|' + c.position.z.toFixed(1) + '|' + c.quaternion.x.toFixed(4) + '|' + c.quaternion.y.toFixed(4) + '|' + c.quaternion.z.toFixed(4) + '|' + c.fov + '|' + T3.ren.domElement.width;
-      if (kc !== T3.kc) { T3.kc = kc; T3.mover(); if (T3.limpoTopos && T3.limpoTopos.length) { let mud = false; T3.limpoTopos.forEach(t => { const v = ((c.position.x - t.mx) * t.ox + (c.position.z - t.mz) * t.oz) <= 0; if (t.grp.visible !== v) { t.grp.visible = v; if (t.cap) t.cap.visible = !v; mud = true; } }); if (mud) T3.sombraSuja = true; } }
+      if (kc !== T3.kc) { T3.kc = kc; T3.mover(); if (T3.limpoTopos && T3.limpoTopos.length) { let mud = false; const MARG = 25;   /* cm de histerese: sem isso, a câmera perto do plano da parede fazia a parede baixa/alta piscar a cada quadro */ T3.limpoTopos.forEach(t => { const d = (c.position.x - t.mx) * t.ox + (c.position.z - t.mz) * t.oz, v = t.grp.visible ? d <= MARG : d <= -MARG; if (t.grp.visible !== v) { t.grp.visible = v; if (t.cap) t.cap.visible = !v; mud = true; } }); if (mud) T3.sombraSuja = true; } }
       const agora = performance.now(); if (!(T3.fp.on || agora < T3.until || T3.animando())) return;
       const t0 = performance.now(); T3.draw();   // modo único: o mesmo visual parado e em movimento
       T3.stats.quadros++; T3.stats.ocupado += performance.now() - t0;
@@ -2986,14 +2986,14 @@ async function tuyaPushTecla(v, sw, tec) {
   try {
     const r = await gas('Tuya_comandar', v.id, novo), est = { on: r.on, confirmado: !!r.confirmado };
     S.tuya.lista.forEach(x => { if (x.device_id === v.device_id && x.dp_code === v.dp_code) { x.estado = est; const d = x.ponto_id && T3.devs[x.ponto_id]; if (d) { T3.on3[x.ponto_id] = r.on; d.A.set(r.on); } } });
-    P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).forEach(l => { const d = T3.devs[l.para]; if (d && !vincTuya(l.para)) { T3.on3[l.para] = r.on; d.A.set(r.on); } });
+    P.ligacoes.filter(l => l.de === sw && (l.tecla || 1) === tec).forEach(l => { const d = T3.devs[l.para]; if (d && !vincTuya(l.para) && !(T3.manualOn && T3.manualOn[l.para])) { T3.on3[l.para] = r.on; d.A.set(r.on); } });
     atualizaTeclas3(); toast('Tecla ' + tec + (r.on ? ' ligada' : ' desligada') + (r.confirmado ? ' (confirmado pelo aparelho)' : ' — comando enviado; o aparelho ainda não confirmou'), 4500);
   } catch (e) { toast('Não consegui acionar a tecla: ' + e.message, 7000); }
   finally { S.tuya.busy[v.id] = false; }
 }
 function aplicaEstadosTuya(avisar) {
   if (!T3.devs) return;
-  S.tuya.lista.forEach(v => { if (v.interruptor_id && v.estado && typeof v.estado.on === 'boolean') { P.ligacoes.filter(l => l.de === v.interruptor_id && (l.tecla || 1) === v.tecla).forEach(l => { const d = T3.devs[l.para]; if (d && !vincTuya(l.para) && estaOn3(d.p) !== v.estado.on) { T3.on3[l.para] = v.estado.on; d.A.set(v.estado.on); } }); return; }
+  S.tuya.lista.forEach(v => { if (v.interruptor_id && v.estado && typeof v.estado.on === 'boolean') { P.ligacoes.filter(l => l.de === v.interruptor_id && (l.tecla || 1) === v.tecla).forEach(l => { const d = T3.devs[l.para]; if (d && !vincTuya(l.para) && !(T3.manualOn && T3.manualOn[l.para]) && estaOn3(d.p) !== v.estado.on) { T3.on3[l.para] = v.estado.on; d.A.set(v.estado.on); } }); return; }
     const d = v.ponto_id && T3.devs[v.ponto_id]; if (!d || !v.estado || typeof v.estado.on !== 'boolean' || S.tuya.busy[v.id]) return;
     if (T3.on3[v.ponto_id] === v.estado.on && d.A.__on === v.estado.on) return; const mudou = estaOn3(d.p) !== v.estado.on; T3.on3[v.ponto_id] = v.estado.on; d.A.set(v.estado.on); d.A.__on = v.estado.on; if (avisar && mudou) toast((M.nomeDe(d.p) || 'Aparelho') + (v.estado.on ? ' ligado' : ' desligado') + ' (mudou no aparelho real)'); });
   atualizaTeclas3();
@@ -3136,7 +3136,7 @@ $('#fpPad').addEventListener('pointerdown', e => { const b = e.target.closest('b
 
 /* ===================== 3D: aparelhos realistas (medidas reais em cm), interativos ===================== */
 T3.on3 = {}; T3.devs = {}; T3.ticks = []; T3.pick = [];
-const padraoLigado3 = p => { const c = M.catDe(p); return c === 'luz' || c === 'alexa' || p.tipo === 'fita_led'; };
+const padraoLigado3 = p => false;   /* aparelho sem vínculo real e nunca tocado: começa desligado (antes luz/alexa/fita_led começavam ligados sozinhos) */
 const estaOn3 = p => { const v = vincTuya(p.id); if (v && v.estado && typeof v.estado.on === 'boolean') return v.estado.on; return (p.id in T3.on3) ? T3.on3[p.id] : padraoLigado3(p); };
 function texBrilho() {
   if (T3.texB) return T3.texB; const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -3668,7 +3668,7 @@ function rotaVinculo3(a, b, ca, cb, yA, yB, tetoB) {
   return pts;
 }
 
-function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); if (!window.PLANTA_VIEW && vincTuya(id)) { tuyaPush(id, novo); return; } T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); alexaPush(id, novo); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
+function alternarDisp3(id) { const d = T3.devs[id]; if (!d) return; const novo = !estaOn3(d.p); if (!window.PLANTA_VIEW && vincTuya(id)) { tuyaPush(id, novo); return; } T3.manualOn = T3.manualOn || {}; T3.manualOn[id] = true;   /* o clique direto manda: o aparelho-sem-vínculo não é mais pisado pelo interruptor real da tecla */ T3.on3[id] = novo; d.A.set(novo); atualizaTeclas3(); alexaPush(id, novo); toast((M.nomeDe(d.p) || 'Aparelho') + (novo ? ' ligado' : ' desligado')); }
 /** áreas de toque que crescem com o afastamento da câmera: sempre ~34 px na tela (até 4x o tamanho real) */
 let _texMk;
 function texMarcador() { if (_texMk) return _texMk; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#ff7a00'; x.beginPath(); x.arc(32, 32, 28, 0, 7); x.fill(); x.lineWidth = 5; x.strokeStyle = '#fff'; x.stroke(); x.fillStyle = '#fff'; x.fillRect(26, 17, 12, 30); _texMk = new THREE.CanvasTexture(c); return _texMk; }

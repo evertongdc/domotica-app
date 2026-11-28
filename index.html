@@ -6,7 +6,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-light-32.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-light-48.png?v=2" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2" media="(prefers-color-scheme: dark)"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=2" media="(prefers-color-scheme: dark)"><link rel="apple-touch-icon" id="ati" href="apple-touch-icon.png?v=2">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Domótica ERP</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -134,7 +134,7 @@ textarea.form-input { min-height: 78px; resize: vertical; }
 .nav-item.active { background: linear-gradient(135deg, rgba(254,121,44,.22), rgba(13,68,222,.2)); border-color: var(--glass-border); color: var(--text); }
 .sidebar-foot { margin-top: auto; padding: 10px 8px 0; border-top: 1px solid var(--glass-border); }
 .sidebar-foot .user { font-weight: 600; }
-.main { margin-left: calc(var(--sidebar-w) + 16px); padding: 20px 24px 40px; max-width: 1280px; }
+.main { margin-left: calc(var(--sidebar-w) + 16px); padding: calc(20px + env(safe-area-inset-top)) 24px 40px; max-width: 1280px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .topbar h1 { font-size: 24px; }
 .tabbar { display: none; }
@@ -198,7 +198,7 @@ table.table { width: 100%; border-collapse: collapse; }
 /* celular */
 @media (max-width: 860px) {
   .sidebar { display: none; }
-  .main { margin-left: 0; padding: 14px 14px calc(var(--tabbar-h) + 24px); }
+  .main { margin-left: 0; padding: calc(14px + env(safe-area-inset-top)) 14px calc(var(--tabbar-h) + 24px); }   /* iPad instalado na tela de início: não deixa o topo cobrir o cabeçalho */
   .topbar h1 { font-size: 20px; }
   .so-desktop { display: none !important; }
   .form-grid { grid-template-columns: 1fr; }
