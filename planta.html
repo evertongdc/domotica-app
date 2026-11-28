@@ -229,6 +229,7 @@ window.DOMOTICA_CFG = {
       if (up.error) throw new Error('Não consegui guardar a imagem 3D: ' + up.error.message);
       return { fileId: caminho };
     },
+    Planta_salvarCamPortal: async function(plantaId, cam) { await ctx(); if (!UUID.test(plantaId || '')) throw new Error('Salve a planta primeiro.'); must(await sb.from('plans').update({ portal_cam: cam }).eq('id', plantaId)); return { ok: true }; },   /* câmera da imagem do portal (coluna própria) */
     Planta_catalogo: async function() { var c = await ctx(); return must(await sb.from('catalog_products').select('id, nome, nome_curto, categoria, marca, imagem_url, preco_aparelho, exige_neutro, ativo').eq('org_id', c.orgId).eq('sem_estoque', false).order('nome')); },
     Planta_sugestoes: async function() { var c = await ctx(); return must(await sb.from('product_suggestions').select('id, req_tipo, req_teclas, titulo, marca, preco, link, imagem_url, motivo, loja').eq('org_id', c.orgId).eq('status', 'pendente').order('preco')); },
     Planta_decidirSugestao: async function(id, acao) { await ctx(); return must(await sb.rpc('sugestao_decidir', { p_id: id, p_acao: acao })); },
@@ -4278,7 +4279,7 @@ async function gerarImagemPortal() {
     P.portalCam = { m: Array.from(new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse).elements).map(v => +v.toFixed(7)), w: larg, h: alt, em: new Date().toISOString() };   /* o portal projeta cada aparelho com esta matriz */
     const url = cv.toDataURL('image/jpeg', .9);
     R.toneMapping = tm; R.toneMappingExposure = te; R.setPixelRatio(pr); R.setSize(tam.x, tam.y, false);
-    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url); await gas('Planta_salvarImagem3D', S.planoId, 'portal_base', url); await salvar(true);   /* a base é a foto do 3D: a IA e o "voltar" partem dela */
+    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url); await gas('Planta_salvarImagem3D', S.planoId, 'portal_base', url); await gas('Planta_salvarCamPortal', S.planoId, P.portalCam);   /* a base é a foto do 3D: a IA e o "voltar" partem dela */
     toast('Imagem do portal salva. O cliente vê na próxima vez que abrir "Minha casa".', 6000);
   } catch (e) { toast('Erro: ' + e.message, 6000); }
   $('#com3').value = ant.com; $('#modo3').value = ant.modo; if ($('#forro3')) $('#forro3').checked = ant.forro; $('#lig3').checked = ant.lig; S.ligs = ant.ligs; build3d(true);

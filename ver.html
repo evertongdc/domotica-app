@@ -4203,7 +4203,7 @@ async function gerarImagemPortal() {
     P.portalCam = { m: Array.from(new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse).elements).map(v => +v.toFixed(7)), w: larg, h: alt, em: new Date().toISOString() };   /* o portal projeta cada aparelho com esta matriz */
     const url = cv.toDataURL('image/jpeg', .9);
     R.toneMapping = tm; R.toneMappingExposure = te; R.setPixelRatio(pr); R.setSize(tam.x, tam.y, false);
-    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url); await gas('Planta_salvarImagem3D', S.planoId, 'portal_base', url); await salvar(true);   /* a base é a foto do 3D: a IA e o "voltar" partem dela */
+    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url); await gas('Planta_salvarImagem3D', S.planoId, 'portal_base', url); await gas('Planta_salvarCamPortal', S.planoId, P.portalCam);   /* a base é a foto do 3D: a IA e o "voltar" partem dela */
     toast('Imagem do portal salva. O cliente vê na próxima vez que abrir "Minha casa".', 6000);
   } catch (e) { toast('Erro: ' + e.message, 6000); }
   $('#com3').value = ant.com; $('#modo3').value = ant.modo; if ($('#forro3')) $('#forro3').checked = ant.forro; $('#lig3').checked = ant.lig; S.ligs = ant.ligs; build3d(true);
