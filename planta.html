@@ -345,6 +345,7 @@ window.DOMOTICA_CFG = {
         <button id="bPng">Baixar PNG</button>
         <button id="bBlender" title="Gera um arquivo 3D (.glb) e um script para renderizar a casa com raytracing no Blender (grátis)">Exportar p/ Blender</button>
         <button id="bImgs" class="pri">Gerar imagens p/ orçamento</button>
+        <button id="bImgPortal" title="Foto da planta vista de cima para o portal do cliente (fixa, sem perspectiva)">Imagem p/ portal</button>
       </div>
       <div id="c3d"><div id="leg3d"></div><div id="fpPad"><button data-k="w">▲</button><button data-k="a">◀</button><button data-k="s">▼</button><button data-k="d">▶</button></div></div>
     </section>
@@ -4207,6 +4208,36 @@ $('#bImgs').onclick = async () => {
   } catch (e) { toast('Erro: ' + e.message, 6000); }
   $('#modo3').value = modoAnt; $('#com3').value = com0; build3d(true);
 };
+
+/* ===================== imagem realista para o portal do cliente =====================
+   Foto da casa inteira vista exatamente de cima (câmera ortográfica), sem forro nem linhas de ligação.
+   Enquadramento = caixa dos cômodos e paredes + 40 cm (a MESMA regra do portal), então a imagem se alinha sozinha com os aparelhos.
+   Salva como <org>/<planta>/3d_portal.jpg no armazenamento; não grava o JSON da planta. */
+async function gerarImagemPortal() {
+  if (!P.comodos.length) return toast('Sem cômodos.');
+  if (!S.planoId) { try { await salvar(true); } catch (e) { return toast('Salve a planta primeiro: ' + e.message, 5000); } }
+  if (!T3.ren) await abrir3d();
+  if (THREE.WEBGPU) return toast('Use o motor clássico para gerar a imagem do portal.', 5000);
+  const xs = [], ys = []; P.comodos.forEach(c => (c.pontos || []).forEach(q => { xs.push(+q[0]); ys.push(+q[1]); })); P.paredes.forEach(w => { xs.push(+w.x1, +w.x2); ys.push(+w.y1, +w.y2); });
+  const pad = 40, x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, W = Math.max(...xs) + pad - x0, H = Math.max(...ys) + pad - y0;
+  const ant = { com: $('#com3').value, modo: $('#modo3').value, forro: $('#forro3') && $('#forro3').checked, lig: $('#lig3').checked, ligs: S.ligs };
+  toast('Gerando a imagem do portal…', 6000);
+  try {
+    $('#com3').value = ''; $('#modo3').value = 'limpo'; if ($('#forro3')) $('#forro3').checked = false; $('#lig3').checked = false; S.ligs = false; build3d(false);
+    const cx = x0 + W / 2, cz = y0 + H / 2, cam = new THREE.OrthographicCamera(-W / 2, W / 2, H / 2, -H / 2, 1, 6000);
+    cam.position.set(cx, 3000, cz); cam.up.set(0, 0, -1); cam.lookAt(cx, 0, cz); cam.updateProjectionMatrix();
+    const R = T3.ren, larg = 2000, alt = Math.round(larg * H / W), tam = new THREE.Vector2(); R.getSize(tam); const pr = R.getPixelRatio();
+    Object.values(T3.devs || {}).forEach(d => { if (d.A && d.A.luz) d.A.set(true); });   /* foto com todas as luzes acesas; no portal, as apagadas escurecem a região delas */
+    const tm = R.toneMapping, te = R.toneMappingExposure; if (tm === THREE.NoToneMapping) { R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.1; }   /* sem o passe final do modo realista, o tom vem do renderizador */
+    R.setPixelRatio(1); R.setSize(larg, alt, false); if (T3.ticks) T3.ticks.forEach(f => { try { f(performance.now() / 1000); } catch (e) { } });
+    R.shadowMap.needsUpdate = true; R.render(T3.scene, cam); const url = R.domElement.toDataURL('image/jpeg', .9);
+    R.toneMapping = tm; R.toneMappingExposure = te; R.setPixelRatio(pr); R.setSize(tam.x, tam.y, false);
+    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url);
+    toast('Imagem do portal salva. O cliente vê na próxima vez que abrir "Minha casa".', 6000);
+  } catch (e) { toast('Erro: ' + e.message, 6000); }
+  $('#com3').value = ant.com; $('#modo3').value = ant.modo; if ($('#forro3')) $('#forro3').checked = ant.forro; $('#lig3').checked = ant.lig; S.ligs = ant.ligs; build3d(true);
+}
+$('#bImgPortal').onclick = gerarImagemPortal;
 
 /* ===================== importar planta do cliente (imagem / PDF) ===================== */
 $('#bImp').onclick = () => $('#fileIn').click();
