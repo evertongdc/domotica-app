@@ -1511,7 +1511,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 let P = M.novaPlanta('Nova planta');
 const COARSE = (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
 const S = { tool: 'sel', camadas: new Set(), projeto: 'atual', estilo: (() => { try { return localStorage.getItem('planta_estilo') === 'real' ? 'real' : 'arq'; } catch (e) { return 'arq'; } })(), catalogo: undefined, sugestoes: undefined, sel: null, view: { x: -100, y: -100, w: 1400 }, lig: { de: null, tecla: 1 }, outro: null, teclasNovo: 1, esp: 15,
-  dedo: false, interna: true, cotas: true, ligs: true, fotoDataUrl: null, fotoSuja: false, planoId: CTX.plantaId || null, cal: [], prev: null, tab: 'v2d', filtro: '', cadeia: false, rodaZoom: false, p1: null, dig: '', live: null, ultima: null, ativo: null, ghost: null, mouse: null };
+  dedo: false, interna: true, cotas: (() => { try { return localStorage.getItem('planta_cotas') === '1'; } catch (e) { return false; } })(), ligs: true, fotoDataUrl: null, fotoSuja: false, planoId: CTX.plantaId || null, cal: [], prev: null, tab: 'v2d', filtro: '', cadeia: false, rodaZoom: false, p1: null, dig: '', live: null, ultima: null, ativo: null, ghost: null, mouse: null };
 const undo = [], redo = [];
 S.multi = [];
 const ptrs = new Map(); let gest = null;
@@ -1663,7 +1663,7 @@ function renderSVG() {
     }
     s += '<circle cx="' + b.x + '" cy="' + b.y + '" r="' + 4 * k + '" fill="' + cor + '" style="pointer-events:none"/>';
     s += '<line data-k="ligacao" data-id="' + l.id + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '" stroke="transparent" stroke-width="' + (COARSE ? 28 : 14) + '" vector-effect="non-scaling-stroke"/>';
-    if (l.tecla && !S.lod) s += '<text x="' + (a.x + (b.x - a.x) * .18) + '" y="' + (a.y + (b.y - a.y) * .18 - 4 * k) + '" text-anchor="middle" font-size="' + 11 * k + '" font-weight="800" fill="' + cor + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">T' + l.tecla + '</text>';
+    if (l.tecla && !S.lod && sel && sel.k === 'ponto' && sel.id === l.de) s += '<text x="' + (a.x + (b.x - a.x) * .18) + '" y="' + (a.y + (b.y - a.y) * .18 - 4 * k) + '" text-anchor="middle" font-size="' + 11 * k + '" font-weight="800" fill="' + cor + '" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">T' + l.tecla + '</text>';
   });
   // pontos
   const sz = Math.max(26, 19 * k) * (S.lod === 2 ? .45 : S.lod === 1 ? .7 : 1);
@@ -2187,7 +2187,7 @@ function setPath(o, path, v) { const ks = path.split('.'); let t = o; for (let i
 $('#panel').addEventListener('change', e => {
   const t = e.target; if (t.id === 'espSel') { S.esp = +t.value; return; }
   if (t.id === 'chInt') { S.interna = t.checked; return renderSVG(); }
-  if (t.id === 'chCotas') { S.cotas = t.checked; return renderSVG(); }
+  if (t.id === 'chCotas') { S.cotas = t.checked; try { localStorage.setItem('planta_cotas', t.checked ? '1' : '0'); } catch (e) { } return renderSVG(); }
   if (t.id === 'chNomesCom') { S.nomesCom = t.checked; try { localStorage.setItem('planta_nomes_comodos', t.checked ? '1' : '0'); } catch (e) { } return renderSVG(); }
   if (t.id === 'chNomes') { S.nomes = t.checked; try { localStorage.setItem('planta_nomes', t.checked ? '1' : '0'); } catch (e) { } return renderSVG(); }
   if (t.id === 'chLigs') { S.ligs = t.checked; const lg = $('#lig3'); if (lg) lg.checked = S.ligs; renderCamadas(); return renderSVG(); }
@@ -2768,7 +2768,7 @@ async function abrir3d() {
     T3.ren.shadowMap.enabled = true; T3.ren.shadowMap.autoUpdate = false; T3.ren.shadowMap.type = THREE.PCFSoftShadowMap; if (THREE.NOVO) T3.ren.outputColorSpace = THREE.SRGBColorSpace; else T3.ren.outputEncoding = THREE.sRGBEncoding;
     T3.scene = new THREE.Scene(); T3.scene.background = new THREE.Color(0xe9eef5);
     T3.cam = new THREE.PerspectiveCamera(40, 1, 5, 12000); T3.ctl = new THREE.OrbitControls(T3.cam, T3.ren.domElement); T3.ctl.enableDamping = true;
-    T3.amb = new THREE.AmbientLight(0xffffff, .5); T3.scene.add(T3.amb); T3.hemi = new THREE.HemisphereLight(0x8fa4c8, 0x1a1410, 0); T3.scene.add(T3.hemi); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); d.castShadow = true; d.shadow.mapSize.set(2048, 2048); d.shadow.bias = -0.0005; T3.scene.add(d); T3.scene.add(d.target); T3.sun = d;
+    T3.amb = new THREE.AmbientLight(0xffffff, .5); T3.scene.add(T3.amb); T3.hemi = new THREE.HemisphereLight(0x8fa4c8, 0x1a1410, 0); T3.scene.add(T3.hemi); const d = new THREE.DirectionalLight(0xffffff, .5); d.position.set(600, 1400, 500); d.castShadow = true; d.shadow.mapSize.set(2048, 2048); d.shadow.bias = -0.0005; d.shadow.normalBias = .8; T3.scene.add(d); T3.scene.add(d.target); T3.sun = d;
     T3.grp = new THREE.Group(); T3.scene.add(T3.grp); T3.ok = true;
     T3.ray = new THREE.Raycaster(); let d0 = null; const el3 = T3.ren.domElement;
     const alvo3 = e => { const r = el3.getBoundingClientRect(); T3.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), T3.cam); const hs = T3.ray.intersectObjects((T3.pick || []).concat(T3.occ || []), false); let h = hs[0], mk = hs.find(q => q.object.userData.marcador);
@@ -3991,7 +3991,7 @@ function build3dTudo(reenquadrar) {
     else if (t === 'fita_led') { L = new THREE.PointLight(0xff3366, 0, 300, DEC(1.4)); L.position.set(k.px, yL - 6, k.pz); A.plI = 1.1 * KLD(); }
     else return;
     if (L.isSpotLight) { const tg = new THREE.Object3D(); tg.position.copy(alvo); g.add(tg); L.target = tg; }
-    if (sombra) { L.castShadow = true; L.shadow.mapSize.set(512, 512); L.shadow.camera.near = 4; L.shadow.camera.far = L.distance || 600; L.shadow.bias = -0.0025; L.shadow.radius = 3; }
+    if (sombra) { L.castShadow = true; L.shadow.mapSize.set(512, 512); L.shadow.camera.near = 4; L.shadow.camera.far = L.distance || 600; L.shadow.bias = -0.0004; L.shadow.normalBias = 1.2; L.shadow.radius = 3; }   /* bias pequeno + normalBias: sem a linha clara serrilhada na base das paredes */
     if (T3.real && A.plI) A.plI *= .45;
     g.add(L); A.pl = L;
     if (t === 'trilho' && A.spotsLocal && A.spotsLocal.length) {   // um foco por spot, cada um apontado para onde foi configurado
