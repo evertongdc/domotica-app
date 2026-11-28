@@ -412,7 +412,8 @@ window.DOMOTICA_CFG = {
   /* vista 3D em ângulo: a imagem vem do editor com a matriz da câmera; cada aparelho é projetado no ponto real (x, altura, y) */
   function ctlProj(m, x, h, y) { var cx = m[0] * x + m[4] * h + m[8] * y + m[12], cy = m[1] * x + m[5] * h + m[9] * y + m[13], w = m[3] * x + m[7] * h + m[11] * y + m[15] || 1; return { u: (cx / w + 1) / 2 * 100, v: (1 - cy / w) / 2 * 100 }; }
   function ctlMapa3D(C) {
-    var pl = C.planta, cam = pl.cam, bruto = {}; (pl.aparelhos || []).forEach(function (q) { if (q.x != null && q.y != null) bruto[q.id] = ctlProj(cam.m, +q.x, +(q.h != null ? q.h : 110), +q.y); });
+    var pl = C.planta, cam = pl.cam, bruto = {}, tipo = {}; C.aparelhos.forEach(function (a) { tipo[a.id] = ctlTipo(a.tipo); });
+    (pl.aparelhos || []).forEach(function (q) { if (q.x != null && q.y != null) bruto[q.id] = ctlProj(cam.m, +q.x, tipo[q.id] === 'luz' ? 0 : +(q.h != null ? q.h : 110), +q.y); });   /* luz: marcada no piso, embaixo da lâmpada (onde cai o brilho) */
     var grupos = {}; C.aparelhos.forEach(function (a) { var p = bruto[a.id]; if (!p) return; var k = Math.round(p.u * 2) + ',' + Math.round(p.v * 2); (grupos[k] = grupos[k] || []).push({ a: a, p: p }); });
     var pos = {}; Object.keys(grupos).forEach(function (k) { var g = grupos[k]; g.forEach(function (it, i) { if (g.length === 1) { pos[it.a.id] = it.p; return; } pos[it.a.id] = { u: it.p.u + (i - (g.length - 1) / 2) * 3.2, v: it.p.v }; }); });   /* mesmo ponto (ex.: teclas do mesmo interruptor): lado a lado, alinhados */
     var brilho = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz' && ctlLigado(a) && bruto[a.id]; }).map(function (a) { var p = bruto[a.id]; return '<i class="glow" style="left:' + p.u.toFixed(2) + '%;top:' + p.v.toFixed(2) + '%"></i>'; }).join('');
