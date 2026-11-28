@@ -334,7 +334,7 @@ window.DOMOTICA_CFG = {
       <div id="bar3d">
         <label style="margin:0">Pé-direito</label><input id="pe3" type="number" style="width:84px"> <span class="note">cm</span>
         <button id="bMotor" title="Troca o motor gráfico do 3D: clássico (estável) ou novo (beta, com oclusão de luz GTAO)">Motor: clássico</button><select id="vis3" title="Visual do 3D"><option value="real">Realista</option><option value="realleve">Realista (leve)</option><option value="noite">Noturno</option><option value="dia">Claro</option></select>
-        <select id="modo3"><option value="solida">Paredes sólidas</option><option value="vidro">Paredes translúcidas</option><option value="corte">Corte (110 cm)</option></select>
+        <select id="modo3"><option value="limpo">Visual limpo (paredes baixas)</option><option value="solida">Paredes sólidas</option><option value="vidro">Paredes translúcidas</option><option value="corte">Corte (110 cm)</option></select>
         <label style="margin:0"><input type="checkbox" id="lig3" checked style="width:auto"> ligações</label>
         <label style="margin:0"><input type="checkbox" id="forro3" checked style="width:auto"> forro/teto</label>
         <span id="layerbar3" style="display:flex;gap:5px;flex-wrap:wrap"></span>
@@ -2789,7 +2789,7 @@ async function abrir3d() {
       if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; if (THREE.WEBGPU) T3.scene.traverse(o => { if (o.isLight && o.castShadow && o.shadow) { o.shadow.autoUpdate = false; o.shadow.needsUpdate = true; } }); T3.sombraSuja = false; T3.wake(350); }
       const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update();
       const c = T3.cam, kc = c.position.x.toFixed(1) + '|' + c.position.y.toFixed(1) + '|' + c.position.z.toFixed(1) + '|' + c.quaternion.x.toFixed(4) + '|' + c.quaternion.y.toFixed(4) + '|' + c.quaternion.z.toFixed(4) + '|' + c.fov + '|' + T3.ren.domElement.width;
-      if (kc !== T3.kc) { T3.kc = kc; T3.mover(); }
+      if (kc !== T3.kc) { T3.kc = kc; T3.mover(); if (T3.limpoAz != null && !T3.fp.on) { const az = Math.round(Math.atan2(c.position.x - T3.ctl.target.x, c.position.z - T3.ctl.target.z) / (Math.PI / 8)); if (az !== T3.limpoAz) { clearTimeout(T3.limpoT); T3.limpoT = setTimeout(() => { if ($('#modo3').value === 'limpo') build3d(false); }, 350); } } }
       const agora = performance.now(); if (!(T3.fp.on || agora < T3.until || T3.animando())) return;
       const t0 = performance.now(); T3.draw();   // modo único: o mesmo visual parado e em movimento
       T3.stats.quadros++; T3.stats.ocupado += performance.now() - t0;
@@ -3812,9 +3812,14 @@ function build3dTudo(reenquadrar) {
   })());
   const pcache = {}; const corParede = c => pcache[c] || (pcache[c] = new THREE.MeshStandardMaterial({ color: c, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: .9 }));
   const mAlum = new THREE.MeshStandardMaterial({ color: RE ? 0x1a1d22 : 0x8d97a3, metalness: .6, roughness: .35 });
+  /* visual limpo: paredes internas a 125 cm; as de fora viradas para a câmera também baixam, as do fundo ficam inteiras (como uma maquete) */
+  const LIMPO = modo === 'limpo' && !(T3.fp && T3.fp.on), camX = T3.cam ? T3.cam.position.x : 0, camZ = T3.cam ? T3.cam.position.z : 0;
+  const ladoSala = (x, y) => P.comodos.some(c => c.pontos && c.pontos.length > 2 && G.dentro(c.pontos, x, y));
+  const altLimpo = (w, H) => { const q = wallGeo(w), mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2, d = (w.esp || 15) / 2 + 12, a = ladoSala(mx + q.nx * d, my + q.ny * d), b = ladoSala(mx - q.nx * d, my - q.ny * d); if (a && b) return Math.min(125, H); const sg = a ? -1 : 1; return ((camX - mx) * q.nx * sg + (camZ - my) * q.ny * sg) > 0 ? Math.min(125, H) : H; };
+  T3.limpoAz = LIMPO && T3.cam && T3.ctl ? Math.round(Math.atan2(camX - T3.ctl.target.x, camZ - T3.ctl.target.z) / (Math.PI / 8)) : null;
   P.paredes.forEach(w0 => {
     const w = w0.vidro ? Object.assign({}, w0, { esp: 1.2 }) : w0, mWall = w0.vidro ? vidroMat(w0.vidro) : (w0.cor ? corParede(w0.cor) : mWallBase);   // parede de vidro: lâmina fina e material de vidro
-    const Hw = modo === 'corte' ? Math.min(110, altW(w)) : altW(w);
+    const Hw = modo === 'corte' ? Math.min(110, altW(w)) : LIMPO ? altLimpo(w0, altW(w)) : altW(w);
     const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
     let cur = -(w.esp || 15) / 2;
     ops.forEach(o => {
@@ -3822,7 +3827,7 @@ function build3dTudo(reenquadrar) {
       const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min(Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
       if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
       if (y1 > y0) {
-        const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = o.a.tipo;
+        const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = (LIMPO && Hw <= 125 && o.a.tipo === 'porta' && !vid) ? 'vao' : o.a.tipo;   /* visual limpo: porta em parede baixa vira só o vão (sem folha), como numa maquete */
         const pB = (bw, bh, bd, mt, lu, ly, lz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mt); m.position.set(w.x1 + q.ux * lu - q.uy * lz, ly, w.y1 + q.uy * lu + q.ux * lz); m.rotation.y = rotW; m.castShadow = true; m.userData.estatico = true; g.add(m); return m; };
         const mAl = new THREE.MeshStandardMaterial({ color: RE ? 0x15181d : 0x8d97a3, metalness: .55, roughness: .38 }), mWd = new THREE.MeshStandardMaterial({ color: RE ? 0x6a4528 : 0xa8743b, roughness: .5, map: RE ? texGrao() : null });
         const mMt = new THREE.MeshStandardMaterial({ color: RE ? 0x23272d : 0x59616d, metalness: .6, roughness: .45 }), mPr = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: .85, roughness: .25 }), mAcab = new THREE.MeshStandardMaterial({ color: RE ? 0x353a42 : 0xdfe3e8, roughness: .6 });
@@ -3908,7 +3913,7 @@ function build3dTudo(reenquadrar) {
     const nT = Math.max(2, Math.round(len / 160)); for (let i = 0; i <= nT; i++) { const xx = -len / 2 + len * i / nT; add(grupo, 8, 9, span + 8, madeira, xx, yW - yR - 5, 0); add(grupo, 7, rise - 2, 7, madeira, xx, -rise / 2 - 1, 0); }   // tesouras
     [-1, 1].forEach(sg => { const sh = new THREE.Shape(); sh.moveTo(-span / 2, yW - yR); sh.lineTo(span / 2, yW - yR); sh.lineTo(0, 0); const geo = new THREE.ShapeGeometry(sh); geo.rotateY(Math.PI / 2); const mEmp = mWallBase.clone(); mEmp.side = THREE.DoubleSide; const ms = new THREE.Mesh(geo, mEmp); ms.position.x = sg * len / 2; ms.receiveShadow = true; grupo.add(ms); });   // empenas
   };
-  if ($('#forro3') && $('#forro3').checked && modo !== 'corte') P.comodos.forEach(c => {
+  if ($('#forro3') && $('#forro3').checked && modo !== 'corte' && !LIMPO) P.comodos.forEach(c => {
     const tipoTeto = c.forro || '';
     if (tipoTeto === 'colonial' || tipoTeto === 'convencional') { telhado3(c, tipoTeto); return; }
     if (tipoTeto === 'aberto') return;                       // teto aberto: sem cobertura
