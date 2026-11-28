@@ -31,7 +31,9 @@ header#top{display:flex;gap:8px;align-items:center;padding:8px 10px;background:v
 header#top input{width:auto;flex:1 1 130px;max-width:230px}
 .brand{font-weight:800;letter-spacing:.3px}.brand span{color:var(--or)}
 .sp{flex:1}
-nav#tabs{display:flex;gap:6px;padding:6px 10px;overflow-x:auto}
+nav#tabs{display:flex;gap:6px;padding:0;overflow-x:auto;flex:none}
+header#top #fCliente,header#top #fImovel,header#top #bEstilo{display:none}
+header#top{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:4px}header#top #bSalvar{position:sticky;right:0;z-index:2}header#top::-webkit-scrollbar{display:none}header#top button{flex:none;white-space:nowrap;padding:6px 10px;font-size:13px}header#top #fNome{flex:0 1 170px;min-width:110px}header#top .brand{white-space:nowrap;flex:none}@media (max-width:1400px){header#top .brand{display:none}}header#top #stSalvo{min-width:60px;max-width:120px;overflow:hidden;text-overflow:ellipsis}nav#tabs{gap:4px}nav#tabs button{flex:none;white-space:nowrap;padding:5px 8px;font-size:13px}   /* pedidos do Éverton: sem Cliente/Imóvel/ícones no cabeçalho (dados vêm do app; botão Dados no celular) */
 nav#tabs button.on{background:linear-gradient(135deg,var(--or),#ff9a3d);color:#1a1000;font-weight:700;outline:none}
 .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--er);color:#fff;font-size:11px;text-align:center}
 .badge.ok{background:var(--ok)}
@@ -103,7 +105,7 @@ tr.click{cursor:pointer}tr.click:hover{background:var(--gl)}
   header#top #fNome{flex:1 0 120px;min-width:120px;max-width:none}
   header#top #bSalvar{position:sticky;right:0}
   #bDados{display:inline-block}
-  nav#tabs{gap:4px;padding:4px 8px}
+  nav#tabs{gap:4px;padding:0}
   nav#tabs button{flex:none;white-space:nowrap;padding:5px 10px;font-size:13px}
   /* o desenho ocupa a tela toda; ferramentas e detalhes sobem de baixo quando chamados */
   #v2d{flex-direction:column;overflow:hidden;padding:0 6px 6px}
@@ -217,30 +219,30 @@ window.DOMOTICA_CFG = {
   <header id="top">
     <div class="brand">Planta <span>Domótica</span></div>
     <input id="fNome" placeholder="Nome da planta">
+    <nav id="tabs">
+      <button data-tab="v2d" class="on">Planta 2D<span id="badgeCom" class="badge" style="background:#475569">0/0</span></button>
+      <button data-tab="v3d">3D</button>
+      <button data-tab="vpontos">Pontos</button>
+      <button data-tab="vapps">Apps<span id="badgeApps" class="badge ok">0</span></button>
+      <button data-tab="vcenas">Cenas</button>
+      <button data-tab="vchecks">Checagem<span id="badge" class="badge ok">0</span></button>
+    </nav>
     <input id="fCliente" placeholder="Cliente (ID)">
     <input id="fImovel" placeholder="Imóvel / obra">
     <div class="sp"></div>
     <span id="stSalvo" class="pill" style="white-space:nowrap">—</span>
     <button id="bAtalhos" title="Atalhos de teclado (?)">⌨</button>
     <button id="bUndo" title="Desfazer">↶</button><button id="bRedo" title="Refazer">↷</button>
-    <button id="bImp">Planta do cliente</button>
+    <button id="bImp" title="Importar a planta do cliente (foto, imagem ou PDF)">Importar</button>
     <button id="bAbrir">Abrir</button>
     <button id="bEstilo" title="Alterna o desenho dos aparelhos: símbolo de projeto arquitetônico ou o aparelho real (2D e 3D)">Ícones: projeto</button>
     <button id="bModo" title="Alterna entre o padrão atual (como está hoje) e o projeto final (como vai ficar)">Padrão atual</button>
     <button id="bDados">Dados</button>
-    <button id="bTema" title="Tema: automático (segue o aparelho), claro ou escuro">Tema: auto</button>
+    <button id="bTema" title="Tema: automático (segue o aparelho), claro ou escuro">◐</button>
     <button id="bExp">Exportar</button>
-    <button id="bShare">Compartilhar</button>
+    <button id="bShare" title="Compartilhar com o cliente (link para ver e aprovar)">Link</button>
     <button id="bSalvar" class="pri">Salvar</button>
   </header>
-  <nav id="tabs">
-    <button data-tab="v2d" class="on">Planta 2D<span id="badgeCom" class="badge" style="background:#475569">0/0</span></button>
-    <button data-tab="v3d">3D</button>
-    <button data-tab="vpontos">Pontos</button>
-    <button data-tab="vapps">Apps<span id="badgeApps" class="badge ok">0</span></button>
-    <button data-tab="vcenas">Cenas</button>
-    <button data-tab="vchecks">Checagem<span id="badge" class="badge ok">0</span></button>
-  </nav>
   <main>
     <section id="v2d" class="view on">
       <div id="tools"></div>
@@ -1780,7 +1782,7 @@ function renderHint() {
   const f = FERR.find(x => x[0] === S.tool);
   if (S.tool.indexOf('piso:') === 0) h = 'Toque dentro de um cômodo para aplicar o piso ' + ((PISOS.find(q => 'piso:' + q[0] === S.tool) || [0, ''])[1]).toLowerCase() + (S.pisoCor ? ' na cor escolhida' : '') + '.';
   else if (f) h = f[2]; else if (S.tool.indexOf('p:') === 0) { const T = M.TIPOS[S.tool.slice(2)]; h = 'Toque na planta para colocar: ' + T.nome + (T.parede ? ' (gruda na parede mais próxima)' : '') + '.'; }
-  let x = '<span>' + esc(h) + '</span>';
+  let x = (h && S.tool !== 'sel') ? '<span>' + esc(h) + '</span>' : '';   /* sem a dica fixa do Selecionar */
   if (S.tool === 'cal') x += '<span>' + S.cal.length + '/2 pontos</span>';
   if (S.tool === 'parede' && S.vidro) x += '<span class="chips">' + TIPOS_VIDRO.map(v => '<button data-vt="' + v[0] + '"' + (S.vidro === v[0] ? ' class="on"' : '') + '>' + v[1] + '</button>').join('') + '</span>';
   if (S.tool === 'parede') x += '<span class="chips"><button data-h="cadeia"' + (S.cadeia ? ' class="on"' : '') + '>Encadear paredes: ' + (S.cadeia ? 'sim' : 'não') + '</button></span>' + (S.p1 ? '<span>Início marcado · clique no fim · digite medida + Enter · Esc cancela</span>' : '');
@@ -4311,7 +4313,7 @@ async function gerarPDF(exp, comLista, cap3d) {
   doc.save(nomeArquivo() + '.pdf');
 }
 $('#bTema').onclick = () => { const h = document.documentElement, at = h.getAttribute('data-tema'), nx = !at ? 'claro' : at === 'claro' ? 'escuro' : null; if (nx) h.setAttribute('data-tema', nx); else h.removeAttribute('data-tema'); try { if (nx) localStorage.setItem('planta_tema', nx); else localStorage.removeItem('planta_tema'); } catch (e) { } rotuloTema(); };
-function rotuloTema() { const at = document.documentElement.getAttribute('data-tema'); $('#bTema').textContent = 'Tema: ' + (at || 'auto'); }
+function rotuloTema() { const at = document.documentElement.getAttribute('data-tema'); $('#bTema').textContent = at === 'claro' ? '☀' : at === 'escuro' ? '☾' : '◐'; $('#bTema').title = 'Tema: ' + (at || 'automático') + ' (toque para trocar)'; }
 rotuloTema();
 $('#bExp').onclick = async () => {
   if (!P.paredes.length) return toast('Desenhe alguma coisa antes de exportar.');
@@ -4492,7 +4494,7 @@ async function salvar(silencioso) {
 
 /* ===================== salvamento automático ===================== */
 let autoT = null, salvandoAuto = false;
-function marcaStatus(t) { const el = $('#stSalvo'); if (!el) return; let so = 0; try { so = M.soltos(P).length; } catch (e) { } el.textContent = t + (so ? ' · ⚠ ' + so + ' solto' + (so > 1 ? 's' : '') : ''); el.title = so ? 'Luzes sem interruptor vinculado. Veja na aba Checagem.' : ''; }
+function marcaStatus(t) { const el = $('#stSalvo'); if (!el) return; let so = 0; try { so = M.soltos(P).length; } catch (e) { } el.textContent = t + (so ? ' · ⚠ ' + so + ' solto' + (so > 1 ? 's' : '') : ''); el.title = el.textContent + (so ? ' — luzes sem interruptor vinculado. Veja na aba Checagem.' : ''); }
 function agendaAuto() { if (window.PLANTA_VIEW || !S.dirty) return; marcaStatus('Alterações não salvas…'); clearTimeout(autoT); autoT = setTimeout(autoSalvar, 2200); }
 async function autoSalvar() {
   clearTimeout(autoT); if (salvandoAuto || !S.dirty || !P.paredes.length) return; salvandoAuto = true; const rev = S.rev; marcaStatus('Salvando…');
