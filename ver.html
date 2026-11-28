@@ -3753,12 +3753,14 @@ function build3dTudo(reenquadrar) {
     const Hw = modo === 'corte' ? Math.min(110, altW(w)) : LIMPO ? Math.min(125, altW(w)) : altW(w);
     const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
     let cur = -(w.esp || 15) / 2;
+    const someJan = o => LIMPO && o.a.tipo === 'janela' && Hw - (o.a.peitoril || 100) < 40;   /* visual limpo: parede baixa abaixo do peitoril esconde a janela (como no ASNO) */
     ops.forEach(o => {
       box(cur, o.u0, 0, Hw, w, q, mWall);
+      if (someJan(o)) { box(o.u0, o.u1, 0, Hw, w, q, mWall); cur = o.u1; return; }
       const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min((LIMPO && o.a.tipo === 'portao') ? Math.max(Hw, altW(w)) : Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));   /* visual limpo: portão mantém a altura inteira */
       if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
       if (y1 > y0) {
-        const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = (LIMPO && Hw <= 125 && o.a.tipo === 'porta' && !vid) ? 'vao' : o.a.tipo;   /* visual limpo: porta em parede baixa vira só o vão (sem folha), como numa maquete */
+        const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = (LIMPO && Hw <= 125 && o.a.tipo === 'porta' && !vid) ? 'portaBaixa' : o.a.tipo;   /* visual limpo: porta em parede baixa vira placa fechada cortada na altura da parede (como no ASNO) */
         const pB = (bw, bh, bd, mt, lu, ly, lz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), mt); m.position.set(w.x1 + q.ux * lu - q.uy * lz, ly, w.y1 + q.uy * lu + q.ux * lz); m.rotation.y = rotW; m.castShadow = true; m.userData.estatico = true; g.add(m); return m; };
         const mAl = new THREE.MeshStandardMaterial({ color: RE ? 0x15181d : 0x8d97a3, metalness: .55, roughness: .38 }), mWd = new THREE.MeshStandardMaterial({ color: RE ? 0x6a4528 : 0xa8743b, roughness: .5, map: RE ? texGrao() : null });
         const mMt = new THREE.MeshStandardMaterial({ color: RE ? 0x23272d : 0x59616d, metalness: .6, roughness: .45 }), mPr = new THREE.MeshStandardMaterial({ color: 0xc9ced6, metalness: .85, roughness: .25 }), mAcab = new THREE.MeshStandardMaterial({ color: RE ? 0x353a42 : 0xdfe3e8, roughness: .6 });
@@ -3778,6 +3780,7 @@ function build3dTudo(reenquadrar) {
             const lf = pB(3, hh - 3, wl - 5, mWd, hx + db * 2.5, y0 + (hh - 3) / 2, sd * (esp / 2 + (wl - 5) / 2 + 1)); lf.castShadow = true;   // folha aberta (90°)
             pB(5, 2, 2, mPr, hx + db * 6.5, y0 + hh * .48, sd * (esp / 2 + wl - 12));
           }
+        } else if (tipoA === 'portaBaixa') { pB(wl - 1.5, hh, Math.min(esp - 2, 5), mWd, cx, y0 + hh / 2, 0);
         } else if (tipoA === 'portal') {   // vão livre com batente, sem folha
           [-1, 1].forEach(sg => pB(5, hh + 3, esp + 4, mAcab, cx + sg * (wl / 2 - 2.5), (y0 + y1) / 2 + 1.5, 0)); pB(wl, 5, esp + 4, mAcab, cx, y1 - 1.5, 0);
         } else if (tipoA === 'portao') {
@@ -3807,7 +3810,7 @@ function build3dTudo(reenquadrar) {
     const HfL = LIMPO && !w0.vidro ? altW(w) : 0, infL = HfL > 125 ? infoLimpo(w0) : null, capG = infL ? new THREE.Group() : null;
     if (!w0.vidro && modo !== 'vidro') { const wc = Object.assign({}, w, { esp: (w.esp || 15) + .6 }); let c0 = -(w.esp || 15) / 2 - .3;   /* borda do topo, interrompida nos vãos que chegam ao topo; na parede de fora do visual limpo ela alterna com a parte de cima */
       const cap = (a0, a1) => capG ? boxTo(capG, a0, a1, Hw, Hw + 1.4, wc, q, mTop) : box(a0, a1, Hw, Hw + 1.4, wc, q, mTop);
-      ops.forEach(o => { const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)); if (y1 >= Hw) { cap(c0, o.u0); c0 = o.u1; } });
+      ops.forEach(o => { const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)); if (y1 >= Hw && !(LIMPO && (o.a.tipo === 'porta' || someJan(o)))) { cap(c0, o.u0); c0 = o.u1; } });
       cap(c0, q.L + (w.esp || 15) / 2 + .3); if (capG) g.add(capG); }
     if (LIMPO && !w0.vidro) { const Hf = HfL, inf = infL;
       if (inf) { const grp = new THREE.Group(), B0 = 125; let cu = -(w.esp || 15) / 2;
