@@ -401,11 +401,8 @@ window.DOMOTICA_CFG = {
     var lista = Object.keys(porC).sort().map(function (k) { return '<div class="grp">' + esc(k) + '</div>' + porC[k].map(function (a) { var on = ctlLigado(a), pe = C.pend[a.id];
       var st = pe ? 'Enviando…' : (on ? 'Ligado' : 'Desligado') + (a.estado && a.estado.confirmado === false ? ' · sem confirmação' : '') + (a.cliente_pode ? '' : ' · só visualização');
       return '<div class="ap' + (on ? ' on' : '') + '"><span class="ic">' + ctlIco(ctlTipo(a.tipo)) + '</span><div class="t"><b>' + esc(a.nome) + '</b><span>' + st + '</span></div><button class="sw' + (on ? ' on' : '') + '" data-ctl="' + esc(a.id) + '"' + (a.cliente_pode && !pe ? '' : ' disabled') + ' aria-label="' + (on ? 'Desligar ' : 'Ligar ') + esc(a.nome) + '"></button></div>'; }).join(''); }).join('');
-    var evs = C.aparelhos.filter(function (a) { return a.estado_em; }).sort(function (a, b) { return Date.parse(b.estado_em) - Date.parse(a.estado_em); }).slice(0, 6).map(function (a) {
-      return '<div class="ev"><time>' + new Date(a.estado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</time><div>' + esc(a.nome) + ' · ' + (ctlLigado(a) ? 'ligado' : 'desligado') + '</div></div>'; }).join('');
     return '<div class="ctl" id="ctl"><div class="cab"><b>' + esc(C.casa ? C.casa.nome : 'Minha casa') + '</b><span class="cm">' + acesas + ' de ' + luzes.length + ' luzes acesas</span></div>' +
       ctlMapa(C) + cenas + '<h4>Aparelhos</h4><div class="lst">' + lista + '</div>' +
-      (evs ? '<h4>Atividade</h4>' + evs : '') +
       '<div class="cm" style="margin:12px 4px 2px">Com o cadeado, o aparelho é só para ver. Para liberar o controle pelo portal, fale com a Domótica.</div></div>';
   }
   function repintarControle() { var el = document.getElementById('ctl'); if (el) el.outerHTML = vControle(); }
