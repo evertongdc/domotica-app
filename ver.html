@@ -4195,7 +4195,7 @@ async function gerarImagemPortal() {
     let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9; [[x0, y0], [x0 + W, y0], [x0, y0 + H], [x0 + W, y0 + H]].forEach(q => [0, 280].forEach(h => { const v = new THREE.Vector3(q[0], h, q[1]).applyMatrix4(cam.matrixWorldInverse); mnx = Math.min(mnx, v.x); mxx = Math.max(mxx, v.x); mny = Math.min(mny, v.y); mxy = Math.max(mxy, v.y); }));
     const mg = .03 * Math.max(mxx - mnx, mxy - mny); cam.left = mnx - mg; cam.right = mxx + mg; cam.bottom = mny - mg; cam.top = mxy + mg; cam.updateProjectionMatrix();
     const R = T3.ren, larg = 2000, alt = Math.round(larg * (cam.top - cam.bottom) / (cam.right - cam.left)), tam = new THREE.Vector2(); R.getSize(tam); const pr = R.getPixelRatio();
-    Object.values(T3.devs || {}).forEach(d => { if (d.A && d.A.luz) d.A.set(false); });
+    Object.values(T3.devs || {}).forEach(d => { if (d.A && d.A.luz) { d.A.set(false); if (ehTeto(d.p)) d.A.g.visible = false; } });   /* lâmpada de teto não aparece (ficaria voando acima das paredes baixas); o portal marca a luz no piso */
     const tm = R.toneMapping, te = R.toneMappingExposure; if (tm === THREE.NoToneMapping) { R.toneMapping = THREE.ACESFilmicToneMapping; } R.toneMappingExposure = 1;
     R.setPixelRatio(1); R.setSize(larg, alt, false); if (T3.ticks) T3.ticks.forEach(f => { try { f(performance.now() / 1000); } catch (e) { } });
     R.shadowMap.needsUpdate = true; R.render(T3.scene, cam);
