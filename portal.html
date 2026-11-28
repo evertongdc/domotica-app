@@ -110,6 +110,31 @@ body.on-auth .chk input{padding:0;width:16px;height:16px}
 .sheet .acts{margin-top:16px}
 @media (min-width:640px){.ov{align-items:center}.sheet{border-radius:20px}}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#222c40;border:1px solid var(--line);padding:10px 16px;border-radius:12px;z-index:30;display:none;max-width:90vw}
+/* ---------- painel Controle (estilo realista, fixo e previsível) ---------- */
+.ctl{--c0:#151515;--c1:#222221;--c2:#2c2b29;--c3:#383631;--cg:#e9c36b;--cgt:#f2d084;--ct:#f4f3ef;--cm:#aaa9a4;background:var(--c0);color:var(--ct);border-radius:20px;padding:14px;margin:0 0 14px;border:1px solid #ffffff12}
+.ctl .cab{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:2px 4px 12px}.ctl .cab b{font-size:1.05em}.ctl .cm{color:var(--cm);font-size:.8em}
+.ctl .mapa{position:relative;width:100%;border-radius:14px;overflow:hidden;background:#1b1a18}
+.ctl .mapa svg{display:block;width:100%;height:auto}
+.ctl .hs{position:absolute;inset:0;pointer-events:none}
+.ctl .hot{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:#242424e6;color:#bcbcbc;display:grid;place-items:center;border:1px solid #ffffff40;box-shadow:0 2px 6px #0009;pointer-events:auto;cursor:pointer;padding:0}
+.ctl .hot svg{width:15px;height:15px}.ctl .hot.on{color:#ffe1a0;background:#594522e6;border-color:#f4cc79;box-shadow:0 0 12px #f4ba6077}
+.ctl .hot.lk{opacity:.75}.ctl .hot.lk:after{content:'';position:absolute;right:-3px;bottom:-3px;width:11px;height:11px;border-radius:50%;background:#555 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eee' stroke-width='3'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E") center/8px no-repeat}
+.ctl .hot.pend{animation:ctlp 1s infinite}@keyframes ctlp{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.ctl .hot.pend{animation:none;opacity:.6}}
+.ctl h4{font-size:.95em;font-weight:600;margin:16px 4px 10px}
+.ctl .cenas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ctl .cena{background:var(--c3);border:0;border-radius:13px;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font-size:.78em;color:#dedbd4;cursor:pointer;padding:8px 4px;text-align:center}
+.ctl .cena.on{background:#52452c;color:var(--cgt)}.ctl .cena svg{width:21px;height:21px}
+.ctl .lst{background:var(--c1);border-radius:14px;padding:4px 12px}
+.ctl .ap{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #ffffff10}.ctl .ap:first-child{border-top:0}
+.ctl .ap .ic{width:34px;height:34px;border-radius:10px;background:var(--c3);display:grid;place-items:center;color:#c9c6be;flex:none}.ctl .ap .ic svg{width:18px;height:18px}.ctl .ap.on .ic{background:#594522;color:#ffe1a0}
+.ctl .ap .t{flex:1;min-width:0}.ctl .ap .t b{display:block;font-weight:500;font-size:.92em;overflow-wrap:anywhere}.ctl .ap .t span{font-size:.76em;color:var(--cm)}
+.ctl .sw{width:46px;height:26px;background:#444;border-radius:20px;padding:3px;border:0;flex:none;cursor:pointer}.ctl .sw:after{content:'';display:block;width:20px;height:20px;background:#aaa;border-radius:50%;transition:transform .2s}.ctl .sw.on:after{transform:translateX(20px);background:#f0ca6b}
+.ctl .sw[disabled]{opacity:.4;cursor:default}
+.ctl .grp{font-size:.72em;letter-spacing:.08em;text-transform:uppercase;color:var(--cm);margin:12px 2px 2px}
+.ctl .ev{display:grid;grid-template-columns:44px 1fr;gap:10px;margin:8px 0;align-items:center}.ctl .ev time{font-size:.72em;color:#b9b8b3}.ctl .ev div{padding:9px 11px;border-radius:10px;background:#2b2b2b;border-left:2px solid #e3be65;font-size:.85em}
+.ctl .vazio{color:var(--cm);font-size:.85em;padding:10px 4px}
+.ctl .mapa .hot svg{width:14px;height:14px}@media(max-width:420px){.ctl .hot{width:21px;height:21px}.ctl .hot svg{width:12px;height:12px}.ctl .cenas{grid-template-columns:repeat(2,minmax(0,1fr))}.ctl .cena{flex-direction:row;min-height:48px}}
 </style>
 <script>try{var _t=localStorage.getItem('dom_tema');if(_t==='claro'||_t==='escuro')document.documentElement.setAttribute('data-tema',_t)}catch(e){}</script>
 </head>
@@ -287,10 +312,109 @@ window.DOMOTICA_CFG = {
       if (!q[4].error) P.ocorrencias = q[4].data || [];
     } catch (e) { /* sem monitoramento: o portal segue normal */ }
     D.protect = P;
+    D.ctl = await carregarControle(P);
   }
   var PL_NOME = { connect: 'Domótica Connect', protect: 'Domótica Protect' }, PL_ST = { ativo: ['Ativo', 'b-ok'], suspenso: ['Suspenso', 'b-warn'], proposta: ['Proposta', 'b-blue'] };
   // texto para o cliente: claro e sem alarme; a causa só aparece quando há evidência (o técnico vê o detalhe)
   var OC_CLI = { servidor_sem_comunicacao: 'Sem comunicação com a central da sua casa', servidor_reiniciou: 'A central da sua casa reiniciou', internet: 'Falha de comunicação da internet', integracao: 'Alguns aparelhos de uma mesma marca pararam de responder', dispositivo_offline: 'Aparelho sem conexão', desatualizado: 'Sem dados recentes de um sensor', autorizacao_revogada: 'Acesso ao monitoramento revogado' };
+
+  /* ---------- painel Controle: planta fixa vista de cima, cenas e aparelhos; o cliente só comanda o que a Domótica liberar ---------- */
+  var CTL_ICO = {
+    luz: '<path d="M9 18h6m-5 3h4M8 15a7 7 0 1 1 8 0l-1 2H9z"/>',
+    tomada: '<path d="M8 3v6m8-6v6M5 9h14v3a7 7 0 0 1-14 0zM12 19v3"/>',
+    interruptor: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M12 7v5"/>',
+    vent: '<circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7s3 4-2 7M14 12c4 0 7 1 7 4s-4 3-7-2M12 14c0 4-1 7-4 7s-3-4 2-7M10 12c-4 0-7-1-7-4s4-3 7 2"/>',
+    estrela: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>', sol: '<circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/>',
+    lua: '<path d="M21 13a9 9 0 1 1-10-10 8 8 0 0 0 10 10z"/>', filme: '<rect x="3" y="8" width="18" height="13" rx="2"/><path d="m3 8 18-4M7 3l3 4m4-5 3 4"/>',
+    sofa: '<path d="M4 11V8a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v3M2 18v-5a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v5zM5 18v2m14-2v2"/>', porta: '<path d="M6 21V3h12v18M3 21h18M14 12h.01"/>',
+    festa: '<path d="M5 21 9 9l6 6zM14 4l1 2m4-1-2 2m3 3-2-1M12 2v2"/>'
+  };
+  function ctlIco(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + (CTL_ICO[n] || CTL_ICO.luz) + '</svg>'; }
+  function ctlTipo(t) { t = String(t || ''); if (/tomada/.test(t)) return 'tomada'; if (/ventilador|climatizador/.test(t)) return 'vent'; if (t === 'interruptor' || t === 'botao') return 'interruptor'; return 'luz'; }
+  function ctlLigado(a) { return !!(a.estado && a.estado.on === true); }
+  async function carregarControle(P) {
+    var C = { casa: null, planta: null, aparelhos: [], cenas: [], pend: {} };
+    try {
+      var r = await sb.rpc('portal_aparelhos', { p_residencia: null });
+      if (r.error || !(r.data || []).length) return C;
+      C.aparelhos = r.data; C.casa = (P.casas.filter(function (c) { return c.id === r.data[0].residencia_id; })[0]) || { id: r.data[0].residencia_id, nome: 'Minha casa' };
+      var q = await Promise.all([sb.rpc('portal_planta', { p_residencia: C.casa.id }), sb.from('cenas_casa').select('id, nome, icone, itens, ordem').eq('residencia_id', C.casa.id).order('ordem')]);
+      if (!q[0].error) C.planta = q[0].data; if (!q[1].error) C.cenas = q[1].data || [];
+    } catch (e) { /* sem painel: o portal segue normal */ }
+    return C;
+  }
+  function ctlMapa(C) {
+    var pl = C.planta; if (!pl || !(pl.comodos || []).length) return '';
+    var xs = [], ys = []; pl.comodos.forEach(function (c) { (c.pontos || []).forEach(function (q) { xs.push(+q[0]); ys.push(+q[1]); }); }); pl.paredes.forEach(function (w) { xs.push(+w.x1, +w.x2); ys.push(+w.y1, +w.y2); });
+    var pad = 40, x0 = Math.min.apply(null, xs) - pad, y0 = Math.min.apply(null, ys) - pad, W = Math.max.apply(null, xs) + pad - x0, H = Math.max.apply(null, ys) + pad - y0;
+    var piso = function (c) { return /externa|quintal|jardim|garagem/i.test(c.nome || '') ? 'url(#pe)' : /madeira|vin/.test(c.piso || '') ? 'url(#pm)' : 'url(#pp)'; };
+    var s = '<svg viewBox="' + x0 + ' ' + y0 + ' ' + W + ' ' + H + '" role="img" aria-label="Planta da casa vista de cima"><defs>' +
+      '<pattern id="pm" width="180" height="48" patternUnits="userSpaceOnUse"><rect width="180" height="24" fill="#74513a"/><rect y="24" width="180" height="24" fill="#6a4932"/><rect x="0" y="6" width="180" height="1" fill="#7d5a41" opacity=".6"/><rect x="0" y="31" width="180" height="1" fill="#5e412c" opacity=".7"/><rect y="23" width="180" height="1.5" fill="#3d2a1c"/><rect y="47" width="180" height="1.5" fill="#3d2a1c"/><rect x="70" width="1.5" height="24" fill="#3d2a1c"/><rect x="150" y="24" width="1.5" height="24" fill="#3d2a1c"/></pattern>' +
+      '<pattern id="pp" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="60" height="60" fill="#8f8a82"/><path d="M8 14c14 4 22 18 40 22" fill="none" stroke="#a09a91" stroke-width="1" opacity=".5"/><path d="M60 0V60H0" fill="none" stroke="#6f6a63" stroke-width="1.5"/></pattern>' +
+      '<pattern id="pe" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#5d5a52"/><circle cx="10" cy="12" r="1.5" fill="#6b675e"/><circle cx="30" cy="28" r="1.5" fill="#6b675e"/></pattern>' +
+      '<radialGradient id="gl"><stop offset="0" stop-color="#ffd27a" stop-opacity=".75"/><stop offset=".45" stop-color="#ffb347" stop-opacity=".3"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient></defs>';
+    s += '<rect x="' + x0 + '" y="' + y0 + '" width="' + W + '" height="' + H + '" fill="#1b1a18"/>';
+    pl.comodos.forEach(function (c) { if ((c.pontos || []).length > 2) s += '<polygon points="' + c.pontos.map(function (q) { return (+q[0]) + ',' + (+q[1]); }).join(' ') + '" fill="' + piso(c) + '"/>'; });
+    var luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz' && ctlLigado(a); }), pos = ctlPos(C);
+    s += '<rect x="' + x0 + '" y="' + y0 + '" width="' + W + '" height="' + H + '" fill="#000" opacity="' + (luzes.length ? .34 : .5) + '"/>';
+    luzes.forEach(function (a) { var p = pos[a.id]; if (p) s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="230" fill="url(#gl)" style="mix-blend-mode:screen"/>'; });
+    var byId = {}; pl.paredes.forEach(function (w) { byId[w.id] = w; });
+    pl.paredes.forEach(function (w) { s += '<line x1="' + w.x1 + '" y1="' + w.y1 + '" x2="' + w.x2 + '" y2="' + w.y2 + '" stroke="' + (w.vidro ? '#7fb6c9' : '#121212') + '" stroke-width="' + (w.vidro ? 4 : Math.max(10, +w.esp || 15)) + '" stroke-linecap="square"/>'; });
+    (pl.aberturas || []).forEach(function (a) { var w = byId[a.parede]; if (!w) return; var dx = w.x2 - w.x1, dy = w.y2 - w.y1, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, cx = w.x1 + dx * (+a.t || .5), cy = w.y1 + dy * (+a.t || .5), h = (+a.larg || 80) / 2;
+      var x1 = cx - ux * h, y1 = cy - uy * h, x2 = cx + ux * h, y2 = cy + uy * h, jan = a.tipo === 'janela';
+      s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + (jan ? '#9fc6d4' : '#3a3632') + '" stroke-width="' + (jan ? 5 : Math.max(11, (+w.esp || 15) + 1)) + '"/>'; });
+    pl.comodos.forEach(function (c) { var p = c.pontos || []; if (p.length < 3) return; var cx = 0, cy = 0; p.forEach(function (q) { cx += +q[0]; cy += +q[1]; }); cx /= p.length; cy /= p.length;
+      s += '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" font-size="' + Math.max(22, Math.min(W, H) / 30) + '" font-weight="600" fill="#ffffff" fill-opacity=".62" font-family="system-ui,sans-serif" style="pointer-events:none">' + esc(c.nome || '') + '</text>'; });
+    s += '</svg>';
+    var hs = C.aparelhos.map(function (a) { var p = pos[a.id]; if (!p) return ''; var on = ctlLigado(a);
+      return '<button class="hot' + (on ? ' on' : '') + (a.cliente_pode ? '' : ' lk') + (C.pend[a.id] ? ' pend' : '') + '" style="left:' + ((p.x - x0) / W * 100).toFixed(3) + '%;top:' + ((p.y - y0) / H * 100).toFixed(3) + '%" data-ctl="' + esc(a.id) + '" aria-label="' + esc(a.nome) + ': ' + (on ? 'ligado' : 'desligado') + (a.cliente_pode ? '' : ' (só visualização)') + '" title="' + esc(a.nome) + '">' + ctlIco(ctlTipo(a.tipo)) + '</button>'; }).join('');
+    return '<div class="mapa">' + s + '<div class="hs">' + hs + '</div></div>';
+  }
+  /* posição de cada cartão na planta; aparelhos no mesmo lugar (ex.: teclas do mesmo interruptor) se abrem em leque */
+  function ctlPos(C) {
+    var pl = C.planta, out = {}, raw = {}; if (!pl) return out;
+    (pl.aparelhos || []).forEach(function (q) { if (q.x != null && q.y != null) raw[q.id] = { x: +q.x, y: +q.y }; });
+    var grupos = {}; C.aparelhos.forEach(function (a) { var p = raw[a.id]; if (!p) return; var k = Math.round(p.x / 20) + ',' + Math.round(p.y / 20); (grupos[k] = grupos[k] || []).push({ a: a, p: p }); });
+    Object.keys(grupos).forEach(function (k) { var g = grupos[k]; g.forEach(function (it, i) { if (g.length === 1) { out[it.a.id] = it.p; return; } var ang = -Math.PI / 2 + i * 2 * Math.PI / g.length, r = 34; out[it.a.id] = { x: it.p.x + Math.cos(ang) * r, y: it.p.y + Math.sin(ang) * r }; }); });
+    return out;
+  }
+  function vControle() {
+    var C = D.ctl; if (!C || !C.aparelhos.length) return '';
+    var luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz'; }), acesas = luzes.filter(ctlLigado).length;
+    var cenas = C.cenas.length ? '<h4>Cenas rápidas</h4><div class="cenas">' + C.cenas.map(function (c) { return '<button class="cena' + (C.pend['cena:' + c.id] ? ' on' : '') + '" data-cena="' + esc(c.id) + '">' + ctlIco(c.icone) + esc(c.nome) + '</button>'; }).join('') + '</div>' : '';
+    var porC = {}; C.aparelhos.forEach(function (a) { (porC[a.comodo || 'Outros'] = porC[a.comodo || 'Outros'] || []).push(a); });
+    var lista = Object.keys(porC).sort().map(function (k) { return '<div class="grp">' + esc(k) + '</div>' + porC[k].map(function (a) { var on = ctlLigado(a), pe = C.pend[a.id];
+      var st = pe ? 'Enviando…' : (on ? 'Ligado' : 'Desligado') + (a.estado && a.estado.confirmado === false ? ' · sem confirmação' : '') + (a.cliente_pode ? '' : ' · só visualização');
+      return '<div class="ap' + (on ? ' on' : '') + '"><span class="ic">' + ctlIco(ctlTipo(a.tipo)) + '</span><div class="t"><b>' + esc(a.nome) + '</b><span>' + st + '</span></div><button class="sw' + (on ? ' on' : '') + '" data-ctl="' + esc(a.id) + '"' + (a.cliente_pode && !pe ? '' : ' disabled') + ' aria-label="' + (on ? 'Desligar ' : 'Ligar ') + esc(a.nome) + '"></button></div>'; }).join(''); }).join('');
+    var evs = C.aparelhos.filter(function (a) { return a.estado_em; }).sort(function (a, b) { return Date.parse(b.estado_em) - Date.parse(a.estado_em); }).slice(0, 6).map(function (a) {
+      return '<div class="ev"><time>' + new Date(a.estado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</time><div>' + esc(a.nome) + ' · ' + (ctlLigado(a) ? 'ligado' : 'desligado') + '</div></div>'; }).join('');
+    return '<div class="ctl" id="ctl"><div class="cab"><b>' + esc(C.casa ? C.casa.nome : 'Minha casa') + '</b><span class="cm">' + acesas + ' de ' + luzes.length + ' luzes acesas</span></div>' +
+      ctlMapa(C) + cenas + '<h4>Aparelhos</h4><div class="lst">' + lista + '</div>' +
+      (evs ? '<h4>Atividade</h4>' + evs : '') +
+      '<div class="cm" style="margin:12px 4px 2px">Com o cadeado, o aparelho é só para ver. Para liberar o controle pelo portal, fale com a Domótica.</div></div>';
+  }
+  function repintarControle() { var el = document.getElementById('ctl'); if (el) el.outerHTML = vControle(); }
+  async function comandoCliente(id) {
+    var C = D.ctl, a = C.aparelhos.filter(function (x) { return x.id === id; })[0]; if (!a) return;
+    if (!a.cliente_pode) return toast('Este aparelho é só para visualização. Fale com a Domótica para liberar.');
+    if (C.pend[id]) return; var quer = !ctlLigado(a); C.pend[id] = true; repintarControle();
+    var r = await sb.functions.invoke('comandar', { body: { tipo: 'tuya', alvo_id: id, on: quer, origem: 'portal', intencao: true } });
+    delete C.pend[id]; var d = r.data;
+    if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } toast((d && d.msg) || 'Não foi possível enviar o comando.'); }
+    else if (d && d.ok) { a.estado = { on: d.on, confirmado: d.confirmado }; a.estado_em = new Date().toISOString(); if (!d.confirmado) toast('Comando enviado. O aparelho ainda não confirmou.'); }
+    repintarControle();
+  }
+  async function cenaCliente(id) {
+    var C = D.ctl, c = C.cenas.filter(function (x) { return x.id === id; })[0]; if (!c || C.pend['cena:' + id]) return;
+    C.pend['cena:' + id] = true; repintarControle(); toast('Ativando a cena ' + c.nome + '…');
+    var r = await sb.functions.invoke('comandar', { body: { tipo: 'cena', cena_id: id, origem: 'portal', intencao: true } });
+    delete C.pend['cena:' + id]; var d = r.data;
+    if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } }
+    toast(d && d.total ? 'Cena ' + c.nome + ': ' + d.executados + ' de ' + d.total + ' aparelhos.' + (d.executados < d.total ? ' Alguns não estão liberados ou não responderam.' : '') : ((d && d.msg) || 'Não foi possível ativar a cena.'));
+    await atualizarControle();
+  }
+  async function atualizarControle() { if (!D || !D.ctl || !D.ctl.aparelhos.length) return; var r = await sb.rpc('portal_aparelhos', { p_residencia: null }); if (!r.error && r.data) { var pend = D.ctl.pend; D.ctl.aparelhos = r.data.map(function (a) { if (pend[a.id]) { var v = D.ctl.aparelhos.filter(function (x) { return x.id === a.id; })[0]; return v || a; } return a; }); repintarControle(); } }
+  setInterval(function () { if (ABA === 'casa' && document.visibilityState === 'visible') atualizarControle(); }, 30000);
   function estadoTxt(a) {
     if (a.con === 'offline') return ['Sem conexão', 'b-bad'];
     var s = String(a.estado || '');
@@ -430,7 +554,7 @@ window.DOMOTICA_CFG = {
     }).join('');
   }
   function vCasa() {
-    var agora = vAgora();
+    var agora = vControle() + vAgora();
     if (!D.dispositivos.length) return agora + '<div class="card empty">Seus dispositivos e garantias aparecerão aqui depois da instalação.</div>';
     var por = {}; D.dispositivos.forEach(function (d) { (por[d.ambiente || 'Outros'] = por[d.ambiente || 'Outros'] || []).push(d); });
     return agora + Object.keys(por).map(function (k) {
@@ -456,6 +580,8 @@ window.DOMOTICA_CFG = {
   function sheet(html) { var o = document.createElement('div'); o.className = 'ov'; o.innerHTML = '<div class="sheet">' + html + '</div>'; o.onclick = function (e) { if (e.target === o) o.remove(); }; document.body.appendChild(o); return o; }
   function clique(e) {
     var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.ctl) return comandoCliente(b.dataset.ctl);
+    if (b.dataset.cena) return cenaCliente(b.dataset.cena);
     if (b.dataset.go) { ABA = b.dataset.go; pintar(); window.scrollTo(0, 0); }
     else if (b.dataset.nova) novoPedido(b.dataset.nova, b.dataset.dev);
     else if (b.dataset.canc) { if (confirm('Cancelar este pedido?')) sb.rpc('portal_cancelar_solicitacao', { p_id: b.dataset.canc }).then(function (r) { if (r.error) toast(r.error.message); else { toast('Pedido cancelado.'); recarregar(); } }); }
