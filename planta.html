@@ -299,7 +299,7 @@ window.DOMOTICA_CFG = {
     <a href="index.html#plantas" style="color:inherit;text-decoration:none;padding:6px 10px;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(255,255,255,.1);white-space:nowrap;flex:none;font-size:13px" title="Voltar ao sistema">←</a>
     <div class="brand">Planta <span>Domótica</span></div>
     <input id="fNome" placeholder="Nome da planta">
-    <nav id="menuBar"><button data-menu="arquivo">Arquivo</button><button data-menu="editar">Editar</button><button data-menu="ver">Visualizar</button><button data-menu="inserir">Inserir</button><button data-menu="ajuda">Ajuda</button></nav>
+    <nav id="menuBar"><button data-menu="arquivo">Arquivo</button><button data-menu="editar">Editar</button><button data-menu="ver">Visualizar</button><button data-menu="inserir">Inserir</button><button data-menu="ajuda">Ajuda</button><button data-dados="1" title="Cliente e imóvel desta planta">Dados</button></nav>
     <nav id="tabs">
       <button data-tab="v2d" class="on">Planta 2D<span id="badgeCom" class="badge" style="background:#475569">0/0</span></button>
       <button data-tab="v3d">3D</button>
@@ -4582,7 +4582,7 @@ function abreMenu(nome, btn) {
   d._itens = itens; const r = btn.getBoundingClientRect(); d.classList.add('on'); const w = d.offsetWidth; d.style.left = Math.max(6, Math.min(r.left, innerWidth - w - 6)) + 'px'; d.style.top = (r.bottom + 4) + 'px'; d.style.maxHeight = (innerHeight - r.bottom - 14) + 'px'; d.style.overflowY = 'auto';
 }
 function fechaMenu() { menuAberto = null; $('#menuDrop').classList.remove('on'); document.querySelectorAll('#menuBar button').forEach(b => b.classList.remove('on')); }
-$('#menuBar').addEventListener('click', e => { const b = e.target.closest('button[data-menu]'); if (b) abreMenu(b.dataset.menu, b); });
+$('#menuBar').addEventListener('click', e => { if (e.target.closest('button[data-dados]')) { fechaMenu(); return $('#bDados').click(); } const b = e.target.closest('button[data-menu]'); if (b) abreMenu(b.dataset.menu, b); });
 $('#menuBar').addEventListener('mouseover', e => { const b = e.target.closest('button[data-menu]'); if (b && menuAberto && menuAberto !== b.dataset.menu) { menuAberto = null; abreMenu(b.dataset.menu, b); } });
 $('#menuDrop').addEventListener('click', e => { const b = e.target.closest('.mi'); if (!b) return; const it = $('#menuDrop')._itens[+b.dataset.i]; fechaMenu(); try { it[2](); } catch (x) { toast('Não foi possível: ' + x.message); } });
 document.addEventListener('pointerdown', e => { if (menuAberto && !e.target.closest('#menuDrop') && !e.target.closest('#menuBar')) fechaMenu(); }, true);
