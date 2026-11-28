@@ -2506,7 +2506,7 @@ window.DOMOTICA_CFG = {
         sb.from('contratos_assistencia').select('*').eq('org_id', x.orgId).or('residencia_id.eq.' + id + (z.client_id ? ',and(residencia_id.is.null,client_id.eq.' + z.client_id + ')' : '')).order('criado_em', { ascending: false })]);
       const integs = must(i), ocs = must(o), devs = must(d), est = new Map(must(e).map(q => [q.dispositivo_id, q])), cts = must(k);
       let pontos = [];
-      if (z.plan_id) { const pl = must(await sb.from('plans').select('dados').eq('id', z.plan_id).single()); const com = new Map(((pl.dados && pl.dados.comodos) || []).map(q => [q.id, q.nome])); pontos = ((pl.dados && pl.dados.pontos) || []).map(p => ({ id: p.id, rot: (p.nome || p.tipo) + (com.get(p.comodo) ? ' · ' + com.get(p.comodo) : '') })); }
+      let dadosPlanta = null; if (z.plan_id) { const pl = must(await sb.from('plans').select('dados').eq('id', z.plan_id).single()); dadosPlanta = pl.dados || null; const com = new Map(((pl.dados && pl.dados.comodos) || []).map(q => [q.id, q.nome])); pontos = ((pl.dados && pl.dados.pontos) || []).map(p => ({ id: p.id, rot: (p.nome || p.tipo) + (com.get(p.comodo) ? ' · ' + com.get(p.comodo) : '') })); }
       // canais Tuya desta planta: permissão de comando (padrão negado) e últimos comandos auditados
       let canaisTuya = [], audit = [], cenas = [], imgPortal = null;
       if (z.plan_id) {
@@ -2569,7 +2569,7 @@ window.DOMOTICA_CFG = {
       const secImg = imgPortal ? '<div class="row-title" style="margin:20px 2px 8px">Imagem da casa no portal</div><div class="glass item-card">' +
         (imgPortal.url ? '<img src="' + escHtml(imgPortal.url) + '" alt="Imagem da planta no portal" style="width:100%;max-width:640px;border-radius:12px;display:block;margin-bottom:10px">' : '<div class="small" style="margin-bottom:10px">Ainda sem imagem. No editor da planta, abra o 3D e use <b>Imagem p/ portal</b>.</div>') +
         '<div class="small" style="margin-bottom:10px">A imagem precisa ter o mesmo enquadramento da foto base (é ela que alinha os aparelhos). Para usar uma imagem feita fora (ChatGPT, Gemini, Lumux…), baixe a foto base, gere a partir dela e envie o resultado.</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-a="imgbase">Baixar foto base</button><button class="btn btn-secondary btn-sm" data-a="imgenviar">Enviar imagem pronta</button><button class="btn btn-primary btn-sm" data-a="imgia">Gerar realista com IA</button><button class="btn btn-ghost btn-sm" data-a="imgvoltar">Voltar para a foto do 3D</button></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-a="imgbase">Baixar foto base</button><button class="btn btn-secondary btn-sm" data-a="imgenviar">Enviar imagem pronta</button><button class="btn btn-primary btn-sm" data-a="imgrender">Gerar imagem realista (sem IA)</button><button class="btn btn-secondary btn-sm" data-a="imgia">Gerar com IA (Gemini)</button><button class="btn btn-ghost btn-sm" data-a="imgvoltar">Voltar para a foto do 3D</button></div>' +
         '<input type="file" id="cs-imgfile" accept="image/jpeg,image/png,image/webp" style="display:none"></div>' : '';
       const garantirBase = async () => { const lb = await sb.storage.from('plantas').list(x.orgId + '/' + z.plan_id, { search: '3d_portal_base.jpg' }); if (!(lb.data || []).some(f => f.name === '3d_portal_base.jpg')) { const cp = await sb.storage.from('plantas').copy(imgPortal.caminho, imgPortal.base); if (cp.error) throw new Error('Não consegui guardar a foto base: ' + cp.error.message); } };
       const tamImg = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im.naturalWidth / im.naturalHeight); im.onerror = () => ok(null); im.src = src; });
@@ -2593,6 +2593,19 @@ window.DOMOTICA_CFG = {
         else if (a === 'casabloq') { const bloquear = !z.comandos_bloqueados; confirmarAcao(bloquear ? 'Bloquear os comandos remotos desta casa? Nada liga/desliga pelo sistema (equipe e cliente) até liberar de novo.' : 'Liberar os comandos remotos desta casa? Cada canal ainda precisa da própria permissão, e o bloqueio da empresa continua valendo.', async () => {
           try { const n = must(await sb.from('residencias').update({ comandos_bloqueados: bloquear }).eq('id', id).select('id')); if (!n || !n.length) throw new Error('sem_permissao_para_liberar'); toast(bloquear ? 'Comandos da casa bloqueados.' : 'Comandos da casa liberados.', 'success'); navegar('casas', { id }); }
           catch (e) { toast(/sem_permissao_para_liberar/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode mudar o bloqueio.' : msgErro(e.message), 'error', 7000); } }, { textoConfirmar: bloquear ? 'Bloquear' : 'Liberar', perigo: !bloquear }); }
+        else if (a === 'imgrender') (async () => {
+          try {
+            if (!dadosPlanta || !(dadosPlanta.comodos || []).length) return toast('A planta não tem cômodos.', 'error');
+            if (!window.plantaRealista) await new Promise((ok, er) => { const sc = document.createElement('script'); sc.src = 'planta-realista.js?v=1'; sc.onload = ok; sc.onerror = () => er(new Error('Não consegui carregar o gerador.')); document.head.appendChild(sc); });
+            const LUZ = /^(ponto_luz|plafon|spot|pendente|arandela|fita_led|trilho|balizador|lampada|luz_piso|refletor)$/;
+            const luzes = (dadosPlanta.pontos || []).filter(p => LUZ.test(p.tipo || '')).map(p => [+p.x, +p.y, p.tipo]);
+            const url = window.plantaRealista({ comodos: dadosPlanta.comodos, paredes: dadosPlanta.paredes || [], aberturas: dadosPlanta.aberturas || [] }, luzes, 2000);
+            const blob = await (await fetch(url)).blob();
+            if (imgPortal.url) await garantirBase();
+            must(await sb.storage.from('plantas').upload(imgPortal.caminho, blob, { contentType: 'image/jpeg', upsert: true }));
+            toast('Imagem realista gerada e aplicada no portal.', 'success'); navegar('casas', { id });
+          } catch (e) { toast(msgErro(e.message), 'error', 8000); }
+        })();
         else if (a === 'imgenviar') { const fi2 = $id('cs-imgfile'); if (fi2) fi2.click(); }
         else if (a === 'imgbase') (async () => { const r = await sb.storage.from('plantas').createSignedUrl(imgPortal.base, 600, { download: 'foto-base-planta.jpg' }); const r2 = r.error ? await sb.storage.from('plantas').createSignedUrl(imgPortal.caminho, 600, { download: 'foto-base-planta.jpg' }) : r; if (r2.error) return toast('Ainda sem foto. Gere no editor 3D (Imagem p/ portal).', 'error', 6000); window.open(r2.data.signedUrl, '_blank', 'noopener'); })();
         else if (a === 'imgia') confirmarAcao('Gerar uma versão realista com o Gemini a partir da foto base? Leva até 1 minuto e conta no limite diário de IA. Usa a sua chave do Google: na faixa gratuita não há custo; se a cobrança estiver ativada na conta Google, cada imagem custa alguns centavos de dólar.', async () => {
