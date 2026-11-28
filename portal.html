@@ -298,7 +298,7 @@ window.DOMOTICA_CFG = {
       var em = document.getElementById('a-email').value.trim();
       if (!em) return telaAuth('entrar', { t: 'Digite seu e-mail no campo acima e toque de novo em “Esqueci minha senha”.' });
       var tk = await cfToken(); if (tk === '') { cfReset(); return telaAuth('entrar', { t: 'Não foi possível concluir a verificação de segurança. Tente de novo.' }); }
-      var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname, captchaToken: tk });
+      var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + '/portal.html', captchaToken: tk });
       cfReset();
       if (r.error) return telaAuth('entrar', { t: erroMsg(r.error) });
       telaAuth('entrar', { ok: true, t: 'Se esse e-mail tiver conta, enviamos um link para criar uma nova senha.' });
