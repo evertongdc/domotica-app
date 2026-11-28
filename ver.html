@@ -1505,6 +1505,7 @@ const getById = (arr, id) => arr.find(x => x.id === id);
 const PAL_COM = ['#e8f1fb', '#fdf1e3', '#e9f7ee', '#f4e9fb', '#fff7d9', '#e6f6f8'];
 const NEU_COR = { a_confirmar: '#e5484d', tem: '#2ea44f', jumper: '#0ea5a4', puxar: '#f59e0b', eletricista_cliente: '#a855f7' };
 function renderSVG() {
+  let rot = '';   /* nomes dos cômodos: desenhados por último (por cima dos aparelhos) */
   const r = rectOf(), W = S.view.w, H = W * r.height / Math.max(1, r.width), k = wpp(), V = S.view;
   S.lod = k > 3.6 ? 2 : k > 2.2 ? 1 : 0;   // 0 = perto (tudo), 1 = médio (sem textos secundários), 2 = longe (só cômodos e pontos pequenos)
   svg.setAttribute('viewBox', V.x + ' ' + V.y + ' ' + W + ' ' + H);
@@ -1528,8 +1529,7 @@ function renderSVG() {
     const fe = !!c.feito, at = S.ativo === c.id, dim = S.ativo && !at, selc = sel && sel.k === 'comodo' && sel.id === c.id;
     const stk = selc ? '#1e88ff' : (at ? '#ff7a00' : (fe ? '#2ea44f' : null));
     s += '<path data-k="comodo" data-id="' + c.id + '" d="M' + c.pontos.map(p => p[0] + ' ' + p[1]).join('L') + 'Z" fill="' + (fe ? '#cfeedb' : (M.pisoAmostra && c._pat ? 'url(#' + c._pat + ')' : PAL_COM[i % PAL_COM.length])) + '" fill-opacity="' + ((P.fundo ? .55 : (M.pisoAmostra && c._pat ? 1 : .9)) * (dim ? .45 : 1)) + '" style="pointer-events:' + (S.tool === 'sel' ? 'all' : 'none') + (S.tool === 'sel' && selc ? ';cursor:move' : '') + '"' + (stk ? ' stroke="' + stk + '" stroke-width="3" vector-effect="non-scaling-stroke"' : '') + '/>';
-    s += '<text x="' + c.cx + '" y="' + c.cy + '" text-anchor="middle" font-size="' + 15 * k + '" font-weight="700" fill="' + (fe ? '#14532d' : '#334155') + '" style="pointer-events:none">' + esc(c.nome) + '</text>';
-    if (!S.lod) s += '<text x="' + c.cx + '" y="' + (c.cy + 15 * k) + '" text-anchor="middle" font-size="' + 12 * k + '" fill="' + (fe ? '#166534' : '#64748b') + '" style="pointer-events:none">' + c.area.toFixed(1).replace('.', ',') + ' m²</text>';
+    if (nomesComOn()) { const xs = c.pontos.map(q => q[0]), ys = c.pontos.map(q => q[1]); rot += '<text x="' + (Math.min.apply(null, xs) + 12 * k) + '" y="' + (Math.min.apply(null, ys) + 20 * k) + '" font-size="' + 11.5 * k + '" font-weight="700" fill="' + (fe ? '#14532d' : '#334155') + '" fill-opacity=".85" stroke="#f4f6fa" stroke-opacity=".85" stroke-width="' + 3 * k + '" paint-order="stroke" style="pointer-events:none">' + esc(c.nome) + (S.lod ? '' : '<tspan font-weight="400" font-size="' + 10 * k + '" fill="#64748b"> · ' + c.area.toFixed(1).replace('.', ',') + ' m²</tspan>') + '</text>'; }
     if (fe) s += '<g transform="translate(' + c.cx + ' ' + (c.cy - 27 * k) + ')" style="pointer-events:none"><circle r="' + 12 * k + '" fill="#2ea44f"/><path d="M' + -5.5 * k + ' ' + 0 + 'L' + -1.5 * k + ' ' + 4.2 * k + 'L' + 6 * k + ' ' + -4.5 * k + '" stroke="#fff" stroke-width="' + 2.8 * k + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>';
   });
   // paredes
@@ -1613,6 +1613,7 @@ function renderSVG() {
     if (verNome) s += '<text y="' + (h + 11 * k) + '" text-anchor="middle" font-size="' + 10.5 * k + '" fill="#334155" stroke="#f4f6fa" stroke-width="' + 3 * k + '" paint-order="stroke">' + esc(p.nome) + '</text>';
     s += '</g>';
   });
+  s += rot;
   // teclas do interruptor selecionado (toque numa tecla para vincular)
   if (sel && sel.k === 'ponto') { const sp = getById(P.pontos, sel.id); if (sp && (sp.tipo === 'interruptor' || sp.tipo === 'botao') && visivel(sp)) { const nT = sp.tipo === 'botao' ? (sp.teclas || 4) : (sp.teclas || 1);
     for (let t = 1; t <= nT; t++) { const nL = P.ligacoes.filter(l => l.de === sp.id && (l.tecla || 1) === t).length, bx = sp.x + (t - 1 - (nT - 1) / 2) * 30 * k, by = sp.y + 40 * k;
@@ -1665,6 +1666,7 @@ function updateFundo() {
 
 /* ===================== camadas (teto, elétrica...) ===================== */
 const CAMADAS = [['teto', 'Teto'], ['eletrica', 'Elétrica'], ['som', 'Som'], ['alexa', 'Alexa / Hubs'], ['clima', 'Clima / Motores'], ['midia', 'TV / Mídia'], ['seguranca', 'Segurança'], ['rede', 'Rede'], ['outro', 'Outros']];
+const nomesComOn = () => { if (S.nomesCom == null) { try { S.nomesCom = localStorage.getItem('planta_nomes_comodos') === '1'; } catch (e) { S.nomesCom = false; } } return S.nomesCom; };   /* nomes dos cômodos no 2D: ocultos por padrão */
 const nomesOn = () => { if (S.nomes == null) { try { S.nomes = localStorage.getItem('planta_nomes') === '1'; } catch (e) { S.nomes = false; } } return S.nomes; };   /* nomes dos aparelhos no 2D: ocultos por padrão */
 const ehTeto = p => p.teto != null ? !!p.teto : !!(M.TIPOS[p.tipo] || {}).teto;
 /* sem camada marcada mostra tudo; com camadas marcadas mostra a soma delas (ex.: Teto + Elétrica) */
@@ -2002,6 +2004,7 @@ function renderPanel() {
     h += '<label><input type="checkbox" id="chCotas" style="width:auto" ' + (S.cotas ? 'checked' : '') + '> Mostrar medidas</label>';
     h += '<label><input type="checkbox" id="chLigs" style="width:auto" ' + (S.ligs ? 'checked' : '') + '> Mostrar ligações</label>';
     h += '<label><input type="checkbox" id="chNomes" style="width:auto" ' + (nomesOn() ? 'checked' : '') + '> Mostrar nomes dos aparelhos</label>';
+    h += '<label><input type="checkbox" id="chNomesCom" style="width:auto" ' + (nomesComOn() ? 'checked' : '') + '> Mostrar nomes dos cômodos</label>';
     h += '<label><input type="checkbox" id="chDedo" style="width:auto" ' + (S.dedo ? 'checked' : '') + '> Desenhar também com o dedo</label>';
     h += '<label><input type="checkbox" id="chCadeia" style="width:auto" ' + (S.cadeia ? 'checked' : '') + '> Parede por clique: encadear (o fim vira o início da próxima)</label>';
     h += '<label><input type="checkbox" id="chRoda" style="width:auto" ' + (S.rodaZoom ? 'checked' : '') + '> Roda do mouse dá zoom (padrão: pinça dá zoom, roda/2 dedos movem)</label>';
@@ -2110,6 +2113,7 @@ $('#panel').addEventListener('change', e => {
   const t = e.target; if (t.id === 'espSel') { S.esp = +t.value; return; }
   if (t.id === 'chInt') { S.interna = t.checked; return renderSVG(); }
   if (t.id === 'chCotas') { S.cotas = t.checked; return renderSVG(); }
+  if (t.id === 'chNomesCom') { S.nomesCom = t.checked; try { localStorage.setItem('planta_nomes_comodos', t.checked ? '1' : '0'); } catch (e) { } return renderSVG(); }
   if (t.id === 'chNomes') { S.nomes = t.checked; try { localStorage.setItem('planta_nomes', t.checked ? '1' : '0'); } catch (e) { } return renderSVG(); }
   if (t.id === 'chLigs') { S.ligs = t.checked; const lg = $('#lig3'); if (lg) lg.checked = S.ligs; renderCamadas(); return renderSVG(); }
   if (t.id === 'chDedo') { S.dedo = t.checked; return; }
@@ -2714,7 +2718,7 @@ async function abrir3d() {
       if (T3.sombraSuja) { T3.ren.shadowMap.needsUpdate = true; if (THREE.WEBGPU) T3.scene.traverse(o => { if (o.isLight && o.castShadow && o.shadow) { o.shadow.autoUpdate = false; o.shadow.needsUpdate = true; } }); T3.sombraSuja = false; T3.wake(350); }
       const dt = Math.min(.1, tt - (T3.fp.t0 || tt)); T3.fp.t0 = tt; if (T3.fp.on) atualizaDentro(dt); else T3.ctl.update();
       const c = T3.cam, kc = c.position.x.toFixed(1) + '|' + c.position.y.toFixed(1) + '|' + c.position.z.toFixed(1) + '|' + c.quaternion.x.toFixed(4) + '|' + c.quaternion.y.toFixed(4) + '|' + c.quaternion.z.toFixed(4) + '|' + c.fov + '|' + T3.ren.domElement.width;
-      if (kc !== T3.kc) { T3.kc = kc; T3.mover(); if (T3.limpoAz != null && !T3.fp.on) { const az = Math.round(Math.atan2(c.position.x - T3.ctl.target.x, c.position.z - T3.ctl.target.z) / (Math.PI / 8)); if (az !== T3.limpoAz) { clearTimeout(T3.limpoT); T3.limpoT = setTimeout(() => { if ($('#modo3').value === 'limpo') build3d(false); }, 350); } } }
+      if (kc !== T3.kc) { T3.kc = kc; T3.mover(); if (T3.limpoTopos && T3.limpoTopos.length) { let mud = false; T3.limpoTopos.forEach(t => { const v = ((c.position.x - t.mx) * t.ox + (c.position.z - t.mz) * t.oz) <= 0; if (t.grp.visible !== v) { t.grp.visible = v; mud = true; } }); if (mud) T3.sombraSuja = true; } }
       const agora = performance.now(); if (!(T3.fp.on || agora < T3.until || T3.animando())) return;
       const t0 = performance.now(); T3.draw();   // modo único: o mesmo visual parado e em movimento
       T3.stats.quadros++; T3.stats.ocupado += performance.now() - t0;
@@ -3740,11 +3744,13 @@ function build3dTudo(reenquadrar) {
   /* visual limpo: paredes internas a 125 cm; as de fora viradas para a câmera também baixam, as do fundo ficam inteiras (como uma maquete) */
   const LIMPO = modo === 'limpo' && !(T3.fp && T3.fp.on), camX = T3.cam ? T3.cam.position.x : 0, camZ = T3.cam ? T3.cam.position.z : 0;
   const ladoSala = (x, y) => P.comodos.some(c => c.pontos && c.pontos.length > 2 && G.dentro(c.pontos, x, y));
-  const altLimpo = (w, H) => { const q = wallGeo(w), mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2, d = (w.esp || 15) / 2 + 12, a = ladoSala(mx + q.nx * d, my + q.ny * d), b = ladoSala(mx - q.nx * d, my - q.ny * d); if (a && b) return Math.min(125, H); const sg = a ? -1 : 1; return ((camX - mx) * q.nx * sg + (camZ - my) * q.ny * sg) > 0 ? Math.min(125, H) : H; };
-  T3.limpoAz = LIMPO && T3.cam && T3.ctl ? Math.round(Math.atan2(camX - T3.ctl.target.x, camZ - T3.ctl.target.z) / (Math.PI / 8)) : null;
+  /* parede de fora: a parte acima de 125 cm vira uma peça separada que aparece/some na hora conforme a câmera (sem reconstruir a cena) */
+  const infoLimpo = w => { const q = wallGeo(w), mx = (w.x1 + w.x2) / 2, my = (w.y1 + w.y2) / 2, d = (w.esp || 15) / 2 + 12, a = ladoSala(mx + q.nx * d, my + q.ny * d), b = ladoSala(mx - q.nx * d, my - q.ny * d); if (a === b) return null; const sg = a ? -1 : 1; return { ox: q.nx * sg, oz: q.ny * sg, mx, mz: my }; };
+  const boxTo = (grp, u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = true; m.receiveShadow = true; grp.add(m); };
+  T3.limpoTopos = [];
   P.paredes.forEach(w0 => {
     const w = w0.vidro ? Object.assign({}, w0, { esp: 1.2 }) : w0, mWall = w0.vidro ? vidroMat(w0.vidro) : (w0.cor ? corParede(w0.cor) : mWallBase);   // parede de vidro: lâmina fina e material de vidro
-    const Hw = modo === 'corte' ? Math.min(110, altW(w)) : LIMPO ? altLimpo(w0, altW(w)) : altW(w);
+    const Hw = modo === 'corte' ? Math.min(110, altW(w)) : LIMPO ? Math.min(125, altW(w)) : altW(w);
     const q = wallGeo(w), ops = P.aberturas.filter(a => a.parede === w.id).map(a => { const u0 = a.t * q.L - a.larg / 2; return { a, u0: Math.max(0, u0), u1: Math.min(q.L, u0 + a.larg) }; }).sort((x, y) => x.u0 - y.u0);
     let cur = -(w.esp || 15) / 2;
     ops.forEach(o => {
@@ -3798,6 +3804,13 @@ function build3dTudo(reenquadrar) {
       cur = o.u1;
     });
     box(cur, q.L + (w.esp || 15) / 2, 0, Hw, w, q, mWall);
+    if (LIMPO && !w0.vidro) { const Hf = altW(w), inf = Hf > 125 ? infoLimpo(w0) : null;
+      if (inf) { const grp = new THREE.Group(), B0 = 125; let cu = -(w.esp || 15) / 2;
+        ops.forEach(o => { boxTo(grp, cu, o.u0, B0, Hf, w, q, mWall); const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min(Hf, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
+          if (y1 > B0) { const gl = Math.max(B0, y0); if (gl > B0) boxTo(grp, o.u0, o.u1, B0, gl, w, q, mWall); if (y1 < Hf) boxTo(grp, o.u0, o.u1, y1, Hf, w, q, mWall); if (o.a.tipo === 'janela') boxTo(grp, o.u0, o.u1, gl, y1, Object.assign({}, w, { esp: 1.2 }), q, vidroMat()); }
+          else boxTo(grp, o.u0, o.u1, B0, Hf, w, q, mWall); cu = o.u1; });
+        boxTo(grp, cu, q.L + (w.esp || 15) / 2, B0, Hf, w, q, mWall);
+        grp.visible = ((camX - inf.mx) * inf.ox + (camZ - inf.mz) * inf.oz) <= 0; g.add(grp); T3.limpoTopos.push(Object.assign(inf, { grp })); } }
     if (w0.vidro) {   // perfis de alumínio no topo e no pé (sem cortar a passagem das portas)
       const wp = Object.assign({}, w, { esp: 2.6 }); box(-1.3, q.L + 1.3, Hw - 3, Hw, wp, q, mAlum); let c0 = -1.3; ops.forEach(o => { if (o.u0 > c0) box(c0, o.u0, 0, 3, wp, q, mAlum); c0 = o.u1; }); box(c0, q.L + 1.3, 0, 3, wp, q, mAlum);
       [0, q.L].forEach(u => box(u - 1.3, u + 1.3, 0, Hw, wp, q, mAlum));
