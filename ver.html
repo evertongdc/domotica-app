@@ -4153,9 +4153,13 @@ async function gerarImagemPortal() {
     cam.position.set(cx, 3000, cz); cam.up.set(0, 0, -1); cam.lookAt(cx, 0, cz); cam.updateProjectionMatrix();
     const R = T3.ren, larg = 2000, alt = Math.round(larg * H / W), tam = new THREE.Vector2(); R.getSize(tam); const pr = R.getPixelRatio();
     Object.values(T3.devs || {}).forEach(d => { if (d.A && d.A.luz) d.A.set(true); });   /* foto com todas as luzes acesas; no portal, as apagadas escurecem a região delas */
-    const tm = R.toneMapping, te = R.toneMappingExposure; if (tm === THREE.NoToneMapping) { R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.1; }   /* sem o passe final do modo realista, o tom vem do renderizador */
+    const tm = R.toneMapping, te = R.toneMappingExposure; if (tm === THREE.NoToneMapping) { R.toneMapping = THREE.ACESFilmicToneMapping; } R.toneMappingExposure = .9;   /* sem o passe final do modo realista, o tom vem do renderizador */
     R.setPixelRatio(1); R.setSize(larg, alt, false); if (T3.ticks) T3.ticks.forEach(f => { try { f(performance.now() / 1000); } catch (e) { } });
-    R.shadowMap.needsUpdate = true; R.render(T3.scene, cam); const url = R.domElement.toDataURL('image/jpeg', .9);
+    R.shadowMap.needsUpdate = true; R.render(T3.scene, cam);
+    const cv = document.createElement('canvas'); cv.width = larg; cv.height = alt; const cx2 = cv.getContext('2d');   /* tom quente de fim de tarde, como o modelo do Éverton */
+    cx2.filter = 'contrast(1.18) saturate(1.2) sepia(.28) brightness(.82)'; cx2.drawImage(R.domElement, 0, 0, larg, alt); cx2.filter = 'none';
+    const vg = cx2.createRadialGradient(larg / 2, alt / 2, Math.min(larg, alt) * .35, larg / 2, alt / 2, Math.max(larg, alt) * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); cx2.fillStyle = vg; cx2.fillRect(0, 0, larg, alt);
+    const url = cv.toDataURL('image/jpeg', .9);
     R.toneMapping = tm; R.toneMappingExposure = te; R.setPixelRatio(pr); R.setSize(tam.x, tam.y, false);
     await gas('Planta_salvarImagem3D', S.planoId, 'portal', url);
     toast('Imagem do portal salva. O cliente vê na próxima vez que abrir "Minha casa".', 6000);
