@@ -3755,7 +3755,7 @@ function build3dTudo(reenquadrar) {
     let cur = -(w.esp || 15) / 2;
     ops.forEach(o => {
       box(cur, o.u0, 0, Hw, w, q, mWall);
-      const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min(Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));
+      const y0 = o.a.tipo === 'janela' ? (o.a.peitoril || 100) : o.a.tipo === 'portao' ? Math.max(0, +o.a.peitoril || 0) : 0, y1 = Math.min((LIMPO && o.a.tipo === 'portao') ? Math.max(Hw, altW(w)) : Hw, y0 + (o.a.alt || (o.a.tipo === 'porta' ? 210 : 120)));   /* visual limpo: portão mantém a altura inteira */
       if (y0 > 0) box(o.u0, o.u1, 0, Math.min(y0, Hw), w, q, mWall); if (y1 < Hw) box(o.u0, o.u1, y1, Hw, w, q, mWall);
       if (y1 > y0) {
         const wl = o.u1 - o.u0, hh = y1 - y0, esp = w.esp || 15, rotW = -Math.atan2(q.uy, q.ux), cx = (o.u0 + o.u1) / 2, sd = o.a.lado || 1, db = o.a.dobr || 1, vid = !!w.vidro, tipoA = (LIMPO && Hw <= 125 && o.a.tipo === 'porta' && !vid) ? 'vao' : o.a.tipo;   /* visual limpo: porta em parede baixa vira só o vão (sem folha), como numa maquete */
