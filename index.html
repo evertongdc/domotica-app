@@ -2508,10 +2508,12 @@ window.DOMOTICA_CFG = {
       let pontos = [];
       if (z.plan_id) { const pl = must(await sb.from('plans').select('dados').eq('id', z.plan_id).single()); const com = new Map(((pl.dados && pl.dados.comodos) || []).map(q => [q.id, q.nome])); pontos = ((pl.dados && pl.dados.pontos) || []).map(p => ({ id: p.id, rot: (p.nome || p.tipo) + (com.get(p.comodo) ? ' · ' + com.get(p.comodo) : '') })); }
       // canais Tuya desta planta: permissão de comando (padrão negado) e últimos comandos auditados
-      let canaisTuya = [], audit = [], cenas = [];
+      let canaisTuya = [], audit = [], cenas = [], imgPortal = null;
       if (z.plan_id) {
         canaisTuya = must(await sb.from('tuya_vinculos').select('id, nome, dp_code, tecla, device_id, ponto_id, interruptor_id, comando_permitido, cliente_pode, estado').eq('plan_id', z.plan_id).order('nome'));
         cenas = must(await sb.from('cenas_casa').select('*').eq('residencia_id', id).order('ordem').order('criado_em'));
+        const ip = x.orgId + '/' + z.plan_id + '/3d_portal.jpg', su = await sb.storage.from('plantas').createSignedUrl(ip, 600);
+        imgPortal = { caminho: ip, base: x.orgId + '/' + z.plan_id + '/3d_portal_base.jpg', url: su.error ? null : su.data.signedUrl };
         if (canaisTuya.length) audit = must(await sb.from('comandos_auditoria').select('em, alvo_id, origem, valor, resultado, detalhe').eq('alvo_tipo', 'tuya_vinculo').in('alvo_id', canaisTuya.map(q => q.id)).order('em', { ascending: false }).limit(15));
       }
       const abertas = ocs.filter(q => !q.fechada_em), sit = csSituacao(integs, abertas.length);
@@ -2563,7 +2565,24 @@ window.DOMOTICA_CFG = {
           catch (e) { toast(/row-level security/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode criar cenas.' : msgErro(e.message), 'error', 7000); }
         };
       };
-      c.innerHTML = secTopo + secOc + secInt + secDev + secCmd + secCenas + secCt;
+      /* imagem realista da casa no portal: foto do 3D (editor), imagem pronta enviada aqui, ou gerada por IA a partir da foto base */
+      const secImg = imgPortal ? '<div class="row-title" style="margin:20px 2px 8px">Imagem da casa no portal</div><div class="glass item-card">' +
+        (imgPortal.url ? '<img src="' + escHtml(imgPortal.url) + '" alt="Imagem da planta no portal" style="width:100%;max-width:640px;border-radius:12px;display:block;margin-bottom:10px">' : '<div class="small" style="margin-bottom:10px">Ainda sem imagem. No editor da planta, abra o 3D e use <b>Imagem p/ portal</b>.</div>') +
+        '<div class="small" style="margin-bottom:10px">A imagem precisa ter o mesmo enquadramento da foto base (é ela que alinha os aparelhos). Para usar uma imagem feita fora (ChatGPT, Gemini, Lumux…), baixe a foto base, gere a partir dela e envie o resultado.</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-a="imgbase">Baixar foto base</button><button class="btn btn-secondary btn-sm" data-a="imgenviar">Enviar imagem pronta</button><button class="btn btn-primary btn-sm" data-a="imgia">Gerar realista com IA</button><button class="btn btn-ghost btn-sm" data-a="imgvoltar">Voltar para a foto do 3D</button></div>' +
+        '<input type="file" id="cs-imgfile" accept="image/jpeg,image/png,image/webp" style="display:none"></div>' : '';
+      const garantirBase = async () => { const lb = await sb.storage.from('plantas').list(x.orgId + '/' + z.plan_id, { search: '3d_portal_base.jpg' }); if (!(lb.data || []).some(f => f.name === '3d_portal_base.jpg')) { const cp = await sb.storage.from('plantas').copy(imgPortal.caminho, imgPortal.base); if (cp.error) throw new Error('Não consegui guardar a foto base: ' + cp.error.message); } };
+      const tamImg = src => new Promise(ok => { const im = new Image(); im.onload = () => ok(im.naturalWidth / im.naturalHeight); im.onerror = () => ok(null); im.src = src; });
+      c.innerHTML = secTopo + secOc + secInt + secDev + secCmd + secCenas + secImg + secCt;
+      const fi = $id('cs-imgfile'); if (fi) fi.onchange = async () => {
+        const f = fi.files && fi.files[0]; fi.value = ''; if (!f) return; if (f.size > 12e6) return toast('Imagem grande demais (máx. 12 MB).', 'error');
+        try {
+          const arN = await tamImg(URL.createObjectURL(f)), arB = imgPortal.url ? await tamImg(imgPortal.url) : null;
+          const enviar = async () => { try { if (imgPortal.url) await garantirBase(); must(await sb.storage.from('plantas').upload(imgPortal.caminho, f, { contentType: f.type || 'image/jpeg', upsert: true })); toast('Imagem enviada. O cliente vê na próxima vez que abrir Minha casa.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } };
+          if (arN && arB && Math.abs(arN / arB - 1) > .04) confirmarAcao('A proporção desta imagem (' + arN.toFixed(2) + ') é diferente da foto base (' + arB.toFixed(2) + '). Ela vai ficar esticada e os aparelhos podem não cair no lugar certo. Enviar mesmo assim?', enviar, { textoConfirmar: 'Enviar' });
+          else enviar();
+        } catch (e) { toast(msgErro(e.message), 'error', 7000); }
+      };
       c.onclick = ev => {
         const b = ev.target.closest('[data-a]'); if (!b) return; const a = b.getAttribute('data-a'), alvo = b.getAttribute('data-id');
         if (a === 'editar') csFormResidencia(z);
@@ -2574,6 +2593,13 @@ window.DOMOTICA_CFG = {
         else if (a === 'casabloq') { const bloquear = !z.comandos_bloqueados; confirmarAcao(bloquear ? 'Bloquear os comandos remotos desta casa? Nada liga/desliga pelo sistema (equipe e cliente) até liberar de novo.' : 'Liberar os comandos remotos desta casa? Cada canal ainda precisa da própria permissão, e o bloqueio da empresa continua valendo.', async () => {
           try { const n = must(await sb.from('residencias').update({ comandos_bloqueados: bloquear }).eq('id', id).select('id')); if (!n || !n.length) throw new Error('sem_permissao_para_liberar'); toast(bloquear ? 'Comandos da casa bloqueados.' : 'Comandos da casa liberados.', 'success'); navegar('casas', { id }); }
           catch (e) { toast(/sem_permissao_para_liberar/.test(e.message) ? 'Só o dono ou administrador, com verificação em 2 etapas, pode mudar o bloqueio.' : msgErro(e.message), 'error', 7000); } }, { textoConfirmar: bloquear ? 'Bloquear' : 'Liberar', perigo: !bloquear }); }
+        else if (a === 'imgenviar') { const fi2 = $id('cs-imgfile'); if (fi2) fi2.click(); }
+        else if (a === 'imgbase') (async () => { const r = await sb.storage.from('plantas').createSignedUrl(imgPortal.base, 600, { download: 'foto-base-planta.jpg' }); const r2 = r.error ? await sb.storage.from('plantas').createSignedUrl(imgPortal.caminho, 600, { download: 'foto-base-planta.jpg' }) : r; if (r2.error) return toast('Ainda sem foto. Gere no editor 3D (Imagem p/ portal).', 'error', 6000); window.open(r2.data.signedUrl, '_blank', 'noopener'); })();
+        else if (a === 'imgia') confirmarAcao('Gerar uma versão realista com o Gemini a partir da foto base? Leva até 1 minuto e conta no limite diário de IA. Usa a sua chave do Google: na faixa gratuita não há custo; se a cobrança estiver ativada na conta Google, cada imagem custa alguns centavos de dólar.', async () => {
+          toast('Gerando a imagem realista… (até 1 minuto)', 'info', 60000);
+          const r = await sb.functions.invoke('planta-realista', { body: { plan_id: z.plan_id, acao: 'gerar' } }); let d = r.data; if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } }
+          if (d && d.ok) { toast('Imagem realista pronta. Confira abaixo; se não gostar, use "Voltar para a foto do 3D".', 'success', 8000); navegar('casas', { id }); } else toast((d && d.erro) || 'Não foi possível gerar a imagem.', 'error', 12000); }, { textoConfirmar: 'Gerar' });
+        else if (a === 'imgvoltar') confirmarAcao('Voltar a imagem do portal para a foto do 3D?', async () => { const r = await sb.functions.invoke('planta-realista', { body: { plan_id: z.plan_id, acao: 'restaurar' } }); let d = r.data; if (r.error) { try { d = await r.error.context.json(); } catch (e) { d = null; } } if (d && d.ok) { toast('Voltou para a foto do 3D.', 'success'); navegar('casas', { id }); } else toast((d && d.erro) || 'Não foi possível voltar.', 'error', 8000); }, { textoConfirmar: 'Voltar' });
         else if (a === 'cena') csFormCena(cenas.find(q => q.id === alvo));
         else if (a === 'cenadel') confirmarAcao('Excluir esta cena? Ela some do portal do cliente.', async () => { try { must(await sb.from('cenas_casa').delete().eq('id', alvo)); toast('Cena excluída.', 'success'); navegar('casas', { id }); } catch (e) { toast(msgErro(e.message), 'error', 7000); } }, { textoConfirmar: 'Excluir', perigo: true });
         else if (a === 'cliente') { const sim = b.getAttribute('data-v') === '1', ids = (b.getAttribute('data-ids') || '').split(',').filter(Boolean); confirmarAcao(sim ? 'Liberar este canal para o CLIENTE ligar/desligar pelo portal? Fica registrado quem liberou, e cada comando dele passa pelas mesmas travas (limite por minuto, bloqueios) e pela auditoria.' : 'Tirar do cliente o controle deste canal pelo portal?', async () => {

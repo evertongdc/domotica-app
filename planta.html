@@ -4273,7 +4273,7 @@ async function gerarImagemPortal() {
     const vg = cx2.createRadialGradient(larg / 2, alt / 2, Math.min(larg, alt) * .35, larg / 2, alt / 2, Math.max(larg, alt) * .75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); cx2.fillStyle = vg; cx2.fillRect(0, 0, larg, alt);
     const url = cv.toDataURL('image/jpeg', .9);
     R.toneMapping = tm; R.toneMappingExposure = te; R.setPixelRatio(pr); R.setSize(tam.x, tam.y, false);
-    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url);
+    await gas('Planta_salvarImagem3D', S.planoId, 'portal', url); await gas('Planta_salvarImagem3D', S.planoId, 'portal_base', url);   /* a base é a foto do 3D: a IA e o "voltar" partem dela */
     toast('Imagem do portal salva. O cliente vê na próxima vez que abrir "Minha casa".', 6000);
   } catch (e) { toast('Erro: ' + e.message, 6000); }
   $('#com3').value = ant.com; $('#modo3').value = ant.modo; if ($('#forro3')) $('#forro3').checked = ant.forro; $('#lig3').checked = ant.lig; S.ligs = ant.ligs; build3d(true);
