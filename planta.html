@@ -3806,7 +3806,7 @@ function build3dTudo(reenquadrar) {
   const altW = w => { const m = [(w.x1 + w.x2) / 2, (w.y1 + w.y2) / 2], tol = (w.esp || 15) / 2 + 4; let h = 0; P.comodos.forEach(c => { if (G.dentro(c.pontos, m[0], m[1]) || distPoly(c.pontos, m) <= tol) h = Math.max(h, peDe(c)); }); return h || Hn; };
   const tetoDe = c => peDe(c) - ((c && c.rebaixo) || 0);
   const yPonto = p => { const c = getById(P.comodos, p.comodo), lim = ehTeto(p) ? tetoDe(c) - 2 : peDe(c); return clamp(alturaDe(p), 5, Math.max(10, lim)); };
-  const RE = !!T3.real, mWallBase = new THREE.MeshStandardMaterial({ color: RE ? 0x2b313c : NT ? 0x222733 : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: RE ? .9 : NT ? .7 : .9 });
+  const RE = !!T3.real, mWallBase = new THREE.MeshStandardMaterial({ color: RE ? 0x2b313c : NT ? 0x14171c : 0xf1f4f8, transparent: modo === 'vidro', opacity: modo === 'vidro' ? .3 : 1, roughness: RE ? .9 : NT ? .7 : .9 });
   const mTop = new THREE.MeshStandardMaterial({ color: RE ? 0x9aa3b3 : NT ? 0x6b7487 : 0xffffff, roughness: .55 });   /* borda clara no topo das paredes (visual de maquete) */
   const mLed = new THREE.MeshStandardMaterial({ color: 0xff8a2a, emissive: 0xff7a14, emissiveIntensity: 1.0 });
   const box = (u0, u1, y0, y1, w, q, mat) => { const L = u1 - u0, h = y1 - y0; if (L < .5 || h < .5) return; const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, w.esp || 15), mat), um = (u0 + u1) / 2; m.position.set(w.x1 + q.ux * um, y0 + h / 2, w.y1 + q.uy * um); m.rotation.y = -Math.atan2(q.uy, q.ux); m.castShadow = !mat.transparent; m.receiveShadow = true; m.userData.estatico = true; g.add(m); };
