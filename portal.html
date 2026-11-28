@@ -357,10 +357,14 @@ window.DOMOTICA_CFG = {
       '<pattern id="pe" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#5d5a52"/><circle cx="10" cy="12" r="1.5" fill="#6b675e"/><circle cx="30" cy="28" r="1.5" fill="#6b675e"/></pattern>' +
       '<radialGradient id="gl"><stop offset="0" stop-color="#ffd27a" stop-opacity=".75"/><stop offset=".45" stop-color="#ffb347" stop-opacity=".3"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient></defs>';
     var luzes = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz' && ctlLigado(a); }), pos = ctlPos(C);
-    if (pl.imagemUrl) {   /* foto com todas as luzes acesas; as apagadas escurecem a região delas */
-      s += '<radialGradient id="sh"><stop offset="0" stop-color="#000" stop-opacity=".66"/><stop offset=".55" stop-color="#000" stop-opacity=".38"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>';
+    if (pl.imagemUrl) {   /* foto com todas as luzes acesas: o cômodo escurece inteiro quando as luzes dele estão apagadas (parcial se só parte estiver) */
+      s += '<filter id="bl" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="10"/></filter>';
       s = s.replace('</defs>', '') + '</defs><image href="' + esc(pl.imagemUrl) + '" x="' + x0 + '" y="' + y0 + '" width="' + W + '" height="' + H + '" preserveAspectRatio="none"/>';
-      C.aparelhos.forEach(function (a) { var p = pos[a.id]; if (p && ctlTipo(a.tipo) === 'luz' && !ctlLigado(a)) s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="200" fill="url(#sh)"/>'; });
+      var bruto = {}; (pl.aparelhos || []).forEach(function (q) { if (q.x != null && q.y != null) bruto[q.id] = [+q.x, +q.y]; });
+      pl.comodos.forEach(function (c) { var poly = c.pontos || []; if (poly.length < 3) return;
+        var lz = C.aparelhos.filter(function (a) { return ctlTipo(a.tipo) === 'luz' && bruto[a.id] && ctlDentro(poly, bruto[a.id]); }); if (!lz.length) return;
+        var apagadas = lz.filter(function (a) { return !ctlLigado(a); }).length; if (!apagadas) return;
+        s += '<polygon points="' + poly.map(function (q) { return (+q[0]) + ',' + (+q[1]); }).join(' ') + '" fill="#05060a" opacity="' + (.68 * apagadas / lz.length).toFixed(2) + '" filter="url(#bl)"/>'; });
       s += '</svg>';
     } else {
     s += '<rect x="' + x0 + '" y="' + y0 + '" width="' + W + '" height="' + H + '" fill="#1b1a18"/>';
@@ -380,6 +384,7 @@ window.DOMOTICA_CFG = {
       return '<button class="hot' + (on ? ' on' : '') + (a.cliente_pode ? '' : ' lk') + (C.pend[a.id] ? ' pend' : '') + '" style="left:' + ((p.x - x0) / W * 100).toFixed(3) + '%;top:' + ((p.y - y0) / H * 100).toFixed(3) + '%" data-ctl="' + esc(a.id) + '" aria-label="' + esc(a.nome) + ': ' + (on ? 'ligado' : 'desligado') + (a.cliente_pode ? '' : ' (só visualização)') + '" title="' + esc(a.nome) + '">' + ctlIco(ctlTipo(a.tipo)) + '</button>'; }).join('');
     return '<div class="mapa">' + s + '<div class="hs">' + hs + '</div></div>';
   }
+  function ctlDentro(poly, p) { var d = false; for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) { var xi = +poly[i][0], yi = +poly[i][1], xj = +poly[j][0], yj = +poly[j][1]; if (((yi > p[1]) !== (yj > p[1])) && (p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi)) d = !d; } return d; }
   /* posição de cada cartão na planta; aparelhos no mesmo lugar (ex.: teclas do mesmo interruptor) se abrem em leque */
   function ctlPos(C) {
     var pl = C.planta, out = {}, raw = {}; if (!pl) return out;
